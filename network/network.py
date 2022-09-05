@@ -96,8 +96,14 @@ class Green5GNet:
         return self._time and self._total_energy_consumed / self._time / 1e3
     
     @property
+    def new_demand_rates(self):
+        if self._timer:
+            return self._demand / self._timer / 1e6
+        return np.zeros_like(self._demand)
+    
+    @property
     def drop_rates(self):
-        """ Drop rates for each app category in the network in Kb/s. """
+        """ Drop rates for each app category in the network in kb/s. """
         if self._timer:
             return self._dropped / self._timer / 1e3
         return np.zeros_like(self._dropped)
@@ -163,7 +169,7 @@ class Green5GNet:
                 xy = np.random.rand(2) * self.area
                 kwargs['pos'] = np.append(xy, User.ue_height)
             ue = User(app_type=app, demand=demand, delay_budget=delay, **kwargs)
-            self._new_ues[app] += 1
+            self._demand[app] += demand
             self.add_user(ue)
 
     def consume_energy(self, energy):
@@ -175,7 +181,7 @@ class Green5GNet:
             bs.reset()
         self.ues.clear()
         self._time = 0
-        self._new_ues = np.zeros(self.traffic_model.num_apps)
+        self._demand = np.zeros(self.traffic_model.num_apps)
         self._dropped = np.zeros(self.traffic_model.num_apps)
         self._total_dropped = np.zeros((self.traffic_model.num_apps, 3))
         self._total_done = np.zeros((self.traffic_model.num_apps, 3))
@@ -218,14 +224,14 @@ class Green5GNet:
         thrp_ratio, thrp_req = BaseStation.calc_sum_rate(self.ues.values())
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.drop_rates,            # dropped traffic in different delay cats (3)
-            self._new_ues,              # new ue counts in different delay cats (3)
+            self.new_demand_rates,      # rates demanded by new UEs in different delay cats (3)
+            self.drop_rates,            # dropped rates in different delay cats (3)
             [thrp_ratio, thrp_req],     # throughput (2)
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
     def reset_stats(self):
-        self._new_ues[:] = 0
+        self._demand[:] = 0
         self._dropped[:] = 0
         self._energy_consumed = 0
         self._timer = 0
@@ -239,9 +245,10 @@ class Green5GNet:
         return dict(
             time='Day {}, {:02}:{:02}:{:02.2f}'.format(*self.world_time_tuple),
             power_consumption=obs[0],
-            drop_data_rates=obs[1:4],
+            new_demand_rate=obs[1:4].sum(),
+            dropped_rate=obs[4:7].sum(),
+            required_rate=thrp_req,
             throughput=thrp_ratio * thrp_req,
-            throughput_demand=thrp_req,
             avg_pc=self.avg_power_consumption,
             avg_data_rates=self._total_done[:, 1] /
                 np.maximum(self._total_done[:, 2], 1e-6),
