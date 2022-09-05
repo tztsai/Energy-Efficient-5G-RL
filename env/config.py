@@ -10,7 +10,7 @@ statsInterval = 5  # env steps between two stats printouts
 episodeTimeLen = 60 * 60 * 24 * 7  # the duration of an episode in simulation (seconds in a week)
 
 # traffic parameters
-trafficType = 'urban'
+trafficType = 'A'
 
 # action parameters
 numAntSwitchOpts = 5

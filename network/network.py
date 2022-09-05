@@ -152,7 +152,7 @@ class Green5GNet:
             if ue.demand <= 0: breakpoint()
             self._dropped[ue.app_type] += ue.demand / 1e6
             self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.delay]
-            info(f"{ue} dropped")
+            debug(f"{ue} dropped")
 
     @timeit
     def generate_new_ues(self, dt, **kwargs):
@@ -245,6 +245,8 @@ class Green5GNet:
             avg_pc=self.avg_power_consumption,
             avg_data_rates=self._total_done[:, 1] /
                 np.maximum(self._total_done[:, 2], 1e-6),
+            avg_drop_rates=self._total_dropped[:, 1] /
+                np.maximum(self._total_dropped[:, 2], 1e-6),
             total_done_count=self._total_done[:, 0].sum(),
             total_dropped_count=self._total_dropped[:, 0].sum(),
             total_drop_ratios=self._total_dropped[:, 1] / 
