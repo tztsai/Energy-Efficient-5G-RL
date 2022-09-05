@@ -1,0 +1,11 @@
+*.pyc
+*.zip
+*.log
+*.feather
+*.h5
+*.sql
+*.parquet
+.vscode/
+data/cells-traffic/
+data/RAN_PM_data/
+train.sh
