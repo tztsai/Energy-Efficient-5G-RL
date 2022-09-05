@@ -5,7 +5,10 @@
 *.h5
 *.sql
 *.parquet
+*.wandb
+events.out.tfevents.*
 .vscode/
 data/cells-traffic/
 data/RAN_PM_data/
+wandb/
 train.sh
