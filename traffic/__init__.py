@@ -13,11 +13,10 @@ else:
 
 class TrafficType(enum.IntEnum):
     UNKNOWN = 0
-    MIXED = 1
-    # *** USE THE TRAFFIC TYPES BELOW FOR TRAINING ***
-    RESIDENT = 2
-    URBAN = 3
-    OFFICE = 4
+    A = 1
+    B = 2
+    C = 3
+    # D = 4
 
 
 class TrafficModel:
@@ -84,7 +83,11 @@ class TrafficModel:
 # %%
 if __name__ == '__main__':
     import plotly.express as px
-    for traffic_type in TrafficType:
+    from plotly.subplots import make_subplots
+    from collections import defaultdict
+    
+    figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
+    for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
         model = TrafficModel.from_scenario(traffic_type)
         thrp_df = model.rates * model.file_size / (1 << 20) # throughput (MBps)
@@ -92,8 +95,16 @@ if __name__ == '__main__':
         peak_time = model.rates.sum(axis=1).idxmax()
         peak_time_secs = model.get_start_time_of_slot(peak_time)
         print(peak_time, peak_time_secs)
-        # for cat, rates in thrp_df.items():
-        #     days_idx = rates.index.get_level_values(0).unique()
-        #     df = rates.unstack().reindex(days_idx)
-        #     px.imshow(df, title=f'{traffic_type.name} {cat}').show()
+        for cat, rates in thrp_df.items():
+            days_idx = rates.index.get_level_values(0).unique()
+            df = rates.unstack().reindex(days_idx)
+            fig = px.imshow(df, title=traffic_type.name)
+            print(cat)
+            fig.show()
+            figs[cat].add_trace(fig.data[0], row=i+1, col=1)
         print()
+    for cat, fig in figs.items():
+        fig.update_layout(height=600, width=600, title_text=cat)
+        # fig.show()
+
+# %%

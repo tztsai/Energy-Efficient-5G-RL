@@ -175,8 +175,8 @@ def get_config():
                         help="Number of parallel envs for evaluating rollouts")
     parser.add_argument("--n_render_rollout_threads", type=int, default=1,
                         help="Number of parallel envs for rendering rollouts")
-    parser.add_argument("-T", "--num_env_steps", type=int, default=1008,
-                        help='Number of environment steps to train (default: 1008)')
+    parser.add_argument("-T", "--num_env_steps", type=int, default=1000,
+                        help='Number of environment steps to train (default: 1000)')
     parser.add_argument("--user_name", type=str, default='tcai7',help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=not DEBUG,
                         help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")

@@ -25,11 +25,12 @@ info = logger.info
 warn = logger.warning
 
 def set_log_level(level):
+    level = level.upper()
     logging.basicConfig(
         # format='%(levelname)s: %(message)s',
         format='%(message)s',
         level=level)
-    logger.setLevel(level.upper())
+    logger.setLevel(level)
 
 def dB2lin(dB):
     return 10 ** (dB / 10)

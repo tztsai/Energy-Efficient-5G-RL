@@ -7,7 +7,7 @@ from itertools import product as cartesian_product
 
 # %%
 sql_url = 'sqlite:///cell_traffic.sql'
-pred_path = '../traffic-clf/results/prediction.csv'
+pred_path = 'prediction.csv'
 
 # %%
 preds = pd.read_csv(pred_path, index_col=0).cluster
@@ -93,11 +93,9 @@ def divide_flow(start_time, duration_ms, octets):
         bi = bin_indices[k]
     except KeyError:
         return
-    
     if n_bins == 1:
         yield time_splits[bi], rate
         return
-    
     for i in range(n_bins):
         # if i == 0:
         #     dt = ta + interval_mins - t0
@@ -129,7 +127,8 @@ for i, t in enumerate(time_splits):
     t = tuple(t.split()[1:])
     time_splits_indices[t].append(i)
 
-clusters = range(preds.nunique())
+cluster_map = [0, 1, 1, 2, 3] # [None, 0, 1, 1, 2]
+clusters = np.arange(len(np.unique(cluster_map)))
 profiles_index = pd.MultiIndex.from_product([
     clusters, app_delay_cats, week_idx, time_idx
 ], names=['cluster', 'delay_cat', 'weekday', 'time'])
@@ -139,7 +138,9 @@ profiles_index
 cluster_profiles = {k: [] for k in profiles_index}
 
 for cell_id, bins in tqdm(flows_df.items(), total=len(flows_df.columns)):
+    if cell_id not in cell_clusters: continue
     cluster = cell_clusters[cell_id]
+    cluster = cluster_map[cluster]
     bins = bins.values
     for cat, bins in zip(app_delay_cats, np.split(bins, len(app_delay_cats))):
         for t, idx in time_splits_indices.items():
@@ -147,11 +148,11 @@ for cell_id, bins in tqdm(flows_df.items(), total=len(flows_df.columns)):
             a = bins[idx]
             l.extend(a[a > 0])
             
-pd.Series([len(l) for l in cluster_profiles.values()]).describe()
+print(pd.Series([len(l) for l in cluster_profiles.values()]).describe())
 
-# %%  
+# %%
 def aggregate(nums):
-    lb, ub = np.percentile(nums, [35, 95], method='weibull')
+    lb, ub = np.percentile(nums, [30, 90], method='weibull')
     return np.mean([x for x in nums if lb <= x <= ub])
     
 for key, vals in cluster_profiles.items():
@@ -169,13 +170,11 @@ profiles_df
 profiles_df.to_csv('cluster_traffic_profiles.csv')
 
 # %%
-import plotly.express as px
+# import plotly.express as px
 
-for i in clusters:
-    print('\nCluster {}'.format(i))
-    for c in app_delay_cats:
-        print(c)
-        df = profiles_df.loc[i][c].unstack().reindex(week_idx)
-        px.imshow(df, aspect='auto').show()
-
-# %%
+# for i in clusters:
+#     print('\nCluster {}'.format(i))
+#     for c in app_delay_cats:
+#         print(c)
+#         df = profiles_df.loc[i][c].unstack().reindex(week_idx)
+#         px.imshow(df, aspect='auto', title=f'Cluster {i} {c}').show()
