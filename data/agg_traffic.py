@@ -127,8 +127,7 @@ for i, t in enumerate(time_splits):
     t = tuple(t.split()[1:])
     time_splits_indices[t].append(i)
 
-cluster_map = [0, 1, 1, 2, 3] # [None, 0, 1, 1, 2]
-clusters = np.arange(len(np.unique(cluster_map)))
+clusters = np.arange(preds.nunique())
 profiles_index = pd.MultiIndex.from_product([
     clusters, app_delay_cats, week_idx, time_idx
 ], names=['cluster', 'delay_cat', 'weekday', 'time'])
@@ -140,7 +139,6 @@ cluster_profiles = {k: [] for k in profiles_index}
 for cell_id, bins in tqdm(flows_df.items(), total=len(flows_df.columns)):
     if cell_id not in cell_clusters: continue
     cluster = cell_clusters[cell_id]
-    cluster = cluster_map[cluster]
     bins = bins.values
     for cat, bins in zip(app_delay_cats, np.split(bins, len(app_delay_cats))):
         for t, idx in time_splits_indices.items():
@@ -152,7 +150,7 @@ print(pd.Series([len(l) for l in cluster_profiles.values()]).describe())
 
 # %%
 def aggregate(nums):
-    lb, ub = np.percentile(nums, [30, 90], method='weibull')
+    lb, ub = np.percentile(nums, [35, 85], method='weibull')
     return np.mean([x for x in nums if lb <= x <= ub])
     
 for key, vals in cluster_profiles.items():
