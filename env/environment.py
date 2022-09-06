@@ -57,10 +57,16 @@ class Green5GNetEnv(MultiAgentEnv):
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
         
+        # print('Observation space: {}'.format(
+        #     (self.num_agents, *self.observation_space[0].shape)))
+        # print('Central observation space: {}'.format(
+        #     self.cent_observation_space.shape))
+        # print('Action space: {}'.format(
+        #     (self.num_agents, self.action_space[0].shape)))
+        
         self.w_drop = w_drop
         self.w_pc = w_pc
         self._reward_stats = []
-        
         self._seed = seed
         self._dt = time_step
         self._episode_count = 0
