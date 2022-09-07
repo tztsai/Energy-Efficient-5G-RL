@@ -182,7 +182,7 @@ def get_config():
                         help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
 
     # env parameters
-    parser.add_argument("--env_name", type=str, default='Green5GNet', help="specify the name of environment")
+    parser.add_argument("--env_name", type=str, default='MultiCellNetwork', help="specify the name of environment")
     parser.add_argument("--use_obs_instead_of_state", action='store_true',
                         default=False, help="Whether to use global state or concatenated obs")
 
