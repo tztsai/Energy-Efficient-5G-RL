@@ -233,7 +233,7 @@ class MultiCellNetwork:
         self._timer = 0
         for bs in self.bss.values():
             bs.reset_stats()
-            
+
     def update_stats(self, dt):
         self._total_energy_consumed += self._energy_consumed
         self._timer += dt
