@@ -140,7 +140,7 @@ class BaseStation:
         info(f'BS {self.id}: switched to {self.num_ant} antennas ({energy_cost} J)')
         self.update_power_allocation()
         self.update_power_consumption()
-        
+    
     def switch_sleep_mode(self, mode):
         assert mode in range(self.num_sleep_modes)
         self._next_sleep = mode
@@ -161,7 +161,7 @@ class BaseStation:
         assert mode in range(self.num_conn_modes)
         if mode == 0:  # disconnect all ues and empty the queue
             self.disconnect_all()
-        elif mode == 3:  # take over all ues
+        elif mode == 3 and not self.sleep:  # take over all ues
             self.takeover_all()
         self.accept_conn = mode >= 2
         self._conn_act = round(mode / 2 + 0.1) - 1  # -1: disconnect all, 1: connect all
