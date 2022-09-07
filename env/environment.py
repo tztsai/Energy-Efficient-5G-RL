@@ -6,7 +6,7 @@ from .multi_discrete import MultiDiscrete
 # from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 from utils import info, debug, warn
-from network.network import Green5GNet
+from network.network import MultiCellNetwork
 from network.base_station import BaseStation
 from network.config import areaSize, bsPositions
 from visualize import render, animate
@@ -14,7 +14,7 @@ from . import config as C
 from config import DEBUG
 
 
-class Green5GNetEnv(MultiAgentEnv):
+class MultiCellNetEnv(MultiAgentEnv):
     """
     Action space:
     - Sleep mode: 0, 1, 2, 3
@@ -41,7 +41,7 @@ class Green5GNetEnv(MultiAgentEnv):
                  seed=0):
         super().__init__()
         
-        self.net = Green5GNet(
+        self.net = MultiCellNetwork(
             area=area_size,
             bs_poses=self.bs_poses,
             start_time=start_time,
@@ -70,6 +70,7 @@ class Green5GNetEnv(MultiAgentEnv):
         self._seed = seed
         self._dt = time_step
         self._episode_count = 0
+        self._episode_steps = 0
         self._total_steps = 0
 
     def seed(self, seed=None):
@@ -101,11 +102,13 @@ class Green5GNetEnv(MultiAgentEnv):
         self._episode_steps = 0
         self._sim_steps = 0
         self._figure = None
-        if DEBUG:
+        if DEBUG and not hasattr(self, '_steps_info'):
             self._steps_info = [self.net.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
     def step(self, actions=None, substeps=action_interval):
+        info(f'\nStep {self._sim_steps}:\n')
+        
         self.net.reset_stats()
         
         if actions is not None:
@@ -115,35 +118,35 @@ class Green5GNetEnv(MultiAgentEnv):
         for i in range(substeps):
             self.net.step(self._dt)
 
+        steps = substeps / self.action_interval
         self._sim_steps += substeps
-        self._total_steps += substeps / self.action_interval
+        self._total_steps += steps
+        self._episode_steps += steps
 
         obs = self.get_obs()
         cent_obs = self.get_cent_obs()
-        
-        episode_steps = self._sim_steps // self.action_interval
-        info(f'Step {episode_steps}:')
-        
         reward = self.get_reward()
-        info('Reward: %.2f', reward)
 
         if DEBUG:
             infos = self.net.info_dict()
             infos['reward'] = reward
             self._steps_info.append(infos)
             warn('\nTime: %s', infos['time'])
-            # info('\nBS states:\n{}'.format(info_dict['bs_info']))
-            # info('\nUE states:\n{}'.format(info_dict['ue_info']))
+            warn('\nBS states:\n{}'.format(infos['bs_info']))
+            # ue_info = infos.pop('ue_info')
+            # warn('\nUE states:\n{}'.format(info_dict['ue_info']))
             warn('\nStatistics:')
             warn('  %d users done', infos['total_done_count'])
             warn('  %d users dropped', infos['total_dropped_count'])
             warn('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
             warn('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
             warn('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
+            
+        info('Reward: %.2f', reward)
 
         rewards = [[reward]]  # shared reward for all agents
 
-        done = episode_steps >= self.episode_len
+        done = self._episode_steps >= self.episode_len
         if done:
             self._episode_count += 1
 
@@ -151,8 +154,11 @@ class Green5GNetEnv(MultiAgentEnv):
 
     def close(self):
         if DEBUG:
-            pd.Series(self._steps_info, name='info').to_frame(
-                ).to_feather('steps_info.feather')
+            bs_df = pd.concat([info.pop('bs_info') for info in self._steps_info],
+                              keys=range(len(self._steps_info))).unstack()
+            bs_df.columns = bs_df.columns.map(lambda p: f'bs_{p[1]}_{p[0]}')
+            df = pd.concat([pd.DataFrame(self._steps_info), bs_df], axis=1)
+            df.set_index('time').to_csv('results/steps_info.csv')
     
     render = render
     animate = animate

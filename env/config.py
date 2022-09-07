@@ -19,5 +19,5 @@ numConnModes = 4
 
 # reward parameters
 droppedAppWeights = [.6, .3, .1]
-droppedTrafficWeight = 10.
+droppedTrafficWeight = 0.01
 powerConsumptionWeight = 1.

@@ -1,6 +1,7 @@
 from utils import *
 from . import config
 
+@timeit
 def compute_channel_gain(distances, frequencies=None, tx_gain=config.antennaGain):
     path_loss = compute_path_loss(distances, frequencies)
     return dB2lin(tx_gain - path_loss)

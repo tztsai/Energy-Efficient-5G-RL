@@ -6,12 +6,14 @@ import plotly.graph_objects as go
 conn_symbols = ['triangle-up', 'hexagram']
 sleep_suffixes = ['', '-open-dot', '-open']
 ue_symbols = ['square', 'circle']
+n_agents = 7
 color_sequence = np.array(px.colors.qualitative.Plotly)
 oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
     255 - int(s[i:i+2], 16) for i in range(1, 7, 2)) for s in color_sequence])
+color_sequence = np.hstack([color_sequence[:n_agents], oppo_color_sequence[:n_agents]])
 
 
-def render(env: 'Green5GNetEnv', mode='human'):
+def render(env: 'MultiCellNetEnv', mode='human'):
     net = env.net
     
     if env._figure is None:
@@ -54,8 +56,9 @@ def render(env: 'Green5GNetEnv', mode='human'):
             size=400,
             line_width=0,
             # line_color=color_sequence[:len(x)],
-            color=color_sequence[:len(x)],
-            opacity=0.3*np.abs(a)
+            color=[color_sequence[n_agents*(int((a+1)/2))+i]
+                   for i, a in enumerate(a)],
+            opacity=0.1+0.15*np.abs(a)
         ),
         showlegend=False)
     # plot users
@@ -98,7 +101,7 @@ def render(env: 'Green5GNetEnv', mode='human'):
     return fig
 
 
-def animate(env: 'Green5GNet'):
+def animate(env: 'MultiCellNetwork'):
     print('Animating...')
     fig = env._figure
     fig['data'] = fig['frames'][0]['data']

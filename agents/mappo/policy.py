@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import os.path as osp
-from utils import timeit
+from utils import timeit, info, debug
 from .nn.actor_critic import Actor, Critic
 
 
@@ -26,8 +26,8 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        # print("Actor: {}".format(self.actor))
-        # print("Critic: {}".format(self.critic))
+        info(str(self.actor))
+        info(str(self.critic))
         
         self._actor_rnn_state = None
         
