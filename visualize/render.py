@@ -1,11 +1,13 @@
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from network import config
 
 
-conn_symbols = ['triangle-up', 'hexagram']
+conn_symbols = ['triangle-down', 'hexagram']
 sleep_suffixes = ['', '-open-dot', '-open']
-ue_symbols = ['square', 'circle']
+ue_symbols = ['open-circle', 'circle']
+conn_act_symbols = np.array(['circle', 'circle', 'circle-open'])
 n_agents = 7
 color_sequence = np.array(px.colors.qualitative.Plotly)
 oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
@@ -35,13 +37,14 @@ def render(env: 'MultiCellNetEnv', mode='human'):
     throughput demand: {thrp_req:.2f}<br>
     throughput ratio: {thrp_ratio:.2f}
     """
-    symbols = ['x' if s == 3 else conn_symbols[int(c)] + 
+    symbols = ['x-open' if s == 3 else conn_symbols[int(c)] + 
                sleep_suffixes[int(s)] for s, c in zip(s, c)]
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = go.Scatter(
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
-            size=m/6+8, 
+            # size=m/6+8, 
+            size=18,
             line_width=1, 
             line_color='grey',
             symbol=symbols,
@@ -50,17 +53,23 @@ def render(env: 'MultiCellNetEnv', mode='human'):
         hovertext=hover_texts,
         hoverinfo='text',
         showlegend=False)
+    
+    # plot cell coverages
     cl_plt = go.Scatter(
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
-            size=400,
-            line_width=0,
-            # line_color=color_sequence[:len(x)],
-            color=[color_sequence[n_agents*(int((a+1)/2))+i]
-                   for i, a in enumerate(a)],
-            opacity=0.1+0.15*np.abs(a)
+            size=config.cellRadius,
+            line_width=4 * (a > 0),
+            line_color='red',
+            # color=[color_sequence[n_agents*(int((a+1)/2))+i]
+            #        for i, a in enumerate(a)],
+            color=color_sequence,
+            # symbol=conn_act_symbols[a.astype(int)],
+            opacity=0.01 * np.clip(r/1e7, 0, 30)
         ),
+        hoverinfo='skip',
         showlegend=False)
+    
     # plot users
     hover_text_template = """
     status: {status}<br>
@@ -94,7 +103,7 @@ def render(env: 'MultiCellNetEnv', mode='human'):
     except ValueError:
         ue_plt = go.Scatter(x=[], y=[])
     
-    fig = append_frame(env, [bs_plt, cl_plt, ue_plt])
+    fig = append_frame(env, [bs_plt, ue_plt, cl_plt])
     if mode == 'human':
         fig = go.Figure(fig)
         fig.show()
@@ -116,6 +125,7 @@ def make_figure(net):
     return dict(
         data=[],
         frames=[],
+        customdata=[],
         layout=dict(
             width=600, height=600,
             xaxis=dict(range=[0, net.area[0]], tickvals=xticks,
@@ -190,6 +200,7 @@ def append_frame(env, data):
     fig = env._figure
     fig['data'] = data
     fig['frames'].append(frame)
+    fig['customdata'].append(env.net.info_dict())
     if 'sliders' in fig['layout']:
         fig['layout']['sliders'][0]['steps'].append(dict(
             args=[[time],
