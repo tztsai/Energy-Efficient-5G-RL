@@ -141,7 +141,7 @@ app.run_server(debug=True)
 #         min=0, max=T, step=1, value=0,
 #         marks={t: f'{t:.2f}' for t in np.linspace(0, T, num=6)},
 #     ),
-#     # html.Button('Run', id="run-pause", n_clicks=0),
+#     html.Button('Run', id="run-pause", n_clicks=0),
 #     dcc.Interval(id="interval")
 # ])
 
@@ -149,22 +149,22 @@ app.run_server(debug=True)
 #     Output("graph", "figure"),
 #     Output("step-info", "children"),
 #     Output("time-slider", "value"),
-#     # Output("run-pause", "value"),
+#     Output("run-pause", "value"),
 #     Input("time-slider", "value"),
-#     # Input("run-pause", "n_clicks"),
+#     Input("run-pause", "n_clicks"),
+#     Input("step-info", "children"),
 #     Input("interval", "n_intervals")
 # )
-# def update_plot(time, text, t=None):
+# def update_plot(time, clicks, text, t):
 #     fig = env._figure
-#     running = False #bool(clicks % 2)
+#     running = bool(clicks % 2)
 #     if not running:
-#         return fig, text, time#, "Run"
+#         return fig, text, time, "Run"
 #     time += 1
 #     while time > env._episode_steps:
 #         step_env()
 #         pbar.update()
 #         # time = int(env._episode_steps)
-#     frame = fig['frames'][time]
-#     text = "Step: {}, Time: {}".format(env._sim_steps, frame['customdata']['time'])
-#     fig['data'] = frame['data']
-#     return fig, text, time#, "Pause"
+#     text = "Step: {}, Time: {}".format(env._sim_steps, fig['customdata'][time]['time'])
+#     fig['data'] = fig['frames'][time]['data']
+#     return fig, text, time, "Pause"

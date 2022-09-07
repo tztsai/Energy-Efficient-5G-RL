@@ -1,12 +1,12 @@
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from network import config
 
 
 conn_symbols = ['triangle-down', 'hexagram']
 sleep_suffixes = ['', '-open-dot', '-open']
-ue_symbols = ['open-circle', 'circle']
 conn_act_symbols = np.array(['circle', 'circle', 'circle-open'])
 n_agents = 7
 color_sequence = np.array(px.colors.qualitative.Plotly)
@@ -17,9 +17,11 @@ color_sequence = np.hstack([color_sequence[:n_agents], oppo_color_sequence[:n_ag
 
 def render(env: 'MultiCellNetEnv', mode='human'):
     net = env.net
+    info = env.info_dict()
     
     if env._figure is None:
         env._figure = make_figure(net)
+    fig = env._figure
 
     # plot base stations
     x, y, m, s, c, r, a, i = np.array(
@@ -40,7 +42,8 @@ def render(env: 'MultiCellNetEnv', mode='human'):
     symbols = ['x-open' if s == 3 else conn_symbols[int(c)] + 
                sleep_suffixes[int(s)] for s, c in zip(s, c)]
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
-    bs_plt = go.Scatter(
+    bs_plt = dict(
+        type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
             # size=m/6+8, 
@@ -52,10 +55,12 @@ def render(env: 'MultiCellNetEnv', mode='human'):
         ),
         hovertext=hover_texts,
         hoverinfo='text',
-        showlegend=False)
+        showlegend=False,
+    )
     
     # plot cell coverages
-    cl_plt = go.Scatter(
+    cl_plt = dict(
+        type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
             size=config.cellRadius,
@@ -86,8 +91,9 @@ def render(env: 'MultiCellNetEnv', mode='human'):
                       for i, ue in net.ues.items()]).T
         hover_texts = [hover_text_template.format(**ue.info_dict()) for ue in net.ues.values()]
         b = np.nan_to_num(b, nan=net.num_bs).astype(int)
-        symbols = [ue_symbols[bool(r)] + ('-x' if u else '') for r, u in zip(r, u)]
-        ue_plt = go.Scatter(
+        symbols = ['circle' + ('-x' if u else '') + ('' if r else '-open') for r, u in zip(r, u)]
+        ue_plt = dict(
+            type='scatter',
             x=x, y=y, mode='markers', ids=i,
             marker=dict(
                 size=s,
@@ -101,9 +107,77 @@ def render(env: 'MultiCellNetEnv', mode='human'):
             hoverinfo='text',
             showlegend=False)
     except ValueError:
-        ue_plt = go.Scatter(x=[], y=[])
+        ue_plt = dict(type='scatter')
+        
+    # plot reward
+    if fig['frames']:
+        fr = fig['frames'][-1]
+        last_rw_plt = fr['data'][-2]
+        x = last_rw_plt['x'] + [net._time]
+        y = last_rw_plt['y'] + [info['reward']]
+        y2_range = [min(fr['layout']['yaxis2']['range'][0], info['reward'] - 0.1), 0]
+    else:
+        x = [net._time]
+        y = [info['reward']]
+        y2_range = [info['reward'] - 0.1, 0]
+    rw_plt = dict(
+        type='scatter',
+        mode='lines',
+        x=x, y=y,
+        xaxis='x2',
+        yaxis='y2',
+        name='reward',
+    )
     
-    fig = append_frame(env, [bs_plt, ue_plt, cl_plt])
+    # plot power consumption
+    if fig['frames']:
+        last_pc_plt = fr['data'][-1]
+        x = last_pc_plt['x'] + [net._time]
+        y = last_pc_plt['y'] + [info['power_consumption']]
+        y3_range = [0, max(fr['layout']['yaxis3']['range'][1], info['power_consumption'] + 0.1)]
+    else:
+        x = [net._time]
+        y = [info['power_consumption']]
+        y3_range = [0, info['power_consumption'] + 0.1]
+    pc_plt = dict(
+        type='scatter',
+        mode='lines',
+        x=x, y=y,
+        xaxis='x2',
+        yaxis='y3',
+        name='power consumption',
+    )
+    
+    # append frame
+    steps = env._sim_steps
+    data = [bs_plt, ue_plt, cl_plt, rw_plt, pc_plt]
+    layout = {
+        'xaxis2': dict(
+            range=[0, net._time]
+        ),
+        'yaxis2': dict(
+            range=y2_range
+        ),
+        'yaxis3': dict(
+            range=y3_range
+        )
+    }
+    frame = dict(data=data, name=steps, layout=layout)
+    
+    fig['data'] = data
+    fig['frames'].append(frame)
+    fig['customdata'].append(info)
+    
+    if 'sliders' in fig['layout']:  # append slider step
+        fig['layout']['sliders'][0]['steps'].append(dict(
+            args=[[steps],
+                  {"frame": {"duration": 300, "redraw": False},
+                   "mode": "immediate",
+                   "transition": {"duration": 300}}],
+            label=steps,
+            method="animate"
+        ))
+
     if mode == 'human':
         fig = go.Figure(fig)
         fig.show()
@@ -127,11 +201,14 @@ def make_figure(net):
         frames=[],
         customdata=[],
         layout=dict(
-            width=600, height=600,
-            xaxis=dict(range=[0, net.area[0]], tickvals=xticks,
+            width=1000, height=600,
+            xaxis=dict(range=[0, net.area[0]], tickvals=xticks, 
+                       autorange=False, showgrid=False, domain=[0, 0.6]),
+            yaxis=dict(range=[0, net.area[1]], tickvals=yticks, 
                        autorange=False, showgrid=False),
-            yaxis=dict(range=[0, net.area[1]], tickvals=yticks,
-                       autorange=False, showgrid=False),
+            xaxis2=dict(domain=[0.7, 1], autorange=False),
+            yaxis2=dict(domain=[0, 0.45], anchor='x2', autorange=False),
+            yaxis3=dict(domain=[0.55, 1], anchor='x2', autorange=False),
             margin=dict(l=25, r=25, b=25, t=25),
             # shapes=[dict(
             #     type="circle",
@@ -179,7 +256,7 @@ def make_figure(net):
                 "xanchor": "left",
                 "currentvalue": {
                     "font": {"size": 15},
-                    "prefix": "time: ",
+                    "prefix": "Step: ",
                     "visible": True,
                     "xanchor": "right"
                 },
@@ -192,22 +269,3 @@ def make_figure(net):
             }]
         )
     )
-
-def append_frame(env, data):
-    # time = env._steps_info[-1]['time']
-    time = env._sim_steps
-    frame = dict(data=data, name=time)
-    fig = env._figure
-    fig['data'] = data
-    fig['frames'].append(frame)
-    fig['customdata'].append(env.net.info_dict())
-    if 'sliders' in fig['layout']:
-        fig['layout']['sliders'][0]['steps'].append(dict(
-            args=[[time],
-                  {"frame": {"duration": 300, "redraw": False},
-                   "mode": "immediate",
-                   "transition": {"duration": 300}}],
-            label=time,
-            method="animate"
-        ))
-    return fig

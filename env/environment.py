@@ -103,7 +103,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._sim_steps = 0
         self._figure = None
         if DEBUG and not hasattr(self, '_steps_info'):
-            self._steps_info = [self.net.info_dict()]   
+            self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
     def step(self, actions=None, substeps=action_interval):
@@ -128,8 +128,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         reward = self.get_reward()
 
         if DEBUG:
-            infos = self.net.info_dict()
-            infos['reward'] = reward
+            infos = self.info_dict()
             self._steps_info.append(infos)
             info('\nTime: %s', infos['time'])
             info('\nBS states:\n{}'.format(infos['bs_info']))
@@ -151,6 +150,11 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._episode_count += 1
 
         return obs, cent_obs, rewards, done, {}, None
+    
+    def info_dict(self):
+        info = self.net.info_dict()
+        info['reward'] = self.get_reward()
+        return info
 
     def close(self):
         if DEBUG:
