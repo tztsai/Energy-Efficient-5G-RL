@@ -15,7 +15,7 @@ oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
 color_sequence = np.hstack([color_sequence[:n_agents], oppo_color_sequence[:n_agents]])
 
 
-def render(env: 'MultiCellNetEnv', mode='human'):
+def render(env: 'MultiCellNetEnv', mode='none'):
     net = env.net
     info = env.info_dict()
     
@@ -108,59 +108,66 @@ def render(env: 'MultiCellNetEnv', mode='human'):
             showlegend=False)
     except ValueError:
         ue_plt = dict(type='scatter')
-    
-    # plot power consumption
+
+    # plot penalty
+    pen = -info['reward']
     if fig['frames']:
         fr = fig['frames'][-1]
-        last_pc_plt = fr['data'][-1]
-        x = last_pc_plt['x'] + [net._time]
-        y = last_pc_plt['y'] + [info['power_consumption']]
-        y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
+        last_rw_plt = fr['data'][-1]
+        t = last_rw_plt['x'] + [net._time]
+        y_pen = last_rw_plt['y'] + [pen]
+        y3_range = [0, max(fr['layout']['yaxis3']['range'][1], pen + 0.1)]
     else:
-        x = [net._time]
-        y = [info['power_consumption']]
-        y2_range = [0, info['power_consumption'] + 0.1]
-    pc_plt = dict(
-        type='scatter',
-        mode='lines',
-        x=x, y=y,
-        xaxis='x2',
-        yaxis='y2',
-        name='power consumption',
-    )
-        
-    # plot reward
-    if fig['frames']:
-        last_rw_plt = fr['data'][-2]
-        x = last_rw_plt['x'] + [net._time]
-        y = last_rw_plt['y'] + [info['reward']]
-        y3_range = [min(fr['layout']['yaxis3']['range'][0], info['reward'] - 0.1), 0]
-    else:
-        x = [net._time]
-        y = [info['reward']]
-        y3_range = [info['reward'] - 0.1, 0]
+        t = [net._time]
+        y_pen = [pen]
+        y3_range = [0, pen + 0.1]
     rw_plt = dict(
         type='scatter',
         mode='lines',
-        x=x, y=y,
+        x=t, y=y_pen,
         xaxis='x2',
         yaxis='y3',
-        name='reward',
+        name='penalty',
+        line_color='indianred',
+    )
+    
+    # plot power consumption
+    if fig['frames']:
+        last_pc_plt = fr['data'][-2]
+        y_pc = last_pc_plt['y'] + [info['power_consumption']]
+        # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
+    else:
+        y_pc = [info['power_consumption']]
+        # y2_range = [0, info['power_consumption'] + 0.1]
+    pc_plt = dict(
+        type='scatter',
+        mode='lines',
+        x=t, y=y_pc,
+        xaxis='x2',
+        yaxis='y3',
+        name='power (kW)',
+        line_color='peru',
+    )
+    
+    # plot drop penalty
+    dr_plt = dict(
+        type='scatter',
+        x=t+t[::-1], y=y_pen+y_pc[::-1],
+        xaxis='x2',
+        yaxis='y3',
+        name='drop rate (10mb/s)',    
+        mode='text',
+        fill='toself',
+        fillcolor='lightyellow',
     )
     
     # append frame
     steps = env._sim_steps
-    data = [bs_plt, ue_plt, cl_plt, rw_plt, pc_plt]
+    data = [bs_plt, ue_plt, cl_plt, dr_plt, pc_plt, rw_plt]
     layout = {
-        'xaxis2': dict(
-            range=[0, net._time]
-        ),
-        'yaxis2': dict(
-            range=y2_range
-        ),
-        'yaxis3': dict(
-            range=y3_range
-        )
+        'xaxis2': dict( range=[0, net._time] ),
+        # 'yaxis2': dict( range=y2_range ),
+        'yaxis3': dict( range=y3_range )
     }
     frame = dict(data=data, name=steps, layout=layout)
     
@@ -207,8 +214,8 @@ def make_figure(net):
             yaxis=dict(range=[0, net.area[1]], tickvals=yticks, 
                        autorange=False, showgrid=False),
             xaxis2=dict(domain=[0.7, 1], autorange=False),
-            yaxis2=dict(domain=[0, 0.45], anchor='x2', autorange=False),
-            yaxis3=dict(domain=[0.55, 1], anchor='x2', autorange=False),
+            yaxis2=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
+            yaxis3=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
             margin=dict(l=25, r=25, b=25, t=25),
             # shapes=[dict(
             #     type="circle",
@@ -227,7 +234,7 @@ def make_figure(net):
                 "buttons": [
                     {
                         "args": [None, {
-                            "frame": {"duration": 300, "redraw": False},
+                            "frame": {"duration": 200, "redraw": False},
                             "fromcurrent": True,
                             "transition": {"duration": 300, "easing": "quadratic-in-out"},
                             # "layout": {"xaxis2": {"range": [0, net._time]}}
@@ -262,7 +269,7 @@ def make_figure(net):
                     "visible": True,
                     "xanchor": "right"
                 },
-                "transition": {"duration": 200, "easing": "cubic-in-out"},
+                "transition": {"duration": 300, "easing": "cubic-in-out"},
                 "pad": {"b": 10, "t": 50},
                 "len": 0.9,
                 "x": 0.1,

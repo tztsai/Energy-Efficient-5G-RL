@@ -20,8 +20,8 @@ antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepDiscounts = [1, 0.195, 0.114, 0.076]
 wakeupDelays = [0, 1e-3, 1e-2, 1]
 antSwitchEnergy = 0.1  # energy consumption of switch per antenna in Joules
-sleepSwitchEnergy = [0, 0.1, 0.2, 4]  # energy consumption of switching sleep mode in Joules
-handoffEnergy = 0.1  # energy consumption of a UE connection in Joules
+sleepSwitchEnergy = [0, 0.1, 0.2, 2]  # energy consumption of switching sleep mode in Joules
+handoffEnergy = 0.06  # energy consumption of a UE handoff in Joules
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
