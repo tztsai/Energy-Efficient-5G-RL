@@ -2,14 +2,14 @@
 seed_max=1
 log_level="WARN"
 
-traffic_type="A"
+traffic_type="B"
 accel_rate=600
 n_training_threads=4
 n_rollout_threads=42
 n_eval_rollout_threads=168
 num_env_steps=5040000
 
-algo="rmappo"
+algo="mappo"
 gain=0.01
 lr=7e-4
 critic_lr=7e-4
