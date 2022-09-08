@@ -1,1 +1,1 @@
-from .environment import Green5GNetEnv
+from .environment import MultiCellNetEnv

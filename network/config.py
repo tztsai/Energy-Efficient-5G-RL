@@ -6,7 +6,7 @@ renderMode = 'none'
 # base station params
 numBS = 7
 interBSDist = 200  # the distance between two adjacent BSs
-cellRadius = 400  # the radius of a hexagon cell in meters
+cellRadius = 500  # the radius of a hexagon cell in meters
 antennaPower = 0.2  # maximum BS power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 1.9e9  # carrier frequency in Hz
 antennaGain = 18  # power gain in dB of each antenna of a BS
@@ -19,10 +19,9 @@ powerAllocWeights = [128, 4, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepDiscounts = [1, 0.195, 0.114, 0.076]
 wakeupDelays = [0, 1e-3, 1e-2, 1]
-handOverDelays = 1e-3  # handover delay in seconds
-antSwitchEnergy = 0.4
-sleepSwitchEnergy = 2
-connectEnergy = 0.1
+antSwitchEnergy = 0.02
+sleepSwitchEnergy = 0.5
+connectEnergy = 0.01
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import os.path as osp
-from utils import timeit
+from utils import timeit, info, debug
 from .nn.actor_critic import Actor, Critic
 
 
@@ -26,8 +26,8 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        # print("Actor: {}".format(self.actor))
-        # print("Critic: {}".format(self.critic))
+        info(str(self.actor))
+        info(str(self.critic))
         
         self._actor_rnn_state = None
         
@@ -114,7 +114,7 @@ class MappoPolicy:
 
     @timeit
     @torch.no_grad()
-    def act(self, obs, actor_rnn_state=None, masks=None, 
+    def act(self, obs, actor_rnn_state=0, masks=None, 
             available_actions=None, deterministic=True):
         """
         Compute actions using the given inputs.
@@ -126,7 +126,7 @@ class MappoPolicy:
         :param deterministic: (bool) whether the action should be mode of distribution or should be sampled.
         """
         self.prep_rollout()
-        if actor_rnn_state is None:
+        if hasattr(self.actor, 'rnn') and actor_rnn_state is None:
             if self._actor_rnn_state is None:
                 num_agents = len(obs)
                 rnn_layers = self.actor.rnn.rnn.num_layers

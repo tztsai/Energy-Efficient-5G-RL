@@ -74,10 +74,10 @@ class Runner(object):
 
         # policy network
         self.policy = Policy(self.all_args,
-                            self.envs.observation_space[0],
-                            cent_observation_space,
-                            self.envs.action_space[0],
-                            device = self.device)
+                             self.envs.observation_space[0],
+                             cent_observation_space,
+                             self.envs.action_space[0],
+                             device = self.device)
 
         if self.model_dir is not None:
             self.restore()

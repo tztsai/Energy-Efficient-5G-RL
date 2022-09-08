@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 import torch
 from config import get_config
-from env import Green5GNetEnv
+from env import MultiCellNetEnv
 from argparse import ArgumentParser
 
 from utils import set_log_level
@@ -22,7 +22,7 @@ def get_env_kwargs(args):
 def make_env(args, env_args, for_eval=False):
     n_threads = args.n_rollout_threads
     if args.episode_length is None:
-        tmp_env = Green5GNetEnv(**get_env_kwargs(env_args))
+        tmp_env = MultiCellNetEnv(**get_env_kwargs(env_args))
         args.episode_length = tmp_env.episode_len // n_threads
         print('Episode length: {}'.format(args.episode_length))
 
@@ -30,8 +30,8 @@ def make_env(args, env_args, for_eval=False):
         def init_env():
             kwargs = get_env_kwargs(env_args)
             kwargs.setdefault('start_time',
-                              rank / n_threads * Green5GNetEnv.episode_time_len)
-            env = Green5GNetEnv(**kwargs)
+                              rank / n_threads * MultiCellNetEnv.episode_time_len)
+            env = MultiCellNetEnv(**kwargs)
             if for_eval:
                 env.seed(args.seed * 50000 + rank * 10000)
             else:
@@ -136,7 +136,7 @@ def main(args):
         "all_args": args,
         "envs": envs,
         "eval_envs": eval_envs,
-        "num_agents": Green5GNetEnv.num_agents,
+        "num_agents": MultiCellNetEnv.num_agents,
         "device": device,
         "run_dir": run_dir
     }

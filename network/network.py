@@ -1,6 +1,6 @@
 from utils import *
-from env.utils import *
 from . import config
+from .env_utils import *
 from .user_equipment import User, UEStatus
 from .base_station import BaseStation
 from .channel import compute_channel_gain
@@ -8,7 +8,7 @@ from traffic import TrafficModel
 from config import DEBUG
 
 
-class Green5GNet:
+class MultiCellNetwork:
     inter_bs_dist = config.interBSDist
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
@@ -17,9 +17,7 @@ class Green5GNet:
     bs_obs_space = concat_box_envs(
         BaseStation.self_obs_space,
         duplicate_box_env(
-            concat_box_envs(
-                BaseStation.public_obs_space,
-                BaseStation.mutual_obs_space),
+            BaseStation.other_obs_space,
             config.numBS - 1))
     net_obs_space = concat_box_envs(
         global_obs_space,
@@ -27,6 +25,7 @@ class Green5GNet:
         duplicate_box_env(BaseStation.mutual_obs_space,
                           config.numBS * (config.numBS - 1) // 2))
 
+    global_obs_ndims = box_env_ndims(global_obs_space)
     bs_obs_ndims = box_env_ndims(bs_obs_space)
     net_obs_ndims = box_env_ndims(net_obs_space)
     
@@ -61,7 +60,7 @@ class Green5GNet:
         m, s = divmod(self.world_time, 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
-        return int(d + 1), int(h), int(m), s
+        return int(d % 7 + 1), int(h), int(m), s
 
     @property
     def time_slot(self):
@@ -96,16 +95,16 @@ class Green5GNet:
         return self._time and self._total_energy_consumed / self._time / 1e3
     
     @property
-    def new_demand_rates(self):
+    def arrival_rates(self):
         if self._timer:
-            return self._demand / self._timer / 1e6
+            return self._demand / self._timer
         return np.zeros_like(self._demand)
     
     @property
     def drop_rates(self):
-        """ Drop rates for each app category in the network in kb/s. """
+        """ Drop rates for each app category in the network in mb/s. """
         if self._timer:
-            return self._dropped / self._timer / 1e3
+            return self._dropped / self._timer
         return np.zeros_like(self._dropped)
 
     def get_bs(self, id):
@@ -131,6 +130,7 @@ class Green5GNet:
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
+        self._demand[ue.app_type] += ue.demand / 1e6
         # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
 
     @timeit
@@ -143,9 +143,7 @@ class Green5GNet:
     def measure_distances_and_gains(self, ue):
         ue.distances = np.sqrt(np.sum((self.bs_positions - ue.pos)**2, axis=1))
         # debug(f'Distances of UE {ue.id} to BSs: {ue.dists}')
-        dists = [ue.distances[i] for i in ue._cover_cells]
-        gains = compute_channel_gain(dists)
-        ue.channel_gains = {i: g for i, g in zip(ue._cover_cells, gains)}
+        ue.channel_gains = compute_channel_gain(ue.distances)
 
     def remove_user(self, ue_id):
         assert ue_id in self.ues
@@ -156,8 +154,9 @@ class Green5GNet:
             # debug(f"{ue} done")
         else:
             if ue.demand <= 0: breakpoint()
-            self._dropped[ue.app_type] += ue.demand / 1e6
-            self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.delay]
+            dropped = ue.demand / 1e6
+            self._dropped[ue.app_type] += dropped
+            self._total_dropped[ue.app_type] += [1, dropped, ue.delay]
             debug(f"{ue} dropped")
 
     @timeit
@@ -169,7 +168,6 @@ class Green5GNet:
                 xy = np.random.rand(2) * self.area
                 kwargs['pos'] = np.append(xy, User.ue_height)
             ue = User(app_type=app, demand=demand, delay_budget=delay, **kwargs)
-            self._demand[app] += demand
             self.add_user(ue)
 
     def consume_energy(self, energy):
@@ -201,10 +199,8 @@ class Green5GNet:
 
         for ue in list(self.ues.values()):
             ue.step(dt)
-
-        self._total_energy_consumed += self._energy_consumed
-        self._timer += dt
-        self._time += dt
+        
+        self.update_stats(dt)
 
     def set_action(self, bs_id, action):
         self.bss[bs_id].take_action(action)
@@ -219,12 +215,12 @@ class Green5GNet:
             bs_obs.append(self.bss[i].observe_self())
         for i in range(self.num_bs):
             for j in range(i):
-                bs_obs.append(self.bss[i].observe_other(self.bss[j]))
+                bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
         bs_obs = np.concatenate(bs_obs, dtype=np.float32)
         thrp_ratio, thrp_req = BaseStation.calc_sum_rate(self.ues.values())
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.new_demand_rates,      # rates demanded by new UEs in different delay cats (3)
+            self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             self.drop_rates,            # dropped rates in different delay cats (3)
             [thrp_ratio, thrp_req],     # throughput (2)
             bs_obs                      # bs observations
@@ -238,6 +234,11 @@ class Green5GNet:
         for bs in self.bss.values():
             bs.reset_stats()
 
+    def update_stats(self, dt):
+        self._total_energy_consumed += self._energy_consumed
+        self._timer += dt
+        self._time += dt
+
     @cache_obs
     def info_dict(self):
         obs = self.observe_network()
@@ -245,7 +246,7 @@ class Green5GNet:
         return dict(
             time='Day {}, {:02}:{:02}:{:02.2f}'.format(*self.world_time_tuple),
             power_consumption=obs[0],
-            new_demand_rate=obs[1:4].sum(),
+            arrival_rate=obs[1:4].sum(),
             dropped_rate=obs[4:7].sum(),
             required_rate=thrp_req,
             throughput=thrp_ratio * thrp_req,
@@ -258,7 +259,7 @@ class Green5GNet:
             total_dropped_count=self._total_dropped[:, 0].sum(),
             total_drop_ratios=self._total_dropped[:, 1] / 
                 (self._total_done[:, 1] + self._total_dropped[:, 1] + 1e-6),
-            # bs_info=pd.DataFrame({i: bs.info_dict() for i, bs in self.bss.items()}).T,
+            bs_info=pd.DataFrame({i: bs.info_dict() for i, bs in self.bss.items()}).T,
             # ue_info=pd.DataFrame({i: ue.info_dict() for i, ue in self.ues.items()}).T
         )
         
