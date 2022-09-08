@@ -36,6 +36,7 @@ def get_latest_model_dir(args, env_args, use_wandb=not DEBUG):
     if args.model_dir is not None:
         return run_dir / args.model_dir
     p = 'wandb/run*/files' if use_wandb else 'run*/models'
+    print(run_dir)
     return max(run_dir.glob(p), key=os.path.getmtime)
 
 parser = get_config()

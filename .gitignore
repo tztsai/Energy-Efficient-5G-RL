@@ -11,7 +11,7 @@ events.out.tfevents.*
 .ipynb_checkpoints/*
 data/cells-traffic/
 data/RAN_PM_data/
-results/**/run*/
+results/**/check/run*/
 results/*.csv
 analysis/*.csv
 train.sh
