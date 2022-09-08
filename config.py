@@ -1,6 +1,6 @@
 import argparse
 
-DEBUG = 1
+DEBUG = 0
 
 def get_config():
     """

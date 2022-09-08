@@ -159,7 +159,7 @@ def get_config():
 
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str,
-                        default='rmappo', choices=["rmappo", "mappo"])
+                        default='mappo', choices=["rmappo", "mappo"])
     parser.add_argument("-L", '--log_level', type=str, default='DEBUG' if DEBUG else "WARN",
                         help='level of logging')
     parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
@@ -216,8 +216,8 @@ def get_config():
     # recurrent parameters
     parser.add_argument("--use_naive_recurrent_policy", action='store_true',
                         default=False, help='Whether to use a naive recurrent policy')
-    parser.add_argument("--use_recurrent_policy", action='store_false',
-                        default=True, help='use a recurrent policy')
+    parser.add_argument("--use_recurrent_policy", action='store_true',
+                        default=False, help='use a recurrent policy')
     parser.add_argument("--recurrent_N", type=int, default=1, help="The number of recurrent layers.")
     parser.add_argument("--data_chunk_length", type=int, default=10,
                         help="Time length of chunks used to train a recurrent_policy")
@@ -258,9 +258,9 @@ def get_config():
                         default=False, help='compute returns taking into account time limits')
     parser.add_argument("--use_huber_loss", action='store_false', default=True, help="by default, use huber loss. If set, do not use huber loss.")
     parser.add_argument("--use_value_active_masks",
-                        action='store_false', default=True, help="by default True, whether to mask useless data in value loss.")
+                        action='store_true', default=False, help="by default False, whether to mask useless data in value loss.")
     parser.add_argument("--use_policy_active_masks",
-                        action='store_false', default=True, help="by default True, whether to mask useless data in policy loss.")
+                        action='store_true', default=False, help="by default False, whether to mask useless data in policy loss.")
     parser.add_argument("--huber_delta", type=float, default=10.0, help=" coefficience of huber loss.")
 
     # run parameters
