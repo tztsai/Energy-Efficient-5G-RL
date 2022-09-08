@@ -243,14 +243,13 @@ class MultiCellNetwork:
     @cache_obs
     def info_dict(self):
         obs = self.observe_network()
-        thrp_ratio, thrp_req = obs[5:7]
         return dict(
             time='Day {}, {:02}:{:02}:{:02.2f}'.format(*self.world_time_tuple),
             power_consumption=obs[0],
             arrival_rate=obs[1:4].sum(),
             dropped_rate=obs[4:7].sum(),
-            required_rate=thrp_req,
-            throughput=thrp_ratio * thrp_req,
+            real_rate=obs[7],
+            required_rate=obs[8],
             avg_pc=self.avg_power_consumption,
             avg_data_rates=self._total_done[:, 1] /
                 np.maximum(self._total_done[:, 2], 1e-6),
