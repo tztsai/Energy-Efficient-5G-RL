@@ -1,5 +1,6 @@
+import torch
 import torch.nn as nn
-from .util import init, get_clones
+from .util import init, get_clones, RollingStats
 
 """MLP modules."""
 
@@ -46,10 +47,17 @@ class MLPBase(nn.Module):
 
         self.mlp = MLPLayer(obs_dim, self.hidden_size,
                               self._layer_N, self._use_orthogonal, self._use_ReLU)
+        
+        # self.feature_stats = RollingStats(f'feature_stats_{obs_dim}')
+        # self.feature_norm_stats = RollingStats(f'feature_norm_stats_{obs_dim}')
 
     def forward(self, x):
+        # if not torch.is_grad_enabled():
+        #     self.feature_stats.insert(x.detach().numpy())
         if self._use_feature_normalization:
             x = self.feature_norm(x)
+            # if not torch.is_grad_enabled():
+            #     self.feature_norm_stats.insert(x.detach().numpy())
 
         x = self.mlp(x)
 

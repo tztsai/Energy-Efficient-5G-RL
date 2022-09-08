@@ -4,7 +4,6 @@ Modified from OpenAI Baselines code to work with multi-agent envs
 import numpy as np
 from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
-from .utils import tile_images
 
 
 class CloudpickleWrapper(object):
@@ -110,15 +109,7 @@ class ShareVecEnv(ABC):
         return self.step_wait()
 
     def render(self, mode='human'):
-        imgs = self.get_images()
-        bigimg = tile_images(imgs)
-        if mode == 'human':
-            self.get_viewer().imshow(bigimg)
-            return self.get_viewer().isopen
-        elif mode == 'rgb_array':
-            return bigimg
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
 
     def get_images(self):
         """

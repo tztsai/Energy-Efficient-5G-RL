@@ -1,11 +1,11 @@
+#!/usr/bin/env python
 # %%
 import torch
 from utils import *
 from agents import *
-from config import get_config
-from env import Green5GNetEnv
+from config import get_config, DEBUG
+from env import MultiCellNetEnv
 import numpy as np
-import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output
 
 # %reload_ext autoreload
@@ -16,8 +16,8 @@ def parse_env_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
-    parser.add_argument("--traffic_type", default="urban",
-                        type=str, help="type of traffic to generate")
+    parser.add_argument("--traffic_type", type=str,
+                        help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
     parser.add_argument("--accel_rate", type=float,
@@ -29,8 +29,8 @@ def parse_env_args(args):
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_latest_model_dir(args, env_args, use_wandb=True):
-    run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0] + "/results") \
+def get_latest_model_dir(args, env_args, use_wandb=not DEBUG):
+    run_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
         / args.env_name / env_args.traffic_type / args.algorithm_name / args.experiment_name
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
@@ -44,6 +44,7 @@ args = [
     "--start_time", "307800",
     "--log_level", "WARN",
     "--use_render", 
+    "--traffic_type", "B",
     # "--use_dash", 
     # "--model_dir", "wandb/run-20220825_231102-3q9eju6l/files"
 ]
@@ -64,7 +65,7 @@ np.random.seed(args.seed)
 # %%
 # agent = FixedPolicy([5, 4, 4], 7)
 # agent = RandomPolicy([5, 4, 4], 7)
-env = Green5GNetEnv(**get_env_kwargs(env_args), seed=args.seed)
+env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
 spaces = env.observation_space[0], env.cent_observation_space, env.action_space[0]
 model_dir = get_latest_model_dir(args, env_args)
 agent = MappoPolicy(args, *spaces, model_dir=model_dir)
@@ -130,3 +131,40 @@ def update_plot(time):
     return fig, text, time
 
 app.run_server(debug=True)
+
+# app.layout = html.Div([
+#     html.H4('5G Network Simulation'),
+#     dcc.Graph(id="graph", figure=figure),
+#     html.P(id="step-info"),
+#     dcc.Slider(
+#         id='time-slider',
+#         min=0, max=T, step=1, value=0,
+#         marks={t: f'{t:.2f}' for t in np.linspace(0, T, num=6)},
+#     ),
+#     html.Button('Run', id="run-pause", n_clicks=0),
+#     dcc.Interval(id="interval")
+# ])
+
+# @app.callback(
+#     Output("graph", "figure"),
+#     Output("step-info", "children"),
+#     Output("time-slider", "value"),
+#     Output("run-pause", "value"),
+#     Input("time-slider", "value"),
+#     Input("run-pause", "n_clicks"),
+#     Input("step-info", "children"),
+#     Input("interval", "n_intervals")
+# )
+# def update_plot(time, clicks, text, t):
+#     fig = env._figure
+#     running = bool(clicks % 2)
+#     if not running:
+#         return fig, text, time, "Run"
+#     time += 1
+#     while time > env._episode_steps:
+#         step_env()
+#         pbar.update()
+#         # time = int(env._episode_steps)
+#     text = "Step: {}, Time: {}".format(env._sim_steps, fig['customdata'][time]['time'])
+#     fig['data'] = fig['frames'][time]['data']
+#     return fig, text, time, "Pause"

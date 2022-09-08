@@ -1,6 +1,6 @@
 from utils import *
-from . import config as Cfg
 from config import DEBUG
+from . import config
 
 
 class UEStatus(enum.IntEnum):
@@ -12,7 +12,7 @@ class UEStatus(enum.IntEnum):
 
 
 class User:
-    ue_height: float = Cfg.ueHeight
+    ue_height: float = config.ueHeight
     state_dim: int = 10
 
     def __init__(self, pos, app_type, demand, delay_budget):
@@ -43,26 +43,23 @@ class User:
     
     @distances.setter
     def distances(self, dists):
-        assert len(dists) == self.net.num_bs
+        assert self._dists is None
         self._dists = dists
-        self._gains = None
         self._cover_cells = []
-        for i, dist in enumerate(dists):
-            bs = self.net.get_bs(i)
-            if dist <= bs.cell_radius:
+        for i, bs in self.net.bss.items():
+            if dists[i] <= bs.cell_radius:
                 self._cover_cells.append(bs.id)
                 bs.add_to_cell(self)
         return dists
 
     @property
     def channel_gains(self):
-        assert self._gains is not None, 'channel gains not computed yet'
         return self._gains
     
     @channel_gains.setter
-    def channel_gains(self, gains: dict):
+    def channel_gains(self, gains):
         self._gains = gains
-        self._cover_cells.sort(key=gains.get, reverse=True)
+        self._cover_cells.sort(key=gains.__getitem__, reverse=True)
         return gains
 
     @property
@@ -85,8 +82,9 @@ class User:
     @property
     def interference(self):
         if not self.active: return 0.
-        return sum(self.channel_gains[i] * bs.transmit_power
-                   for i in self._cover_cells for bs in [self.net.get_bs(i)]
+        return sum(self._gains[i] * bs.transmit_power
+                   for i, bs in self.net.bss.items()
+                #    for i in self._cover_cells for bs in [self.net.get_bs(i)]
                    if bs is not self.bs and not bs.sleep)
     
     @property
@@ -115,7 +113,7 @@ class User:
     def urgent(self):
         return self.time_limit < 0.03 and self.throughput_ratio < 1.
 
-    def compute_sinr(self, noise_var=Cfg.noiseVariance):
+    def compute_sinr(self, noise_var=config.noiseVariance):
         if self.bs is None: return 0
         return self.signal_power / (self.interference + noise_var)
     
@@ -125,9 +123,9 @@ class User:
         Returns:
         The data_rate of the UE in bits/s.
         """
-        self.sinr = self.compute_sinr()
-        if self.sinr == 0: return 0
-        return self.bs.band_width * np.log2(1 + self.sinr)
+        self._sinr = self.compute_sinr()
+        if self._sinr == 0: return 0
+        return self.bs.band_width * np.log2(1 + self._sinr)
     
     def update_data_rate(self):
         self._thruput = None
