@@ -40,7 +40,7 @@ def get_latest_model_dir(args, env_args):
 
 parser = get_config()
 args = sys.argv + [
-    "-T", "30",
+    "-T", "50",
     # "--start_time", "307800",
     "--start_time", "3078",
     "--traffic_type", "B",

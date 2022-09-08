@@ -109,16 +109,35 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     except ValueError:
         ue_plt = dict(type='scatter')
 
+    # plot data rates
+    fr = fig['frames'][-1] if fig['frames'] else None
+    t = fr['data'][3]['x'] + [net._time] if fr else [net._time]
+    y_max = fr['layout']['yaxis2']['range'][1] if fr else 0
+    rate_plts = []
+    for i, key in enumerate(['arrival_rate', 'real_rate', 'required_rate']):
+        new_y = info[key]
+        if fr:
+            y = fr['data'][i+3]['y'] + [new_y]
+        else:
+            y = [new_y]
+        y_max = max(y_max, new_y + 20)
+        rate_plts.append(dict(
+            type='scatter',
+            mode='lines',
+            x=t, y=y,
+            xaxis='x2',
+            yaxis='y2',
+            name=key.replace('_', ' '),
+        ))
+    y2_range = [0, y_max]
+
     # plot penalty
     pen = -info['reward']
-    if fig['frames']:
-        fr = fig['frames'][-1]
+    if fr:
         last_rw_plt = fr['data'][-1]
-        t = last_rw_plt['x'] + [net._time]
         y_pen = last_rw_plt['y'] + [pen]
         y3_range = [0, max(fr['layout']['yaxis3']['range'][1], pen + 0.1)]
     else:
-        t = [net._time]
         y_pen = [pen]
         y3_range = [0, pen + 0.1]
     rw_plt = dict(
@@ -132,7 +151,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     )
     
     # plot power consumption
-    if fig['frames']:
+    if fr:
         last_pc_plt = fr['data'][-2]
         y_pc = last_pc_plt['y'] + [info['power_consumption']]
         # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
@@ -163,10 +182,10 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     
     # append frame
     steps = env._sim_steps
-    data = [bs_plt, ue_plt, cl_plt, dr_plt, pc_plt, rw_plt]
+    data = [bs_plt, ue_plt, cl_plt, *rate_plts, dr_plt, pc_plt, rw_plt]
     layout = {
         'xaxis2': dict( range=[0, net._time] ),
-        # 'yaxis2': dict( range=y2_range ),
+        'yaxis2': dict( range=y2_range ),
         'yaxis3': dict( range=y3_range )
     }
     frame = dict(data=data, name=steps, layout=layout)
@@ -214,8 +233,8 @@ def make_figure(net):
             yaxis=dict(range=[0, net.area[1]], tickvals=yticks, 
                        autorange=False, showgrid=False),
             xaxis2=dict(domain=[0.7, 1], autorange=False),
-            yaxis2=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
-            yaxis3=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
+            yaxis2=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
+            yaxis3=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
             margin=dict(l=25, r=25, b=25, t=25),
             # shapes=[dict(
             #     type="circle",
