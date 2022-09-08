@@ -14,14 +14,14 @@ antennaGain = 18  # power gain in dB of each antenna of a BS
 numAntennas = 64  # max number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
 bsHeight = 30  # height difference between a BS and a user in meters
-powerAllocWeights = [128, 4, 1]  # weights of the power allocation
+powerAllocWeights = [128, 2, 1]  # weights of the power allocation
 # powerAllocWeights = [1, 1, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepDiscounts = [1, 0.195, 0.114, 0.076]
 wakeupDelays = [0, 1e-3, 1e-2, 1]
-antSwitchEnergy = 0.2
-sleepSwitchEnergy = [0, 0.1, 0.2, 1]
-connectEnergy = 0.05
+antSwitchEnergy = 0.1  # energy consumption of switch per antenna in Joules
+sleepSwitchEnergy = [0, 0.1, 0.2, 4]  # energy consumption of switching sleep mode in Joules
+handoffEnergy = 0.1  # energy consumption of a UE connection in Joules
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)

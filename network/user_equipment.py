@@ -101,7 +101,7 @@ class User:
     @property
     def required_rate(self):
         t_lim = self.time_limit
-        if t_lim <= 0: return 0
+        if t_lim <= 0: return 0.
         return self.demand / t_lim
     
     @property

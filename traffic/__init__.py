@@ -28,27 +28,28 @@ class TrafficModel:
     profiles_path = config.profilesPath
     sample_rate = config.dpiSampleRate
 
-    def __init__(self, period=period, scenario=None):
+    def __init__(self, area, period=period, scenario=None):
+        self.area = area[0] * area[1] / 1e6  # km^2
         self.period = period
         self.scenario = scenario
 
     @classmethod
-    def from_scenario(cls, scenario):
+    def from_scenario(cls, scenario, area):
         if type(scenario) is str:
             scenario = TrafficType[scenario.upper()]
         else:
             scenario = TrafficType(scenario)
         profiles_df = pd.read_csv(cls.profiles_path, index_col=[0, 1, 2])
-        profiles_df /= cls.sample_rate
+        profiles_df /=  cls.sample_rate
         profile = profiles_df.loc[int(scenario)]
-        return cls(scenario=scenario).fit(profile)
+        return cls(area, scenario=scenario).fit(profile)
 
     def fit(self, data_rate_df):
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
         self.interval, rem = divmod(self.period, len(data_rate_df))
         assert rem == 0, (self.interval, rem)
-        self.rates = data_rate_df / self.file_size  # files per second
+        self.rates = data_rate_df * self.area / self.file_size  # files / s
         return self
     
     @property
@@ -86,19 +87,21 @@ if __name__ == '__main__':
     from plotly.subplots import make_subplots
     from collections import defaultdict
     
+    area = (800, 800)
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
-        model = TrafficModel.from_scenario(traffic_type)
-        thrp_df = model.rates * model.file_size / (1 << 20) # throughput (MBps)
+        model = TrafficModel.from_scenario(traffic_type, area)
+        thrp_df = model.rates * model.file_size / (1 << 20) # throughput (Mb/s)
         print(thrp_df.describe())
+        print(model.rates.max() * 1e-3)
         peak_time = model.rates.sum(axis=1).idxmax()
         peak_time_secs = model.get_start_time_of_slot(peak_time)
         print(peak_time, peak_time_secs)
         for cat, rates in thrp_df.items():
             days_idx = rates.index.get_level_values(0).unique()
             df = rates.unstack().reindex(days_idx)
-            fig = px.imshow(df, title=traffic_type.name)
+            fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/s'))
             print(cat)
             fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)

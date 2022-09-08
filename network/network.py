@@ -13,7 +13,7 @@ class MultiCellNetwork:
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
     
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 2))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3))
     bs_obs_space = concat_box_envs(
         BaseStation.self_obs_space,
         duplicate_box_env(
@@ -31,7 +31,7 @@ class MultiCellNetwork:
     
     def __init__(self, area, bs_poses, traffic_type, start_time=0, accel_rate=1):
         self.area = area
-        self.traffic_model = TrafficModel.from_scenario(traffic_type)
+        self.traffic_model = TrafficModel.from_scenario(traffic_type, area)
         self.start_time = self._parse_start_time(start_time)
         self.accel_rate = accel_rate
         self.bss = {}
@@ -154,8 +154,7 @@ class MultiCellNetwork:
             # debug(f"{ue} done")
         else:
             if ue.demand <= 0: breakpoint()
-            dropped = ue.demand / 1e6
-            self._dropped[ue.app_type] += dropped
+            self._dropped[ue.app_type] += (dropped := ue.demand / 1e6)
             self._total_dropped[ue.app_type] += [1, dropped, ue.delay]
             debug(f"{ue} dropped")
 
@@ -183,9 +182,7 @@ class MultiCellNetwork:
         self._dropped = np.zeros(self.traffic_model.num_apps)
         self._total_dropped = np.zeros((self.traffic_model.num_apps, 3))
         self._total_done = np.zeros((self.traffic_model.num_apps, 3))
-        self._energy_consumed = 0
         self._total_energy_consumed = 0
-        self._timer = 0
         self.reset_stats()
 
     @timeit
@@ -200,13 +197,30 @@ class MultiCellNetwork:
         for ue in list(self.ues.values()):
             ue.step(dt)
         
-        self.update_stats(dt)
+        self.update_timer(dt)
 
     def set_action(self, bs_id, action):
         self.bss[bs_id].take_action(action)
 
     def observe_bs(self, bs_id):
         return self.bss[bs_id].get_observation()
+
+    def update_timer(self, dt):
+        self._timer += dt
+        self._time += dt
+
+    def reset_stats(self):
+        self._demand[:] = 0
+        self._dropped[:] = 0
+        self._energy_consumed = 0
+        self._timer = 0
+        for bs in self.bss.values():
+            bs.reset_stats()
+
+    def update_stats(self):
+        for bs in self.bss.values():
+            bs.update_stats()
+        self._total_energy_consumed += self._energy_consumed
     
     @cache_obs
     def observe_network(self):
@@ -217,27 +231,14 @@ class MultiCellNetwork:
             for j in range(i):
                 bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
         bs_obs = np.concatenate(bs_obs, dtype=np.float32)
-        thrp_ratio, thrp_req = BaseStation.calc_sum_rate(self.ues.values())
+        thrp, thrp_req, log_ratio = BaseStation.calc_sum_rate(self.ues.values())
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
             self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             self.drop_rates,            # dropped rates in different delay cats (3)
-            [thrp_ratio, thrp_req],     # throughput (2)
+            [thrp, thrp_req, log_ratio],# throughput (2)
             bs_obs                      # bs observations
         ], dtype=np.float32)
-
-    def reset_stats(self):
-        self._demand[:] = 0
-        self._dropped[:] = 0
-        self._energy_consumed = 0
-        self._timer = 0
-        for bs in self.bss.values():
-            bs.reset_stats()
-
-    def update_stats(self, dt):
-        self._total_energy_consumed += self._energy_consumed
-        self._timer += dt
-        self._time += dt
 
     @cache_obs
     def info_dict(self):
