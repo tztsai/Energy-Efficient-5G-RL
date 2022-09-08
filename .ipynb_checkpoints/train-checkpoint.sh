@@ -1,12 +1,11 @@
 #!/bin/sh
 seed_max=1
-log_level="WARN"
+log_level="NOTICE"
 
 traffic_type="B"
 accel_rate=600
 n_training_threads=4
 n_rollout_threads=42
-n_eval_rollout_threads=168
 num_env_steps=5040000
 
 algo="mappo"
@@ -16,10 +15,9 @@ critic_lr=7e-4
 ppo_epoch=10
 
 w_pc=1.0
-w_drop=10.0
+w_drop=0.08
 
 log_interval=1
-eval_interval=25
 
 wandb_api_key="e3662fa8db0f243936c7514a1d0c69f2374ce721"
 
