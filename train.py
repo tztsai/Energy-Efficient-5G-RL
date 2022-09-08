@@ -25,7 +25,6 @@ def make_env(args, env_args, for_eval=False):
         tmp_env = MultiCellNetEnv(**get_env_kwargs(env_args))
         tmp_env.print_info()
         args.episode_length = tmp_env.episode_len // n_threads
-        print('Episode length: {}'.format(args.episode_length))
 
     def get_env_fn(rank):
         def init_env():
