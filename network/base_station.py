@@ -167,12 +167,12 @@ class BaseStation:
             self.disconnect_all()
         elif mode == 3:  # take over all ues
             if self.sleep:  # cannot take over UEs if asleep
-                self.consume_energy(5, 'connect')  # add EC penalty
+                self.consume_energy(2, 'connect')  # add EC penalty
             else:
                 self.takeover_all()
         self.accept_conn = mode >= 2
         if self.accept_conn and self.sleep == 3:  # cannot accept new connections in SM3
-            self.consume_energy(5, 'connect')
+            self.consume_energy(2, 'connect')
             self.accept_conn = False
     
     ### network functions ###

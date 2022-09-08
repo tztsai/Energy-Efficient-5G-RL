@@ -20,12 +20,15 @@ np.set_printoptions(precision=3)
 
 logger = logging.getLogger('main')
 
+NOTICE = 22
+logging.addLevelName(NOTICE, "NOTICE")
+
 debug = logger.debug
 info = logger.info
 warn = logger.warning
 
-def notice(msg):
-    logger.log(level=25, msg=msg)
+def notice(msg, *args, **kwds):
+    logger.log(NOTICE, msg, *args, **kwds)
 
 def set_log_level(level):
     level = level.upper() if isinstance(level, str) else level

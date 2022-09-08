@@ -40,12 +40,12 @@ def get_latest_model_dir(args, env_args):
 
 parser = get_config()
 args = sys.argv + [
-    "-T", "100",
-    "--start_time", "307800",
+    "-T", "30",
+    # "--start_time", "307800",
+    "--start_time", "3078",
     "--traffic_type", "B",
-    # "--use_render",
+    "--use_render",
     # "--use_dash", 
-    # "--model_dir", "wandb/run-20220825_231102-3q9eju6l/files"
 ]
 substeps = 20
 args, env_args = parser.parse_known_args(args)
@@ -83,7 +83,10 @@ def step_env():
     obs, _, reward, done, _, _ = env.step(actions, substeps=substeps)
     step_rewards.append(reward[0])
     if args.use_render:
-        env.render(mode='none')
+        # if env._episode_steps > 20:
+        #     env.render(mode='human')
+        #     exit()
+        env.render()
     return obs, reward[0], done
 
 T = args.num_env_steps
