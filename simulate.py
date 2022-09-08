@@ -40,11 +40,11 @@ def get_latest_model_dir(args, env_args, use_wandb=not DEBUG):
 
 parser = get_config()
 args = [
-    "-T", "100",
+    "-T", "200",
     "--start_time", "307800",
-    "--log_level", "WARN",
-    "--use_render", 
+    "--log_level", "debug",
     "--traffic_type", "B",
+    # "--use_render", 
     # "--use_dash", 
     # "--model_dir", "wandb/run-20220825_231102-3q9eju6l/files"
 ]

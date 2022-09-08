@@ -129,15 +129,15 @@ class BaseStation:
         num_switch = self.ant_switch_opts[opt]
         if num_switch == 0:
             return
+        energy_cost = self.ant_switch_energy * abs(num_switch)
+        self.consume_energy(energy_cost)
         num_ant_new = self.num_antennas + num_switch
         if num_ant_new <= self.num_ue or num_ant_new > self.num_antennas:
             return
         self.num_ant = num_ant_new
         for ue in self.ues.values():
             ue.update_data_rate()
-        energy_cost = self.ant_switch_energy * abs(num_switch)
-        self.consume_energy(energy_cost)
-        info(f'BS {self.id}: switched to {self.num_ant} antennas ({energy_cost} J)')
+        info(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
         self.update_power_consumption()
     
@@ -269,11 +269,11 @@ class BaseStation:
             return
         self._wake_timer += dt
         if self._wake_timer >= self._wake_delay:
+            info('BS {}: switched sleep mode {} -> {}'
+                  .format(self.id, self.sleep, self._next_sleep))
+            self.consume_energy(self.sleep_switch_energy[self.sleep])
             self.sleep = self._next_sleep
             self._wake_timer = 0.
-            self.consume_energy(self.sleep_switch_energy)
-            info('BS {}: switched sleep mode {} -> {} ({} J)'
-                  .format(self.id, self.sleep, self._next_sleep, self.sleep_switch_energy))
         # else:
         #     wake_time = (self._wake_delay - self._wake_timer) * 1000
         #     info('BS {}: switching sleep mode {} -> {} (after {:.0f} ms)'
@@ -338,7 +338,7 @@ class BaseStation:
     
     def consume_energy(self, e):
         self._energy_consumed += e
-        # debug('BS {}: consumed {} J'.format(self.id, ec))
+        debug('BS {}: consumed {} J'.format(self.id, e))
 
     def insert_buffer(self, record):
         self._buffer[self._buf_idx] = record
@@ -453,7 +453,7 @@ class BaseStation:
         self._time += dt
 
     def reset_stats(self):
-        # debug('BS {}: power consumption = {}'.format(self.id, self.power_consumption))
+        debug('BS {}: power consumption = {}'.format(self.id, self.power_consumption))
         record = [self.power_consumption, self.cell_traffic_intensity]
         self.insert_buffer(record)
         self._buf_idx = (self._buf_idx + 1) % len(self._buffer)

@@ -19,9 +19,9 @@ powerAllocWeights = [128, 4, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepDiscounts = [1, 0.195, 0.114, 0.076]
 wakeupDelays = [0, 1e-3, 1e-2, 1]
-antSwitchEnergy = 0.02
-sleepSwitchEnergy = 0.5
-connectEnergy = 0.01
+antSwitchEnergy = 0.2
+sleepSwitchEnergy = [0, 0.1, 0.2, 1]
+connectEnergy = 0.05
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
