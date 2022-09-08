@@ -10,7 +10,7 @@ statsInterval = 5  # env steps between two stats printouts
 episodeTimeLen = 60 * 60 * 24 * 7  # the duration of an episode in simulation (seconds in a week)
 
 # traffic parameters
-trafficType = 'A'
+trafficType = 'B'  # 'A', 'B', 'C'
 
 # action parameters
 numAntSwitchOpts = 5
@@ -18,6 +18,6 @@ numSleepModes = 4
 numConnModes = 4
 
 # reward parameters
-droppedAppWeights = [.6, .3, .1]
-droppedTrafficWeight = 0.01
+droppedAppWeights = [.5, .3, .2]
+droppedTrafficWeight = 0.03
 powerConsumptionWeight = 1.

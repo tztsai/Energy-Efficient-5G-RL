@@ -1,7 +1,10 @@
 # %%
 import glob
+import os, sys
 import pandas as pd
 import matplotlib.pyplot as plt
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from network.network import MultiCellNetwork as Net
 from network.base_station import BaseStation as BS
 
@@ -33,7 +36,7 @@ def get_net_obs_name(idx):
     i -= Net.global_obs_ndims
     return str(i)
     
-mean_stats, std_stats = [pd.read_csv(f) for f in glob.glob('analysis/feature_stats_1*.csv')]
+mean_stats, std_stats = [pd.read_csv(f) for f in glob.glob('feature_stats_13*.csv')]
 
 mean_stats.columns = mean_stats.columns.map(get_bs_obs_name)
 std_stats.columns = std_stats.columns.map(get_bs_obs_name)

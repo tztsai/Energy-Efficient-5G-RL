@@ -160,7 +160,7 @@ def get_config():
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str,
                         default='mappo', choices=["rmappo", "mappo"])
-    parser.add_argument("-L", '--log_level', type=str, default='DEBUG' if DEBUG else "WARN",
+    parser.add_argument("-L", '--log_level', type=str, default=10 if DEBUG else 21,
                         help='level of logging')
     parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=1, help="Random seed for numpy/torch")

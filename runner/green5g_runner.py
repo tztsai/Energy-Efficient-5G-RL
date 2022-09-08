@@ -54,8 +54,9 @@ class Green5GRunner(Runner):
                                 total_num_steps, self.num_env_steps,
                                 int(total_num_steps / (end - start))))
 
-                train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
-                print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
+                step_rew = train_infos["average_step_reward"] = np.mean(self.buffer.rewards)
+                train_infos["average_episode_reward"] = step_rew * self.episode_length
+                print("average step reward is {}".format(step_rew))
                 self.log_train(train_infos, total_num_steps)
 
             # eval
@@ -110,7 +111,6 @@ class Green5GRunner(Runner):
                            action_log_probs, values, reward, masks)
 
     def log_train(self, train_infos, total_num_steps):
-        train_infos["average_step_rewards"] = np.mean(self.buffer.rewards)
         for k, v in train_infos.items():
             if self.use_wandb:
                 wandb.log({k: v}, step=total_num_steps)

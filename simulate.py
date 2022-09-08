@@ -29,26 +29,25 @@ def parse_env_args(args):
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_latest_model_dir(args, env_args, use_wandb=not DEBUG):
+def get_latest_model_dir(args, env_args):
     run_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
         / args.env_name / env_args.traffic_type / args.algorithm_name / args.experiment_name
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
-    p = 'wandb/run*/files' if use_wandb else 'run*/models'
-    print(run_dir)
+    p = 'wandb/run*/files' if args.use_wandb else 'run*/models'
     return max(run_dir.glob(p), key=os.path.getmtime)
 
 parser = get_config()
-args = [
-    "-T", "200",
+args = sys.argv + [
+    "-T", "100",
     "--start_time", "307800",
-    "--log_level", "debug",
     "--traffic_type", "B",
-    # "--use_render", 
+    # "--use_render",
     # "--use_dash", 
     # "--model_dir", "wandb/run-20220825_231102-3q9eju6l/files"
 ]
+substeps = 20
 args, env_args = parser.parse_known_args(args)
 env_args = parse_env_args(env_args)
 
@@ -67,13 +66,13 @@ np.random.seed(args.seed)
 # agent = FixedPolicy([5, 4, 4], 7)
 # agent = RandomPolicy([5, 4, 4], 7)
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
+env.print_info()
 spaces = env.observation_space[0], env.cent_observation_space, env.action_space[0]
 model_dir = get_latest_model_dir(args, env_args)
 agent = MappoPolicy(args, *spaces, model_dir=model_dir)
 
 # %%
 step_rewards = []
-substeps = 2
 obs, _, _ = env.reset()
 if args.use_render:
     env.render(mode='none')

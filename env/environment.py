@@ -5,7 +5,7 @@ from .multi_discrete import MultiDiscrete
 # from gym.spaces import MultiDiscrete
 # from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
-from utils import info, debug, warn
+from utils import info, debug, warn, notice
 from network.network import MultiCellNetwork
 from network.base_station import BaseStation
 from network.config import areaSize, bsPositions
@@ -50,19 +50,13 @@ class MultiCellNetEnv(MultiAgentEnv):
         
         self.episode_len = int(self.episode_time_len / accel_rate /
                                time_step / action_interval)
+        self.action_interval = action_interval
         
         self.observation_space = [self.net.bs_obs_space
                                   for _ in range(self.num_agents)]
         self.cent_observation_space = self.net.net_obs_space
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
-        
-        # print('Observation space: {}'.format(
-        #     (self.num_agents, *self.observation_space[0].shape)))
-        # print('Central observation space: {}'.format(
-        #     self.cent_observation_space.shape))
-        # print('Action space: {}'.format(
-        #     (self.num_agents, self.action_space[0].shape)))
         
         self.w_drop = w_drop
         self.w_pc = w_pc
@@ -72,6 +66,23 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_count = 0
         self._episode_steps = 0
         self._total_steps = 0
+        
+    def print_info(self):
+        notice('Traffic type: {}'.format(self.net.traffic_model.scenario))
+        notice('Start time: {} s'.format(self.net.start_time))
+        notice('Time step: {} ms'.format(self._dt * 1000))
+        notice('Acceleration: {}'.format(self.net.accel_rate))
+        notice('Action interval: {} ms'.format(self.action_interval * self._dt * 1000))
+        notice('Episode length: {}'.format(self.episode_len))
+        notice('Episode time length: {} h'.format(self.episode_time_len / 3600))
+        notice('Drop rate weight: {}'.format(self.w_drop))
+        notice('Power consumption weight: {}'.format(self.w_pc))
+        notice('Observation space: {}'.format(
+            (self.num_agents, *self.observation_space[0].shape)))
+        notice('Central observation space: {}'.format(
+            self.cent_observation_space.shape))
+        notice('Action space: {}'.format(
+            (self.num_agents, self.action_space[0].shape)))
 
     def seed(self, seed=None):
         if seed is None:
@@ -118,6 +129,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         for i in range(substeps):
             self.net.step(self._dt)
 
+        self.net.update_stats()
+
         steps = substeps / self.action_interval
         self._sim_steps += substeps
         self._total_steps += steps
@@ -140,7 +153,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             info('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
             info('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
             info('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
-            
+
         info('Reward: %.2f', reward)
 
         rewards = [[reward]]  # shared reward for all agents

@@ -108,44 +108,44 @@ def render(env: 'MultiCellNetEnv', mode='human'):
             showlegend=False)
     except ValueError:
         ue_plt = dict(type='scatter')
-        
-    # plot reward
-    if fig['frames']:
-        fr = fig['frames'][-1]
-        last_rw_plt = fr['data'][-2]
-        x = last_rw_plt['x'] + [net._time]
-        y = last_rw_plt['y'] + [info['reward']]
-        y2_range = [min(fr['layout']['yaxis2']['range'][0], info['reward'] - 0.1), 0]
-    else:
-        x = [net._time]
-        y = [info['reward']]
-        y2_range = [info['reward'] - 0.1, 0]
-    rw_plt = dict(
-        type='scatter',
-        mode='lines',
-        x=x, y=y,
-        xaxis='x2',
-        yaxis='y2',
-        name='reward',
-    )
     
     # plot power consumption
     if fig['frames']:
+        fr = fig['frames'][-1]
         last_pc_plt = fr['data'][-1]
         x = last_pc_plt['x'] + [net._time]
         y = last_pc_plt['y'] + [info['power_consumption']]
-        y3_range = [0, max(fr['layout']['yaxis3']['range'][1], info['power_consumption'] + 0.1)]
+        y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
     else:
         x = [net._time]
         y = [info['power_consumption']]
-        y3_range = [0, info['power_consumption'] + 0.1]
+        y2_range = [0, info['power_consumption'] + 0.1]
     pc_plt = dict(
         type='scatter',
         mode='lines',
         x=x, y=y,
         xaxis='x2',
-        yaxis='y3',
+        yaxis='y2',
         name='power consumption',
+    )
+        
+    # plot reward
+    if fig['frames']:
+        last_rw_plt = fr['data'][-2]
+        x = last_rw_plt['x'] + [net._time]
+        y = last_rw_plt['y'] + [info['reward']]
+        y3_range = [min(fr['layout']['yaxis3']['range'][0], info['reward'] - 0.1), 0]
+    else:
+        x = [net._time]
+        y = [info['reward']]
+        y3_range = [info['reward'] - 0.1, 0]
+    rw_plt = dict(
+        type='scatter',
+        mode='lines',
+        x=x, y=y,
+        xaxis='x2',
+        yaxis='y3',
+        name='reward',
     )
     
     # append frame
@@ -226,10 +226,12 @@ def make_figure(net):
             updatemenus=[{
                 "buttons": [
                     {
-                        "args": [None, {"frame": {"duration": 300, "redraw": False},
-                                        "fromcurrent": True,
-                                        "transition": {"duration": 300, 
-                                                       "easing": "quadratic-in-out"}}],
+                        "args": [None, {
+                            "frame": {"duration": 300, "redraw": False},
+                            "fromcurrent": True,
+                            "transition": {"duration": 300, "easing": "quadratic-in-out"},
+                            # "layout": {"xaxis2": {"range": [0, net._time]}}
+                        }],
                         "label": "Play",
                         "method": "animate"
                     },
