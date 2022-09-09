@@ -6,6 +6,8 @@ import enum
 import atexit
 import logging
 import argparse
+import calendar
+import threading
 import numpy as np
 import pandas as pd
 from config import DEBUG
@@ -62,6 +64,13 @@ def first(iterable, k=None):
         it = iter(iterable)
         return (next(it) for _ in range(k))
 
+def deep_update(dict1, dict2):
+    for k, v2 in dict2.items():
+        v1 = dict1.get(k)
+        if isinstance(v1, dict):
+            deep_update(v1, v2)
+        else:
+            dict1[k] = v2
 
 class Profile:
     debug_counts, debug_times = defaultdict(int), defaultdict(float)

@@ -60,7 +60,7 @@ class MultiCellNetwork:
         m, s = divmod(self.world_time, 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
-        return int(d % 7 + 1), int(h), int(m), s
+        return int(d % 7), int(h), int(m), s
 
     @property
     def time_slot(self):
@@ -244,8 +244,9 @@ class MultiCellNetwork:
     @cache_obs
     def info_dict(self):
         obs = self.observe_network()
+        d, h, m, s = self.world_time_tuple
         return dict(
-            time='Day {}, {:02}:{:02}:{:02.2f}'.format(*self.world_time_tuple),
+            time='{}, {:02}:{:02}:{:02.2f}'.format(calendar.day_abbr[d], h, m, s),
             power_consumption=obs[0],
             arrival_rate=obs[1:4].sum(),
             dropped_rate=obs[4:7].sum(),

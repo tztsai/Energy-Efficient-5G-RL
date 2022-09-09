@@ -4,7 +4,7 @@ from utils import *
 from . import config
 from .env_utils import *
 from .user_equipment import User, UEStatus
-from visualize.obs import VisBSStats
+# from visualize.obs import VisBSStats
 from config import DEBUG
 
 
@@ -66,7 +66,6 @@ class BaseStation:
         self._nb_dists = dict()
         self._buffer = np.zeros(self.buffer_size, dtype=np.float32)
         self._buf_idx = 0
-        self._buf_stride = 10
         self.reset()
 
     ### properties ###
@@ -496,9 +495,9 @@ class BaseStation:
             num_s=len(self.ues),
             num_q=len(self.queue),
             num_c=len(self.covered_ues),
-            thrp_req=obs[-5],
-            thrp_ratio=obs[-4],
-            thrp_req_q=obs[-3],
+            thrp=obs[3],
+            thrp_req=obs[5],
+            thrp_req_q=obs[6],
         )
 
     def __repr__(self):
