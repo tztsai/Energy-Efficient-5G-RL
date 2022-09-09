@@ -2,11 +2,11 @@
 seed_max=1
 log_level="NOTICE"
 
-traffic_type="B"
+traffic_type="A"
 accel_rate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=5040000
+num_env_steps=3024000
 
 algo="mappo"
 gain=0.01
