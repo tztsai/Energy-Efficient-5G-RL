@@ -2,7 +2,6 @@
 import glob
 import os, sys
 import pandas as pd
-import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from network.network import MultiCellNetwork as Net
