@@ -26,8 +26,8 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        notice(str(self.actor))
-        notice(str(self.critic))
+        info(str(self.actor))
+        info(str(self.critic))
         
         self._actor_rnn_state = None
         
