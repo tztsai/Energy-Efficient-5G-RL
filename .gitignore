@@ -8,10 +8,10 @@
 events.out.tfevents.*
 .vscode/
 .misc/
-.ipynb_checkpoints/*
+**.ipynb_checkpoints/*
 data/cells-traffic/
 data/RAN_PM_data/
 results/**/check/run*/
 results/*.csv
 analysis/*.csv
-train.sh
+# train.sh
