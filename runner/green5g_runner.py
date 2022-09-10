@@ -43,6 +43,8 @@ class Green5GRunner(Runner):
             # save model
             if (episode % self.save_interval == 0 or episode == episodes - 1):
                 self.save()
+                if episode % 10 == 0:
+                    self.save(suffix='_eps%s' % episode)
 
             # log information
             if episode % self.log_interval == 0:

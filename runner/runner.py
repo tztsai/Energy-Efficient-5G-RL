@@ -129,9 +129,9 @@ class Runner(object):
         self.buffer.after_update()
         return train_infos
 
-    def save(self):
+    def save(self, suffix = ''):
         """Save policy's actor and critic networks."""
-        self.policy.save(self.save_dir)
+        self.policy.save(self.save_dir, suffix=suffix)
 
     def restore(self):
         """Restore policy's networks from a saved model."""
