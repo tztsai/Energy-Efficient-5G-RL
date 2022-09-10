@@ -94,10 +94,10 @@ class MappoPolicy:
         values, _ = self.critic(cent_obs, critic_rnn_states, masks)
         return values, action_log_probs, dist_entropy
 
-    def save(self, save_dir):
+    def save(self, save_dir, suffix=""):
         print("Saving models to {}".format(save_dir))
-        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor.pt"))
-        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic.pt"))
+        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % suffix))
+        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % suffix))
 
     def restore(self, model_dir):
         print("Restoring models from {}".format(model_dir))

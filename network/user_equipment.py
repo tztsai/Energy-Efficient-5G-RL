@@ -102,7 +102,7 @@ class User:
     def required_rate(self):
         t_lim = self.time_limit
         if t_lim <= 0: return 0.
-        return self.demand / max(t_lim, 3e-3)
+        return self.demand / t_lim
     
     @property
     def throughput_ratio(self):
