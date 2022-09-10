@@ -8,6 +8,12 @@ from .user_equipment import User, UEStatus
 from config import DEBUG
 
 
+class ConnectMode(enum.IntEnum):
+    Disconnect = -1
+    Reject = 0
+    Accept = 1
+
+
 class BaseStation:
     num_antennas = config.numAntennas
     ant_power = config.antennaPower
@@ -15,15 +21,16 @@ class BaseStation:
     frequency = config.bsFrequency
     bs_height = config.bsHeight
     cell_radius = config.cellRadius
-    num_conn_modes = 4
+    num_conn_modes = len(ConnectMode)
     num_sleep_modes = len(config.sleepDiscounts)
     num_ant_switch_opts = len(config.antennaSwitchOpts)
     wakeup_delays = config.wakeupDelays
     ant_switch_opts = config.antennaSwitchOpts
     ant_switch_energy = config.antSwitchEnergy
     sleep_switch_energy = config.sleepSwitchEnergy
-    handoff_energy = config.handoffEnergy
+    disconnect_energy = config.disconnectEnergy
     power_alloc_weights = config.powerAllocWeights
+    add_pc_penalty = config.addPCPenalty
     buffer_size = (60, 2)
     buffer_chunk_size = 5
     buffer_num_chunks = buffer_size[0] // buffer_chunk_size
@@ -38,7 +45,7 @@ class BaseStation:
         [[0, 1]] * num_sleep_modes +    # next sleep mode
         [[0, 99]] +                     # wakeup time
         [[0, np.inf]] * bs_stats_dim +  # bs stats
-        [[0, np.inf]] * 10               # ue stats
+        [[0, np.inf]] * 10              # ue stats
     )
     mutual_obs_space = make_box_env([[0, np.inf]] * 6)
     self_obs_space = concat_box_envs(public_obs_space, private_obs_space)
@@ -79,6 +86,10 @@ class BaseStation:
         return self.num_ue >= self.num_ant - 1
     
     @property
+    def responding(self):
+        return self.conn_mode > 0
+    
+    @property
     def transmit_power(self):
         return 0 if self.sleep else self.ant_power * self.num_ant
     
@@ -100,7 +111,9 @@ class BaseStation:
     
     @property
     def power_consumption(self):
-        return self._timer and sum(self._energy_consumed.values()) / self._timer
+        ec = sum(v for k, v in self._energy_consumed.items() if
+                 self.add_pc_penalty or k == 'operation')
+        return self._timer and ec / self._timer
     
     @property
     def cell_traffic_rate(self):
@@ -162,17 +175,18 @@ class BaseStation:
         Mode 3: accept new connections and take over all UEs in cell range
         """
         assert mode in range(self.num_conn_modes)
-        if mode == 0:  # disconnect all ues and empty the queue
-            self.disconnect_all()
-        elif mode == 3:  # take over all ues
-            if self.sleep:  # cannot take over UEs if asleep
-                self.consume_energy(2, 'connect')  # add EC penalty
-            else:
-                self.takeover_all()
-        self.accept_conn = mode >= 2
-        if self.accept_conn and self.sleep == 3:  # cannot accept new connections in SM3
+        mode -= 1  # -1, 0, 1
+        self.conn_mode = mode
+        if self.conn_mode > 0 and self.sleep == 3:  # cannot accept new connections in SM3
             self.consume_energy(2, 'connect')
-            self.accept_conn = False
+            self.conn_mode = -1
+        if self.conn_mode < 0:  # disconnect all ues and empty the queue
+            self.disconnect_all()
+        # elif mode == 3:  # take over all ues
+        #     if self.sleep:  # cannot take over UEs if asleep
+        #         self.consume_energy(2, 'connect')  # add EC penalty
+        #     else:
+        #         self.takeover_all()
     
     ### network functions ###
     
@@ -204,7 +218,7 @@ class BaseStation:
         # debug('BS {}: disconnected UE {}'.format(self.id, ue_id))
 
     def respond_connection_request(self, ue):
-        if self.accept_conn:
+        if self.responding:
             if ue.idle:
                 if self.sleep or self.ues_full:
                     self.add_to_queue(ue)
@@ -213,8 +227,6 @@ class BaseStation:
             else:
                 breakpoint()
             return True
-        else:
-            return False
 
     def add_to_cell(self, ue):
         self.covered_ues.add(ue)
@@ -224,13 +236,13 @@ class BaseStation:
         self.covered_ues.remove(ue)
 
     def takeover_all(self):
-        self._conn_act = 1
         if self.covered_ues:
             info(f'BS {self.id}: takes over all UEs in cell')
         for ue in self.covered_ues:
             if ue.bs is not self:
-                ue.disconnect()
-                self.consume_energy(self.handoff_energy, 'handoff')
+                if ue.bs is not None:
+                    ue.disconnect()
+                    self.consume_energy(self.disconnect_energy, 'disconnect')
                 self.add_to_queue(ue)  # delay connection to the next step
 
     def add_to_queue(self, ue):
@@ -294,18 +306,17 @@ class BaseStation:
             for ue in list(self.ues.values()):
                 ue.disconnect()
                 self.add_to_queue(ue)
-        elif self.accept_conn:  # accept new connections
-            while not self.ues_full and self.queue:  # connect ues in the queue
+        else:  # connect ues in the queue
+            while self.queue and not self.ues_full:
                 ue = self.pop_from_queue()
                 self.connect(ue)
 
     def disconnect_all(self):
-        self._conn_act = -1
         if self.ues or self.queue:
             info('BS {}: disconnects all UEs'.format(self.id))
         for ue in list(self.ues.values()):
             ue.disconnect()
-            self.consume_energy(self.handoff_energy, 'handoff')
+            self.consume_energy(self.disconnect_energy, 'disconnect')
         while self.queue:
             self.pop_from_queue()
 
@@ -361,9 +372,8 @@ class BaseStation:
         self.queue.clear()
         self.covered_ues.clear()
         self.sleep = 0
-        self.accept_conn = 1
+        self.conn_mode = 1
         self.num_ant = self.num_antennas
-        self._conn_act = 0
         self._power_alloc = None
         self._next_sleep = 0
         self._pc = None
@@ -400,7 +410,7 @@ class BaseStation:
             ### public information ###
             # self.pos
             # [self.band_width, self.transmit_power],
-            [self.num_ant, self.accept_conn],
+            [self.num_ant, self.responding],
             onehot_vec(self.num_sleep_modes, self.sleep),
             ### private information ###
             # [day % 7 + 1, hour, sec],
@@ -479,7 +489,6 @@ class BaseStation:
     def reset_stats(self):
         self._steps = 0
         self._timer = 0
-        self._conn_act = 0
         self._arrival_rate = 0
         self._energy_consumed.clear()
 
@@ -488,16 +497,15 @@ class BaseStation:
         obs = self.observe_self()
         return dict(
             num_ant=self.num_ant,
-            conn=self.accept_conn,
-            conn_act=self._conn_act,
+            conn_mode=self.conn_mode,
             sleep=self.sleep,
             pc=self.power_consumption,
             num_s=len(self.ues),
             num_q=len(self.queue),
             num_c=len(self.covered_ues),
-            thrp=obs[3],
-            thrp_req=obs[5],
-            thrp_req_q=obs[6],
+            thrp=obs[-7],
+            thrp_req=obs[-5],
+            thrp_req_q=obs[-4],
         )
 
     def __repr__(self):

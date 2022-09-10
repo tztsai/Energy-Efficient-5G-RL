@@ -15,9 +15,9 @@ trafficType = 'B'  # 'A', 'B', 'C'
 # action parameters
 numAntSwitchOpts = 5
 numSleepModes = 4
-numConnModes = 4
+numConnModes = 3
 
 # reward parameters
 droppedAppWeights = [.5, .3, .2]
-droppedTrafficWeight = 0.1
+droppedTrafficWeight = 0.12
 powerConsumptionWeight = 1.
