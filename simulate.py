@@ -13,8 +13,8 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-n_steps = 300
-substeps = 4
+n_steps = 12 * 24  # 1 day
+substeps = 5
 
 # %%
 def parse_env_args(args):
@@ -35,9 +35,8 @@ parser = get_config()
 args = sys.argv + [
     "-T", str(n_steps),
     "--accel_rate", "60000",
-    # "--start_time", "307800",
-    "--start_time", "583200",
-    "--traffic_type", "B",
+    # "--start_time", "583200",
+    "--traffic_type", "C",
     "--use_render",
     # "--use_dash", 
 ]

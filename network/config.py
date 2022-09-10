@@ -19,9 +19,10 @@ powerAllocWeights = [128, 2, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepDiscounts = [1, 0.195, 0.114, 0.076]
 wakeupDelays = [0, 1e-3, 1e-2, 1]
-antSwitchEnergy = 0.1  # energy consumption of switch per antenna in Joules
-sleepSwitchEnergy = [0, 0.1, 0.2, 2]  # energy consumption of switching sleep mode in Joules
-handoffEnergy = 0.06  # energy consumption of a UE handoff in Joules
+antSwitchEnergy = 0.03  # energy consumption of switch per antenna in Joules
+sleepSwitchEnergy = [0, 0.1, 0.2, 1]  # energy consumption of switching sleep mode in Joules
+disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
+addPCPenalty = True  # add power consumption penalty to invalid actions
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)

@@ -25,9 +25,9 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     fig = env._figure
 
     # plot base stations
-    x, y, m, s, c, r, a, i = np.array(
-        [[bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep, bs.accept_conn,
-          bs.sum_rate, bs._conn_act, i] for i, bs in net.bss.items()]).T
+    x, y, m, s, c, r, i = np.array(
+        [[bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep, bs.conn_mode,
+          bs.sum_rate, i] for i, bs in net.bss.items()]).T
     hover_text_template = """
     id: {id}<br>
     num antennas: {num_ant}<br>
@@ -70,9 +70,9 @@ def render(env: 'MultiCellNetEnv', mode='none'):
             line_color='red',
             # color=[color_sequence[n_agents*(int((a+1)/2))+i]
             #        for i, a in enumerate(a)],
-            color=color_sequence[:len(x)],
-            symbol=['circle-open' if x < 0 else 'circle' for x in a],
-            opacity=0.01 * np.clip(r/1e8, 0, 30) #+ (a < 0) * 0.7,
+            color=['grey' if con < 0 else color for con, color in zip(c, color_sequence)],
+            symbol='circle',
+            opacity=0.013 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.33,
         ),
         hoverinfo='skip',
         showlegend=False)
@@ -112,27 +112,27 @@ def render(env: 'MultiCellNetEnv', mode='none'):
         ue_plt = dict(type='scatter')
 
     # plot data rates
-    ws = 60  # window size
+    ws = 80  # window size
     fr = fig['frames'][-1] if fig['frames'] else None
     t = fr['data'][3]['x'] + [net._time] if fr else [net._time]
     t = t[-ws:]
     rate_plts = []
     y_max = 0
     for i, key in enumerate(['arrival_rate', 'real_rate', 'required_rate']):
-        new_y = info[key]
+        new_y = info[key] / 8
         if fr:
             y = fr['data'][i+3]['y'] + [new_y]
         else:
             y = [new_y]
         y = y[-ws:]
-        y_max = max(y_max, max(y) * 1.06)
+        y_max = max(y_max, max(y) * 1.05)
         rate_plts.append(dict(
             type='scatter',
             mode='lines',
             x=t, y=y,
             xaxis='x2',
             yaxis='y2',
-            name=key.replace('_', ' '),
+            name=key.replace('_', ' ')+' (MB/s)',
         ))
     y2_range = [0, y_max]
 
@@ -143,7 +143,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     else:
         y_pen = [pen]
     y_pen = y_pen[-ws:]
-    y3_range = [0, max(y_pen) * 1.06]
+    y3_range = [0, max(y_pen) * 1.05]
     rw_plt = dict(
         type='scatter',
         mode='lines',
@@ -178,7 +178,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
         x=t[::-1]+t, y=y_pen[::-1]+y_pc,
         xaxis='x2',
         yaxis='y3',
-        name='drop rate (10mb/s)',    
+        name='drop rate (MB/s)',    
         mode='text',
         fill='toself',
         fillcolor=drop_penalty_color,
