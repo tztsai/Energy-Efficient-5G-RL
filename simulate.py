@@ -37,7 +37,7 @@ args = sys.argv + [
     "-T", str(n_steps),
     "--accel_rate", "60000",
     # "--start_time", "583200",
-    "--traffic_type", "C",
+    "--traffic_type", "A",
     "--use_render",
     # "--use_dash", 
 ]

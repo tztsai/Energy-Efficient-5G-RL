@@ -157,7 +157,7 @@ class MultiCellNetwork:
             dropped = ue.demand / 1e6
             self._dropped[ue.app_type] += dropped
             self._total_dropped[ue.app_type] += [1, dropped, ue.delay]
-            debug(f"{ue} dropped")
+            # debug(f"{ue} dropped")
 
     @timeit
     def generate_new_ues(self, dt, **kwargs):
