@@ -211,12 +211,12 @@ class MultiCellNetwork:
         self._time += dt
 
     def reset_stats(self):
+        for bs in self.bss.values():
+            bs.reset_stats()
         self._demand[:] = 0
         self._dropped[:] = 0
         self._energy_consumed = 0
         self._timer = 0
-        for bs in self.bss.values():
-            bs.reset_stats()
 
     def update_stats(self):
         for bs in self.bss.values():

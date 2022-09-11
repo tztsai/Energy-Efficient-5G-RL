@@ -32,14 +32,16 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     id: {id}<br>
     num antennas: {num_ant}<br>
     sleep mode: {sleep}<br>
-    accept connection: {conn}<br>
+    connect mode: {conn_mode}<br>
     power consumption: {pc:.2f}<br>
     ues in service: {num_s}<br>
     ues in queue: {num_q}<br>
     ues in coverage: {num_c}<br>
     throughput: {thrp:.2f}<br>
-    demand: {thrp_req:.2f}<br>
-    queued demand: {thrp_req_q:.2f}
+    demand rate: {thrp_req:.2f}<br>
+    queued demand rate: {thrp_req_q:.2f}<br>
+    others demand rate: {thrp_req_o:.2f}<br>
+    others demand ratio: {thrp_ratio_o:.2f}
     """
     symbols = ['x-open' if s == 3 else conn_symbols[int(c)] + 
                sleep_suffixes[int(s)] for s, c in zip(s, c)]
@@ -66,13 +68,13 @@ def render(env: 'MultiCellNetEnv', mode='none'):
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
             size=config.cellRadius,
-            line_width=4 * (a > 0),
-            line_color='red',
+            line_width=1,
+            # line_color='red',
             # color=[color_sequence[n_agents*(int((a+1)/2))+i]
             #        for i, a in enumerate(a)],
             color=['grey' if con < 0 else color for con, color in zip(c, color_sequence)],
             symbol='circle',
-            opacity=0.013 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.33,
+            opacity=0.013 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.2,
         ),
         hoverinfo='skip',
         showlegend=False)

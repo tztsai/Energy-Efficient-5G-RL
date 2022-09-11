@@ -27,11 +27,12 @@ def parse_env_args(args):
                         help="start time of the simulation")
     parser.add_argument("--accel_rate", type=float,
                         help="acceleration rate of the simulation")
-    parser.add_argument("--act_interval", type=int,
-                        help="number of simulation steps between two actions")
     return parser.parse_known_args(args)[0]
 
 parser = get_config()
+parser.add_argument('--agent', type=str, default='mappo',
+                    help='type of agent used in simulation')
+
 args = sys.argv + [
     "-T", str(n_steps),
     "--accel_rate", "60000",
@@ -67,21 +68,32 @@ def get_latest_model_dir(args, env_args):
     p = 'wandb/run*/files' if args.use_wandb else 'run*/models'
     return max(run_dir.glob(p), key=os.path.getmtime)
 
-# agent = FixedPolicy([5, 4, 4], 7)
-# agent = RandomPolicy([5, 4, 4], 7)
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
 env.print_info()
-spaces = env.observation_space[0], env.cent_observation_space, env.action_space[0]
-model_dir = get_latest_model_dir(args, env_args)
-agent = MappoPolicy(args, *spaces, model_dir=model_dir)
+obs_space = env.observation_space[0]
+cent_obs_space = env.cent_observation_space
+action_space = env.action_space[0]
+
+# match args.agent.lower():
+if args.agent == 'mappo':
+    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, 
+                        model_dir=get_latest_model_dir(args, env_args))
+elif args.agent == 'fixed':
+    agent = AlwaysOnPolicy(action_space, env.num_agents)
+elif args.agent == 'random':
+    agent = RandomPolicy(action_space, env.num_agents)
+elif args.agent == 'adaptive':
+    agent = AdaptivePolicy(action_space, env.num_agents)
+else:
+    raise ValueError('invalid agent type')
 
 # %%
 obs, _, _ = env.reset()
 if args.use_render:
     env.render()
-    
+
 def step_env(obs):
-    actions = agent.act(obs, deterministic=False) if env.need_action else None
+    actions = agent.act(obs) if env.need_action else None
     obs, _, reward, done, _, _ = env.step(actions, substeps=substeps)
     if args.use_render:
         # if env._episode_steps > 20:
