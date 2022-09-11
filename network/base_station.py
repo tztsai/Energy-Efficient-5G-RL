@@ -361,7 +361,7 @@ class BaseStation:
                 R = sum(ue.data_rate for ue in self.ues.values()) / 1e6
                 Pbb += Pcd * R + C[3]*K**3 + M * (C[11]*K + C[12]*K**2)
         p = Ppa + Pbb + Poth
-        debug(f'BS {self.id}: Ppa={Ppa}, Pbb={Pbb}, P={p}')
+        # debug(f'BS {self.id}: Ppa={Ppa}, Pbb={Pbb}, P={p}')
         return p
     
     def consume_energy(self, e, k):
@@ -498,9 +498,9 @@ class BaseStation:
         self._timer += dt
 
     def update_stats(self):
-        debug(f'BS {self.id}: energy consumption {kwds_str(**self._energy_consumed)}')
+        # debug(f'BS {self.id}: energy consumption {kwds_str(**self._energy_consumed)}')
         record = [self.power_consumption, self.cell_traffic_rate]
-        debug(f'BS {self.id}: power consumption {record[0]} W')
+        # debug(f'BS {self.id}: power consumption {record[0]} W')
         self.insert_buffer(record)
         self._total_energy_consumed += record[0] * self._timer
 
@@ -519,6 +519,8 @@ class BaseStation:
             num_ant=self.num_ant,
             conn_mode=self.conn_mode,
             sleep=self.sleep,
+            next_sleep=self._next_sleep,
+            wakeup=self.wakeup_time,
             pc=self.power_consumption,
             num_s=len(self.ues),
             num_q=len(self.queue),

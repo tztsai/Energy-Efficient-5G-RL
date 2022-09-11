@@ -5,9 +5,8 @@ import plotly.graph_objects as go
 from network import config
 
 conn_symbols = ['hexagon', 'hexagram']
-sleep_suffixes = ['', '-open-dot', '-open']
 n_agents = 7
-color_sequence = np.array(px.colors.qualitative.Plotly)
+color_sequence = np.array(px.colors.qualitative.Plotly)[:n_agents+1]
 oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
     255 - int(s[i:i+2], 16) for i in range(1, 7, 2)) for s in color_sequence])
 
@@ -32,6 +31,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     id: {id}<br>
     num antennas: {num_ant}<br>
     sleep mode: {sleep}<br>
+    wake up: {wakeup}<br>
     connect mode: {conn_mode}<br>
     power consumption: {pc:.2f}<br>
     ues in service: {num_s}<br>
@@ -44,18 +44,17 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     others demand ratio: {thrp_ratio_o:.2f}
     """
     symbols = ['x-open' if s == 3 else conn_symbols[int(c)] + 
-               sleep_suffixes[int(s)] for s, c in zip(s, c)]
+               ('-open' if s > 1 else '') for s, c in zip(s, c)]
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = dict(
         type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
-            # size=m/6+8, 
-            size=18,
-            line_width=1, 
-            line_color='grey',
+            size=m/8+12,
+            line_width=0,
             symbol=symbols,
-            color=color_sequence[:len(x)]
+            color=color_sequence,
+            opacity=(s == 0) * 0.5 + 0.5
         ),
         hovertext=hover_texts,
         hoverinfo='text',
@@ -69,12 +68,12 @@ def render(env: 'MultiCellNetEnv', mode='none'):
         marker=dict(
             size=config.cellRadius,
             line_width=1,
-            # line_color='red',
+            line_color='lightyellow',
             # color=[color_sequence[n_agents*(int((a+1)/2))+i]
             #        for i, a in enumerate(a)],
             color=['grey' if con < 0 else color for con, color in zip(c, color_sequence)],
             symbol='circle',
-            opacity=0.013 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.2,
+            opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.1,
         ),
         hoverinfo='skip',
         showlegend=False)
@@ -101,7 +100,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
             x=x, y=y, mode='markers', ids=i,
             marker=dict(
                 size=s/1e5+2,
-                # line_width=1,
+                line_width=0,
                 # line_color='grey',
                 symbol=symbols,
                 color=color_sequence[b],
