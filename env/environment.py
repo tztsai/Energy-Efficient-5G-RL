@@ -5,12 +5,12 @@ from .multi_discrete import MultiDiscrete
 # from gym.spaces import MultiDiscrete
 # from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
+from . import config
 from utils import info, debug, warn, notice
 from network.network import MultiCellNetwork
 from network.base_station import BaseStation
-from network.config import areaSize, bsPositions
+from network import config as net_config
 from visualize import render, animate
-from . import config as C
 from config import DEBUG
 
 
@@ -21,20 +21,20 @@ class MultiCellNetEnv(MultiAgentEnv):
     - Connection mode: 0, 1, 2, 3
     - Switch antennae: -16, -4, 0, 4, 16
     """
-    w_drop_cats = np.array(C.droppedAppWeights)
-    w_drop = C.droppedTrafficWeight
-    w_pc = C.powerConsumptionWeight
-    episode_time_len = C.episodeTimeLen
-    bs_poses = bsPositions
-    num_agents = len(bsPositions)
-    action_interval = C.actionInterval
+    w_drop_cats = np.array(config.droppedAppWeights)
+    w_drop = config.droppedTrafficWeight
+    w_pc = config.powerConsumptionWeight
+    episode_time_len = config.episodeTimeLen
+    bs_poses = net_config.bsPositions
+    num_agents = len(bs_poses)
+    action_interval = config.actionInterval
     
     def __init__(self,
-                 area_size=areaSize,
-                 traffic_type=C.trafficType,
-                 start_time=C.startTime,
-                 time_step=C.timeStep,
-                 accel_rate=C.accelRate,
+                 area_size=net_config.areaSize,
+                 traffic_type=config.trafficType,
+                 start_time=config.startTime,
+                 time_step=config.timeStep,
+                 accel_rate=config.accelRate,
                  action_interval=action_interval,
                  w_drop=w_drop,
                  w_pc=w_pc,
@@ -60,7 +60,6 @@ class MultiCellNetEnv(MultiAgentEnv):
         
         self.w_drop = w_drop
         self.w_pc = w_pc
-        self._reward_stats = []
         self._seed = seed
         self._dt = time_step
         self._episode_count = 0

@@ -35,6 +35,7 @@ class BaseStation:
     buffer_chunk_size = 5
     buffer_num_chunks = buffer_size[0] // buffer_chunk_size
     bs_stats_dim = buffer_num_chunks * buffer_size[1]
+    ue_stats_dim = 11
     
     public_obs_space = make_box_env(
         [[0, num_antennas], [0, 1]] +
@@ -45,7 +46,7 @@ class BaseStation:
         [[0, 1]] * num_sleep_modes +    # next sleep mode
         [[0, 99]] +                     # wakeup time
         [[0, np.inf]] * bs_stats_dim +  # bs stats
-        [[0, np.inf]] * 10              # ue stats
+        [[0, np.inf]] * ue_stats_dim    # ue stats
     )
     mutual_obs_space = make_box_env([[0, np.inf]] * 6)
     self_obs_space = concat_box_envs(public_obs_space, private_obs_space)
@@ -163,6 +164,7 @@ class BaseStation:
         self._next_sleep = mode
         if mode > self.sleep:
             info('BS {}: goes to sleep {} -> {}'.format(self.id, self.sleep, mode))
+            self._prev_sleep = self.sleep
             self.sleep = mode
         elif mode < self.sleep:
             self._wake_delay = self.wakeup_delays[self.sleep]
@@ -287,12 +289,16 @@ class BaseStation:
             if self.queue and self.sleep in (1, 2):
                 # info('BS {}: automatically waking up'.format(self.id))
                 self.switch_sleep_mode(0)
+            elif self.sleep == 0 and not self.ues and self._prev_sleep == 1:
+                self.switch_sleep_mode(1)
+                info('BS {}: automatically goes to sleep mode 1'.format(self.id))
             return
         self._wake_timer += dt
         if self._wake_timer >= self._wake_delay:
             info('BS {}: switched sleep mode {} -> {}'
                   .format(self.id, self.sleep, self._next_sleep))
             self.consume_energy(self.sleep_switch_energy[self.sleep], 'wakeup')
+            self._prev_sleep = self.sleep
             self.sleep = self._next_sleep
             self._wake_timer = 0.
         # else:
@@ -364,6 +370,7 @@ class BaseStation:
 
     def insert_buffer(self, record):
         self._buffer[self._buf_idx] = record
+        self._buf_idx = (self._buf_idx + 1) % len(self._buffer)
 
     ### called by the environment ###
     
@@ -375,6 +382,7 @@ class BaseStation:
         self.conn_mode = 1
         self.num_ant = self.num_antennas
         self._power_alloc = None
+        self._prev_sleep = 0
         self._next_sleep = 0
         self._pc = None
         self._time = 0
@@ -462,21 +470,32 @@ class BaseStation:
         return chunks.mean(axis=1).flatten()
 
     def get_ue_stats(self):
+        idle_ues, others_ues = [], []
+        for ue in self.covered_ues:
+            if ue.bs is None:
+                idle_ues.append(ue)
+            elif ue.bs is not self:
+                others_ues.append(ue)
         thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
         thrp_req_queued = self.calc_sum_rate(self.queue)[1]
-        ues_covered_not_owned = [ue for ue in self.covered_ues if ue.bs is not self]
-        thrp_other, thrp_req_other, log_ratio_other = self.calc_sum_rate(ues_covered_not_owned)
+        thrp_req_idle = self.calc_sum_rate(idle_ues)[1]
+        thrp_other, thrp_req_other, log_ratio_other = self.calc_sum_rate(others_ues)
         return [
             len(self.ues), len(self.queue), len(self.covered_ues),
-            thrp, thrp_other,
-            thrp_req, thrp_req_queued, thrp_req_other,
-            log_ratio, log_ratio_other
+            thrp,
+            thrp_other,
+            thrp_req, 
+            thrp_req_queued, 
+            thrp_req_idle, 
+            thrp_req_other,
+            log_ratio,
+            log_ratio_other
         ]
 
     def update_timer(self, dt):
         self._steps += 1
-        self._timer += dt
         self._time += dt
+        self._timer += dt
 
     def update_stats(self):
         debug(f'BS {self.id}: energy consumption {kwds_str(**self._energy_consumed)}')
@@ -484,13 +503,14 @@ class BaseStation:
         debug(f'BS {self.id}: power consumption {record[0]} W')
         self.insert_buffer(record)
         self._total_energy_consumed += record[0] * self._timer
-        self._buf_idx = (self._buf_idx + 1) % len(self._buffer)
 
     def reset_stats(self):
         self._steps = 0
         self._timer = 0
         self._arrival_rate = 0
         self._energy_consumed.clear()
+        if self.conn_mode < 0:
+            self.conn_mode = 0
 
     @cache_obs
     def info_dict(self):
@@ -506,6 +526,8 @@ class BaseStation:
             thrp=obs[-7],
             thrp_req=obs[-5],
             thrp_req_q=obs[-4],
+            thrp_req_o=obs[-3],
+            thrp_ratio_o=np.exp(obs[-1])
         )
 
     def __repr__(self):

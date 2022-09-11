@@ -22,7 +22,7 @@ wakeupDelays = [0, 1e-3, 1e-2, 1]
 antSwitchEnergy = 0.03  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0, 0.1, 0.2, 1]  # energy consumption of switching sleep mode in Joules
 disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
-addPCPenalty = True  # add power consumption penalty to invalid actions
+addPCPenalty = True  # add power consumption penalty for invalid actions
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
