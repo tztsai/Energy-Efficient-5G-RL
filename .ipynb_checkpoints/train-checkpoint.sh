@@ -6,7 +6,7 @@ traffic_type="A"
 accel_rate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=3528000
+num_env_steps=3780000
 
 algo="mappo"
 gain=0.01
