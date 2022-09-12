@@ -17,7 +17,7 @@ class ConnectMode(enum.IntEnum):
 class BaseStation:
     num_antennas = config.numAntennas
     ant_power = config.antennaPower
-    band_width = config.bandWidth
+    bandwidth = config.bandWidth
     frequency = config.bsFrequency
     bs_height = config.bsHeight
     cell_radius = config.cellRadius
@@ -30,12 +30,12 @@ class BaseStation:
     sleep_switch_energy = config.sleepSwitchEnergy
     disconnect_energy = config.disconnectEnergy
     power_alloc_weights = config.powerAllocWeights
-    add_pc_penalty = config.addPCPenalty
+    use_action_pc = True  # include power consumption of actions
     buffer_size = (60, 2)
     buffer_chunk_size = 5
     buffer_num_chunks = buffer_size[0] // buffer_chunk_size
     bs_stats_dim = buffer_num_chunks * buffer_size[1]
-    ue_stats_dim = 8
+    ue_stats_dim = 11
     mutual_obs_dim = 5
     
     public_obs_space = make_box_env(
@@ -63,7 +63,7 @@ class BaseStation:
     def __init__(
         self, id, pos, net, 
         ant_power=None, num_antennas=None,
-        frequency=None, band_width=None,
+        frequency=None, bandwidth=None,
     ):
         pos = np.asarray(pos)
         for k, v in locals().items():
@@ -114,7 +114,7 @@ class BaseStation:
     @property
     def power_consumption(self):
         ec = sum(v for k, v in self._energy_consumed.items() if
-                 self.add_pc_penalty or k == 'operation')
+                 self.use_action_pc or k == 'operation')
         return self._timer and ec / self._timer
     
     @property
@@ -347,7 +347,7 @@ class BaseStation:
         M = self.num_ant
         K = self.num_ue
         if 3 not in C:
-            B = self.band_width / 1e9
+            B = self.bandwidth / 1e9
             C[3] = B / (3 * Tc * Lbs)
             C[11] = B / Lbs * (2 + 1/Tc)
             C[12] = 3 * B / Lbs
@@ -475,10 +475,12 @@ class BaseStation:
         thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
         thrp_req_queued = self.calc_sum_rate(self.queue)[1]
         thrp_req_idle = self.calc_sum_rate(ue for ue in self.covered_ues if ue.bs is None)[1]
+        thrp_cell, thrp_req_cell, log_ratio_cell = self.calc_sum_rate(self.covered_ues)
         return [
             len(self.ues), len(self.queue), len(self.covered_ues),
-            thrp, log_ratio,
-            thrp_req, thrp_req_queued, thrp_req_idle, 
+            thrp, thrp_cell,
+            log_ratio, log_ratio_cell,
+            thrp_req, thrp_req_queued, thrp_req_idle, thrp_req_cell
         ]
 
     def update_timer(self, dt):

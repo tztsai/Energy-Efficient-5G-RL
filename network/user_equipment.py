@@ -125,7 +125,7 @@ class User:
         """
         self._sinr = self.compute_sinr()
         if self._sinr == 0: return 0
-        return self.bs.band_width * np.log2(1 + self._sinr)
+        return self.bs.bandwidth * np.log2(1 + self._sinr)
     
     def update_data_rate(self):
         self._thruput = None
