@@ -22,7 +22,7 @@ class BaseStation:
     bs_height = config.bsHeight
     cell_radius = config.cellRadius
     num_conn_modes = len(ConnectMode)
-    num_sleep_modes = len(config.sleepDiscounts)
+    num_sleep_modes = len(config.sleepModeDeltas)
     num_ant_switch_opts = len(config.antennaSwitchOpts)
     wakeup_delays = config.wakeupDelays
     ant_switch_opts = config.antennaSwitchOpts
@@ -330,10 +330,11 @@ class BaseStation:
     @timeit
     def compute_power_consumption(
         self, eta=0.25, eps=8.2e-3, Ppa_max=3.125, Psyn=1,
-        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=5000, Poth=18, C={},
-        sm_discounts=config.sleepDiscounts
+        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=5000, Pfixed=18, C={},
+        sm_deltas=config.sleepModeDeltas
     ):
         """
+        Reference: 
         Args:
         - eta: max PA efficiency of the BS
         - Ppa_max: max PA power consumption
@@ -346,24 +347,25 @@ class BaseStation:
         """
         M = self.num_ant
         K = self.num_ue
-        if 3 not in C:
+        if 'K3' not in C:
             B = self.bandwidth / 1e9
-            C[3] = B / (3 * Tc * Lbs)
-            C[11] = B / Lbs * (2 + 1/Tc)
-            C[12] = 3 * B / Lbs
-            C['ET-PA'] = (self.ant_power + eps*Ppa_max) / ((1+eps)*eta)
+            # assume ET-PA (envelope tracking power amplifier)
+            C['PA-fx'] = eps * Ppa_max / ((1 + eps) * eta)
+            C['PA-ld'] = self.ant_power / ((1 + eps) * eta)
+            C['K3'] = B / (3 * Tc * Lbs)
+            C['MK1'] = (2 + 1/Tc) * B / Lbs
+            C['MK2'] = 3 * B / Lbs
+        P_load_indep = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed
         if self.sleep:
-            Ppa = 0
-            Pbb = M * Pbs * sm_discounts[self.sleep]
-        else:  # assume ET-PA (envelope tracking power amplifier)
-            Ppa = M / C['ET-PA']
-            Pbb = Psyn + M * Pbs
+            P = P_load_indep * sm_deltas[self.sleep]
+        else:
+            P_load_dep = M * C['PA-ld']
             if K > 0:
-                R = sum(ue.data_rate for ue in self.ues.values()) / 1e6
-                Pbb += Pcd * R + C[3]*K**3 + M * (C[11]*K + C[12]*K**2)
-        p = Ppa + Pbb + Poth
+                R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
+                P_load_dep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+            P = P_load_dep + P_load_indep
         # debug(f'BS {self.id}: Ppa={Ppa}, Pbb={Pbb}, P={p}')
-        return p
+        return P
     
     def consume_energy(self, e, k):
         self._energy_consumed[k] += e
