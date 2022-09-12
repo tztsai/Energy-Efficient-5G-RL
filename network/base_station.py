@@ -329,8 +329,8 @@ class BaseStation:
 
     @timeit
     def compute_power_consumption(
-        self, eta=0.8, eps=8.2e-3, Ppa_max=40, Psyn=2,
-        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=1800, Poth=18, C={},
+        self, eta=0.25, eps=8.2e-3, Ppa_max=3.125, Psyn=1,
+        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=5000, Poth=18, C={},
         sm_discounts=config.sleepDiscounts
     ):
         """
