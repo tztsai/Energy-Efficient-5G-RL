@@ -13,15 +13,15 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-n_steps = 12 * 24  # 1 day
-substeps = 5
+substeps = 20
+n_steps = 3 * 24 * 7  # 1 week
 
 # %%
 def parse_env_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
-    parser.add_argument("--traffic_type", type=str,
+    parser.add_argument("-S", "--traffic_type", type=str, default="A",
                         help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
@@ -30,15 +30,13 @@ def parse_env_args(args):
     return parser.parse_known_args(args)[0]
 
 parser = get_config()
-parser.add_argument('--agent', type=str, default='mappo',
+parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
 
 args = sys.argv + [
     "-T", str(n_steps),
     "--accel_rate", "60000",
-    # "--start_time", "583200",
-    # "--traffic_type", "A",
-    "--use_render",
+    # "--use_render",
     # "--use_dash", 
 ]
 args, env_args = parser.parse_known_args(args)
@@ -129,8 +127,8 @@ def simulate(obs=obs):
     save_path = Path(__file__).parent / "results" / 'records.csv'
     info.to_frame().T.set_index('time').to_csv(
         save_path, mode='a', header=not save_path.exists())
-    # if args.use_render and not args.use_dash:
-    #     return env.animate()
+    if args.use_render and not args.use_dash:
+        return env.animate()
     
 simulate()
 

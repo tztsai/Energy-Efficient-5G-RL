@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from network import config
 
-conn_symbols = ['hexagon', 'hexagram']
+sleep_symbols = np.array(['hexagram', 'hexagram-open', 'hexagon-open', 'x-open'])
 n_agents = 7
 color_sequence = np.array(px.colors.qualitative.Plotly)[:n_agents+1]
 oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
@@ -43,16 +43,15 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     others demand rate: {thrp_req_o:.2f}<br>
     others demand ratio: {thrp_ratio_o:.2f}
     """
-    symbols = ['x-open' if s == 3 else conn_symbols[int(c)] + 
-               ('-open' if s > 1 else '') for s, c in zip(s, c)]
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = dict(
         type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
             size=m/8+12,
-            line_width=0,
-            symbol=symbols,
+            line_width=1,
+            line_color=color_sequence,
+            symbol=sleep_symbols[s.astype(int)],
             color=color_sequence,
             opacity=(s == 0) * 0.5 + 0.5
         ),
@@ -67,13 +66,11 @@ def render(env: 'MultiCellNetEnv', mode='none'):
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
             size=config.cellRadius,
-            line_width=1,
-            line_color='lightyellow',
-            # color=[color_sequence[n_agents*(int((a+1)/2))+i]
-            #        for i, a in enumerate(a)],
-            color=['grey' if con < 0 else color for con, color in zip(c, color_sequence)],
+            line_width=3,
+            line_color=['red' if c > 0 else color for c, color in zip(c, color_sequence)],
+            color=['grey' if c < 0 else color for c, color in zip(c, color_sequence)],
             symbol='circle',
-            opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.1,
+            opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.06,
         ),
         hoverinfo='skip',
         showlegend=False)
