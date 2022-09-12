@@ -13,8 +13,9 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
+acceleration = 60000  # 1 substep = 1 minute
 substeps = 20
-n_steps = 3 * 24 * 7  # 1 week
+n_steps = 3 * 24 * 7  # a week
 
 # %%
 def parse_env_args(args):
@@ -27,15 +28,15 @@ def parse_env_args(args):
                         help="start time of the simulation")
     parser.add_argument("--accel_rate", type=float,
                         help="acceleration rate of the simulation")
-    return parser.parse_known_args(args)[0]
+    return parser.parse_args(args)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
 
-args = sys.argv + [
+args = sys.argv[1:] + [
     "-T", str(n_steps),
-    "--accel_rate", "60000",
+    "--accel_rate", str(acceleration),
     # "--use_render",
     # "--use_dash", 
 ]
@@ -65,7 +66,7 @@ def get_latest_model_dir(args, run_dir):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
-    p = 'wandb/run*/files' if args.use_wandb else 'run*/models'
+    p = 'wandb/run*/files/' if args.use_wandb else 'run*/models/'
     return max(run_dir.glob(p), key=os.path.getmtime)
 
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)

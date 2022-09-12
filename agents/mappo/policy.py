@@ -99,10 +99,13 @@ class MappoPolicy:
         torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % suffix))
         torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % suffix))
 
-    def restore(self, model_dir):
+    def restore(self, model_dir, suffix=""):
         print("Restoring models from {}".format(model_dir))
-        self.actor.load_state_dict(torch.load(osp.join(model_dir, "actor.pt")))
-        self.critic.load_state_dict(torch.load(osp.join(model_dir, 'critic.pt')))
+        model_dir = Path(model_dir)
+        actor_file = next(model_dir.glob(f'actor*{suffix}.pt'))
+        critic_file = next(model_dir.glob(f'critic*{suffix}.pt'))
+        self.actor.load_state_dict(torch.load(str(actor_file)))
+        self.critic.load_state_dict(torch.load(str(critic_file)))
 
     def prep_training(self):
         self.actor.train()
