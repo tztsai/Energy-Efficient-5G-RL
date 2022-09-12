@@ -37,7 +37,7 @@ args = sys.argv + [
     "-T", str(n_steps),
     "--accel_rate", "60000",
     # "--start_time", "583200",
-    "--traffic_type", "A",
+    # "--traffic_type", "A",
     "--use_render",
     # "--use_dash", 
 ]
@@ -59,9 +59,11 @@ np.random.seed(args.seed)
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_latest_model_dir(args, env_args):
-    run_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
+def get_run_dir(args, env_args):
+    return Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
         / args.env_name / env_args.traffic_type / args.algorithm_name / args.experiment_name
+
+def get_latest_model_dir(args, run_dir):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
@@ -74,10 +76,12 @@ obs_space = env.observation_space[0]
 cent_obs_space = env.cent_observation_space
 action_space = env.action_space[0]
 
+run_dir = get_run_dir(args, env_args)
+
 # match args.agent.lower():
 if args.agent == 'mappo':
-    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, 
-                        model_dir=get_latest_model_dir(args, env_args))
+    model_dir = args.model_dir or get_latest_model_dir(args, run_dir)
+    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, model_dir=model_dir)
 elif args.agent == 'fixed':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
 elif args.agent == 'random':
@@ -88,6 +92,8 @@ else:
     raise ValueError('invalid agent type')
 
 # %%
+from datetime import datetime
+
 obs, _, _ = env.reset()
 if args.use_render:
     env.render()
@@ -110,9 +116,21 @@ def simulate(obs=obs):
         obs, reward, done = step_env(obs)
         step_rewards.append(reward)
     rewards = pd.Series(np.squeeze(step_rewards), name='reward')
-    print(rewards.describe())
-    if args.use_render and not args.use_dash:
-        return env.animate()
+    info = rewards.describe()
+    print(info)
+    info.index = ['reward_' + str(i) for i in info.index]
+    info['agent'] = args.agent
+    info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    info['scenario'] = env_args.traffic_type
+    info['total_steps'] = T
+    info['accel_rate'] = env_args.accel_rate
+    info['w_pc'] = env.w_pc
+    info['w_drop'] = env.w_drop
+    save_path = Path(__file__).parent / "results" / 'records.csv'
+    info.to_frame().T.set_index('time').to_csv(
+        save_path, mode='a', header=not save_path.exists())
+    # if args.use_render and not args.use_dash:
+    #     return env.animate()
     
 simulate()
 

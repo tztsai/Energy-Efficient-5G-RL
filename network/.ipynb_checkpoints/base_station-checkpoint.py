@@ -35,7 +35,7 @@ class BaseStation:
     buffer_chunk_size = 5
     buffer_num_chunks = buffer_size[0] // buffer_chunk_size
     bs_stats_dim = buffer_num_chunks * buffer_size[1]
-    ue_stats_dim = 11  #10
+    ue_stats_dim = 11
     
     public_obs_space = make_box_env(
         [[0, num_antennas], [0, 1]] +
@@ -479,7 +479,6 @@ class BaseStation:
         thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
         thrp_req_queued = self.calc_sum_rate(self.queue)[1]
         thrp_req_idle = self.calc_sum_rate(idle_ues)[1]
-        # others_ues += idle_ues
         thrp_other, thrp_req_other, log_ratio_other = self.calc_sum_rate(others_ues)
         return [
             len(self.ues), len(self.queue), len(self.covered_ues),
