@@ -36,6 +36,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                  time_step=config.timeStep,
                  accel_rate=config.accelRate,
                  action_interval=action_interval,
+                 add_action_pc=config.includeActionPC,
                  w_drop=w_drop,
                  w_pc=w_pc,
                  seed=0):
@@ -57,6 +58,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.cent_observation_space = self.net.net_obs_space
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
+        
+        BaseStation.use_action_pc = add_action_pc
         
         self.w_drop = w_drop
         self.w_pc = w_pc
