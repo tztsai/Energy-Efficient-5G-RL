@@ -64,6 +64,7 @@ def get_config():
         --use_feature_normalization
             by default True, apply layernorm to normalize inputs. 
         --use_orthogonal
+        
             by default True, use Orthogonal initialization for weights and 0 initialization for biases. or else, will use xavier uniform inilialization.
         --gain
             by default 0.01, use the gain # of last action layer

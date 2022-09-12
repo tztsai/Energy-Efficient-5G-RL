@@ -35,7 +35,8 @@ class BaseStation:
     buffer_chunk_size = 5
     buffer_num_chunks = buffer_size[0] // buffer_chunk_size
     bs_stats_dim = buffer_num_chunks * buffer_size[1]
-    ue_stats_dim = 11  #10
+    ue_stats_dim = 8
+    mutual_obs_dim = 5
     
     public_obs_space = make_box_env(
         [[0, num_antennas], [0, 1]] +
@@ -48,7 +49,7 @@ class BaseStation:
         [[0, np.inf]] * bs_stats_dim +  # bs stats
         [[0, np.inf]] * ue_stats_dim    # ue stats
     )
-    mutual_obs_space = make_box_env([[0, np.inf]] * 6)
+    mutual_obs_space = make_box_env([[0, np.inf]] * mutual_obs_dim)
     self_obs_space = concat_box_envs(public_obs_space, private_obs_space)
     other_obs_space = concat_box_envs(public_obs_space, mutual_obs_space)
     
@@ -434,14 +435,15 @@ class BaseStation:
         shared_ues = self.covered_ues & bs.covered_ues
         owned_ues = set(ue for ue in shared_ues if ue.bs is self)
         others_ues = set(ue for ue in shared_ues if ue.bs is bs)
-        owned_log_ratio = self.calc_sum_rate(owned_ues)[-1]
-        others_log_ratio = self.calc_sum_rate(others_ues)[-1]
+        _, owned_thrp_req, owned_log_ratio = self.calc_sum_rate(owned_ues)
+        _, others_thrp_req, others_log_ratio = self.calc_sum_rate(others_ues)
         obs = np.array([
             self.neighbor_dist(bs.id),
-            len(shared_ues), len(owned_ues), len(others_ues),
-            owned_log_ratio, others_log_ratio
+            # len(shared_ues), len(owned_ues), len(others_ues),
+            owned_thrp_req, owned_log_ratio, 
+            others_thrp_req, others_log_ratio
         ], dtype=np.float32)
-        other_obs = obs[[0, 1, 3, 2, 5, 4]]
+        other_obs = obs[[0, 3, 4, 1, 2]]
         return obs, other_obs
     
     @staticmethod
@@ -451,10 +453,10 @@ class BaseStation:
         if required_thrp > 0:
             required_thrp *= 1e-6
             if real_thrp == 0:
-                return real_thrp, required_thrp, -10.
+                return real_thrp, required_thrp, -5.
             real_thrp *= 1e-6
             ratio = np.clip(real_thrp / required_thrp, 1e-4, 1e4)
-            return real_thrp, required_thrp, np.log(ratio)
+            return real_thrp, required_thrp, np.log10(ratio)
         else:
             real_thrp *= 1e-6
             return real_thrp, 0, 0
@@ -470,27 +472,13 @@ class BaseStation:
         return chunks.mean(axis=1).flatten()
 
     def get_ue_stats(self):
-        idle_ues, others_ues = [], []
-        for ue in self.covered_ues:
-            if ue.bs is None:
-                idle_ues.append(ue)
-            elif ue.bs is not self:
-                others_ues.append(ue)
         thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
         thrp_req_queued = self.calc_sum_rate(self.queue)[1]
-        thrp_req_idle = self.calc_sum_rate(idle_ues)[1]
-        # others_ues += idle_ues
-        thrp_other, thrp_req_other, log_ratio_other = self.calc_sum_rate(others_ues)
+        thrp_req_idle = self.calc_sum_rate(ue for ue in self.covered_ues if ue.bs is None)[1]
         return [
             len(self.ues), len(self.queue), len(self.covered_ues),
-            thrp,
-            thrp_other,
-            thrp_req, 
-            thrp_req_queued, 
-            thrp_req_idle, 
-            thrp_req_other,
-            log_ratio,
-            log_ratio_other
+            thrp, log_ratio,
+            thrp_req, thrp_req_queued, thrp_req_idle, 
         ]
 
     def update_timer(self, dt):
