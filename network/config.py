@@ -5,10 +5,10 @@ renderMode = 'none'
 
 # base station params
 numBS = 7
-interBSDist = 200  # the distance between two adjacent BSs
+interBSDist = 300  # the distance between two adjacent BSs
 cellRadius = 500  # the radius of a hexagon cell in meters
-antennaPower = 0.2  # maximum BS power in watts (src: Energy Saving Game for Massive MIMO)
-bsFrequency = 1.9e9  # carrier frequency in Hz
+antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
+bsFrequency = 5e9  # carrier frequency in Hz
 antennaGain = 18  # power gain in dB of each antenna of a BS
 # feederLoss = 1  # feeder loss in dB (XXX: included in antennaGain)
 numAntennas = 64  # max number of antennas
@@ -17,11 +17,11 @@ bsHeight = 30  # height difference between a BS and a user in meters
 powerAllocWeights = [128, 2, 1]  # weights of the power allocation
 # powerAllocWeights = [1, 1, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
-sleepDiscounts = [1, 0.195, 0.114, 0.076]
-wakeupDelays = [0, 1e-3, 1e-2, 1]
+sleepModeDeltas = [1, 0.69, 0.50, 0.29]
+wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.02  # energy consumption of switch per antenna in Joules
-sleepSwitchEnergy = [0, 0.02, 0.04, 0.4]  # energy consumption of switching sleep mode in Joules
-disconnectEnergy = 0.03  # energy consumption of an early disconnection in Joules
+sleepSwitchEnergy = [0, 0.01, 0.03, 0.1]  # energy consumption of switching sleep mode in Joules
+disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)

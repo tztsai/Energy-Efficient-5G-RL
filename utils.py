@@ -1,3 +1,4 @@
+# %%
 import io
 import os
 import sys
@@ -109,3 +110,5 @@ if not DEBUG:
     timeit = lambda fn: fn
 else:
     atexit.register(Profile.print_debug_exit)
+    
+# %%
