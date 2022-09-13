@@ -29,19 +29,18 @@ def render(env: 'MultiCellNetEnv', mode='none'):
           bs.sum_rate, i] for i, bs in net.bss.items()]).T
     hover_text_template = """
     id: {id}<br>
-    num antennas: {num_ant}<br>
-    sleep mode: {sleep}<br>
-    wake up: {wakeup}<br>
-    connect mode: {conn_mode}<br>
+    num antennas: {num_antennas}<br>
+    sleep mode: {sleep_mode}<br>
+    wake up: {wakeup_time}<br>
+    responding: {responding}<br>
     power consumption: {pc:.2f}<br>
-    ues in service: {num_s}<br>
-    ues in queue: {num_q}<br>
-    ues in coverage: {num_c}<br>
-    throughput: {thrp:.2f}<br>
-    demand rate: {thrp_req:.2f}<br>
-    queued demand rate: {thrp_req_q:.2f}<br>
-    others demand rate: {thrp_req_o:.2f}<br>
-    others demand ratio: {thrp_ratio_o:.2f}
+    ues in service: {num_served}<br>
+    ues in queue: {num_queued}<br>
+    ues in coverage: {num_covered}<br>
+    throughput: {thrp_served:.2f}<br>
+    demand rate: {thrp_req_served:.2f}<br>
+    queued demand rate: {thrp_req_queued:.2f}<br>
+    idle demand rate: {thrp_req_idle:.2f}<br>
     """
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = dict(

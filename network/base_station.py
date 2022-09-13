@@ -521,7 +521,16 @@ class BaseStation:
 
     @cache_obs
     def info_dict(self):
-        return self.annotate_obs(self.get_observation())
+        obs = self.get_observation()
+        info = self.annotate_obs(obs, trunc=self.self_obs_ndims)
+        for k, v in list(info.items()):
+            if '-' in k:
+                if k == 'pc-1':
+                    info['pc'] = v
+                elif k == 'arrival_rate-1':
+                    info['arrival_rate'] = v
+                del info[k]
+        return info
         # obs = self.observe_self()
         # return dict(
         #     num_ant=self.num_ant,
