@@ -122,13 +122,13 @@ class MultiCellNetwork:
         return bs
 
     def add_user(self, ue):
+        if DEBUG:
+            assert ue.id not in self.ues, "UE %s already in the network" % ue.id
+            # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
         self._demand[ue.app_type] += ue.demand / 1e6
-        if DEBUG:
-            assert ue.id not in self.ues, "UE %s already in the network" % ue.id
-            # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
 
     @timeit
     def scan_connections(self):

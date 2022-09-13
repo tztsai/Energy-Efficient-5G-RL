@@ -15,7 +15,7 @@ from dash.dependencies import ClientsideFunction
 
 acceleration = 60000  # 1 substep = 1 minute
 substeps = 20
-n_steps = 3 * 24 * 7  # a week
+n_steps = 3 * 24 # * 7  # a week
 
 # %%
 def parse_env_args(args):

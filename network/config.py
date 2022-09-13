@@ -5,14 +5,14 @@ renderMode = 'none'
 
 # base station params
 numBS = 7
-interBSDist = 250  # the distance between two adjacent BSs
+interBSDist = 300  # the distance between two adjacent BSs
 cellRadius = 500  # the radius of a hexagon cell in meters
 antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 5e9  # carrier frequency in Hz
 antennaGain = 18  # power gain in dB of each antenna of a BS
 # feederLoss = 1  # feeder loss in dB (XXX: included in antennaGain)
 numAntennas = 64  # max number of antennas
-bandWidth = 20e6  # communication bandwidth in Hz
+bandWidth = 40e6  # communication bandwidth in Hz
 bsHeight = 30  # height difference between a BS and a user in meters
 powerAllocWeights = [128, 4, 1]  # weights of the power allocation
 # powerAllocWeights = [1, 1, 1]  # weights of the power allocation
