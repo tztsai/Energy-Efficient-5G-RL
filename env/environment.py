@@ -36,6 +36,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                  time_step=config.timeStep,
                  accel_rate=config.accelRate,
                  action_interval=action_interval,
+                 add_action_pc=config.includeActionPC,
                  w_drop=w_drop,
                  w_pc=w_pc,
                  seed=0):
@@ -57,6 +58,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.cent_observation_space = self.net.net_obs_space
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
+        
+        BaseStation.use_action_pc = add_action_pc
         
         self.w_drop = w_drop
         self.w_pc = w_pc
@@ -91,12 +94,10 @@ class MultiCellNetEnv(MultiAgentEnv):
     @property
     def need_action(self):
         return self._sim_steps % self.action_interval == 0
-        
+    
     def get_reward(self):
         pc = self.net.power_consumption
         dr = self.net.drop_rates
-        info('Power consumption: {}'.format(pc))
-        info('Dropped rates: {}'.format(dr))
         dropped = np.sum(dr * self.w_drop_cats)
         return -self.w_drop * dropped - self.w_pc * pc
 
@@ -117,7 +118,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         return self.get_obs(), self.get_cent_obs(), None
     
     def step(self, actions=None, substeps=action_interval):
-        info(f'\nStep {self._sim_steps}:\n')
+        notice(f'\nStep {self._sim_steps}:\n')
         
         self.net.reset_stats()
         
@@ -142,18 +143,24 @@ class MultiCellNetEnv(MultiAgentEnv):
         if DEBUG:
             infos = self.info_dict()
             self._steps_info.append(infos)
-            info('\nTime: %s', infos['time'])
+            notice('\nTime: %s', infos['time'])
+            notice('Power consumption: {}'.format(self.net.power_consumption))
+            notice('Dropped rates: {}'.format(self.net.drop_rates))
             info('\nBS states:\n{}'.format(infos['bs_info']))
             # ue_info = infos.pop('ue_info')
             # info('\nUE states:\n{}'.format(info_dict['ue_info']))
-            info('\nStatistics:')
-            info('  %d users done', infos['total_done_count'])
-            info('  %d users dropped', infos['total_dropped_count'])
-            info('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
-            info('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
-            info('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
+            notice('\nStatistics:')
+            notice('  average PC: %.3f', infos['avg_pc']),
+            notice('  %d users done', infos['total_done_count'])
+            notice('  %d users dropped', infos['total_dropped_count'])
+            notice('  done traffic (Mb): %.2f, %.2f, %.2f', *infos['total_done_vol']),
+            notice('  dropped traffic (Mb): %.2f, %.2f, %.2f', *infos['total_dropped_vol']),
+            notice('  serving time (ms): %.1f, %.1f, %.1f', *infos['avg_serve_time'])
+            notice('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
+            notice('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
+            notice('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
 
-        info('Reward: %.2f', reward)
+        notice('Reward: %.2f', reward)
 
         rewards = [[reward]]  # shared reward for all agents
 

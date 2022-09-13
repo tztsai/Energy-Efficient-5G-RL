@@ -5,24 +5,26 @@ renderMode = 'none'
 
 # base station params
 numBS = 7
-interBSDist = 200  # the distance between two adjacent BSs
+interBSDist = 250  # the distance between two adjacent BSs
 cellRadius = 500  # the radius of a hexagon cell in meters
-antennaPower = 0.2  # maximum BS power in watts (src: Energy Saving Game for Massive MIMO)
-bsFrequency = 1.9e9  # carrier frequency in Hz
+antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
+bsFrequency = 5e9  # carrier frequency in Hz
 antennaGain = 18  # power gain in dB of each antenna of a BS
 # feederLoss = 1  # feeder loss in dB (XXX: included in antennaGain)
 numAntennas = 64  # max number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
 bsHeight = 30  # height difference between a BS and a user in meters
-powerAllocWeights = [128, 2, 1]  # weights of the power allocation
+powerAllocWeights = [128, 4, 1]  # weights of the power allocation
 # powerAllocWeights = [1, 1, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
-sleepDiscounts = [1, 0.195, 0.114, 0.076]
-wakeupDelays = [0, 1e-3, 1e-2, 1]
+sleepModeDeltas = [1, 0.69, 0.50, 0.29]
+wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.02  # energy consumption of switch per antenna in Joules
-sleepSwitchEnergy = [0, 0.02, 0.04, 0.4]  # energy consumption of switching sleep mode in Joules
-disconnectEnergy = 0.03  # energy consumption of an early disconnection in Joules
-addPCPenalty = True  # add power consumption penalty for invalid actions
+sleepSwitchEnergy = [0, 0.01, 0.03, 0.1]  # energy consumption of switching sleep mode in Joules
+disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
+bufferShape = (60, 2)  # shape of the buffer used to record past observations 
+bufferChunkSize = 5  # chunk size to apply average pooling
+bufferNumChunks = bufferShape[0] // bufferChunkSize
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
@@ -43,3 +45,15 @@ bsPositions = np.vstack([
     #       AREA[1]/2 + R * 3 * np.sin(a)]
     #      for a in np.linspace(0, 2*np.pi, 13)[:-1]]),
     areaSize[None, :] / 2])
+
+# obs names
+public_obs_keys = ['num_antennas', 'responding', 'sleep_mode']
+buffer_record_keys = ['pc', 'arrival_rate']
+private_obs_keys = ['next_sleep_mode', 'wakeup_time',
+                    *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in buffer_record_keys],
+                    'num_served', 'num_queued', 'num_idle', 'num_covered',
+                    'thrp_served', 'thrp_covered', 'log_ratio_served', 'log_ratio_covered',
+                    'thrp_req_served', 'thrp_req_queued', 'thrp_req_idle', 'thrp_req_covered']
+mutual_obs_keys = ['dist', 'own_thrp_req', 'own_log_ratio', 'other_thrp_req', 'other_log_ratio']
+other_obs_keys = [f'nb{i}_{k}' for i in range(numBS - 1) for k in public_obs_keys + mutual_obs_keys]
+all_obs_keys = public_obs_keys + private_obs_keys + other_obs_keys

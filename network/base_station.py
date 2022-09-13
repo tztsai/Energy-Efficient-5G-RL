@@ -17,12 +17,12 @@ class ConnectMode(enum.IntEnum):
 class BaseStation:
     num_antennas = config.numAntennas
     ant_power = config.antennaPower
-    band_width = config.bandWidth
+    bandwidth = config.bandWidth
     frequency = config.bsFrequency
     bs_height = config.bsHeight
     cell_radius = config.cellRadius
     num_conn_modes = len(ConnectMode)
-    num_sleep_modes = len(config.sleepDiscounts)
+    num_sleep_modes = len(config.sleepModeDeltas)
     num_ant_switch_opts = len(config.antennaSwitchOpts)
     wakeup_delays = config.wakeupDelays
     ant_switch_opts = config.antennaSwitchOpts
@@ -30,12 +30,12 @@ class BaseStation:
     sleep_switch_energy = config.sleepSwitchEnergy
     disconnect_energy = config.disconnectEnergy
     power_alloc_weights = config.powerAllocWeights
-    add_pc_penalty = config.addPCPenalty
-    buffer_size = (60, 2)
-    buffer_chunk_size = 5
-    buffer_num_chunks = buffer_size[0] // buffer_chunk_size
-    bs_stats_dim = buffer_num_chunks * buffer_size[1]
-    ue_stats_dim = 8
+    use_action_pc = True  # include power consumption of actions
+    buffer_shape = config.bufferShape
+    buffer_chunk_size = config.bufferChunkSize
+    buffer_num_chunks = config.bufferNumChunks
+    bs_stats_dim = buffer_num_chunks * buffer_shape[1]
+    ue_stats_dim = 12
     mutual_obs_dim = 5
     
     public_obs_space = make_box_env(
@@ -52,18 +52,22 @@ class BaseStation:
     mutual_obs_space = make_box_env([[0, np.inf]] * mutual_obs_dim)
     self_obs_space = concat_box_envs(public_obs_space, private_obs_space)
     other_obs_space = concat_box_envs(public_obs_space, mutual_obs_space)
+    total_obs_space = concat_box_envs(
+        self_obs_space, duplicate_box_env(
+            other_obs_space, config.numBS - 1))
     
     public_obs_ndims = box_env_ndims(public_obs_space)
     private_obs_ndims = box_env_ndims(private_obs_space)
     self_obs_ndims = box_env_ndims(self_obs_space)
     other_obs_ndims = box_env_ndims(other_obs_space)
+    total_obs_ndims = box_env_ndims(total_obs_space)
     
     action_dims = (num_ant_switch_opts, num_sleep_modes, num_conn_modes)
 
     def __init__(
         self, id, pos, net, 
         ant_power=None, num_antennas=None,
-        frequency=None, band_width=None,
+        frequency=None, bandwidth=None,
     ):
         pos = np.asarray(pos)
         for k, v in locals().items():
@@ -73,7 +77,7 @@ class BaseStation:
         self.queue = deque()
         self.covered_ues = set()
         self._nb_dists = dict()
-        self._buffer = np.zeros(self.buffer_size, dtype=np.float32)
+        self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
         self._buf_idx = 0
         self.reset()
 
@@ -86,6 +90,10 @@ class BaseStation:
     @property
     def ues_full(self):
         return self.num_ue >= self.num_ant - 1
+    
+    @property
+    def covered_idle_ues(self):
+        return [ue for ue in self.covered_ues if ue.bs is None]
     
     @property
     def responding(self):
@@ -114,7 +122,7 @@ class BaseStation:
     @property
     def power_consumption(self):
         ec = sum(v for k, v in self._energy_consumed.items() if
-                 self.add_pc_penalty or k == 'operation')
+                 self.use_action_pc or k == 'operation')
         return self._timer and ec / self._timer
     
     @property
@@ -329,11 +337,12 @@ class BaseStation:
 
     @timeit
     def compute_power_consumption(
-        self, eta=0.8, eps=8.2e-3, Ppa_max=40, Psyn=2,
-        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=1800, Poth=18, C={},
-        sm_discounts=config.sleepDiscounts
+        self, eta=0.25, eps=8.2e-3, Ppa_max=3.125, Psyn=1,
+        Pbs=1, Pcd=0.9, Lbs=12.8, Tc=5000, Pfixed=18, C={},
+        sm_deltas=config.sleepModeDeltas
     ):
         """
+        Reference: 
         Args:
         - eta: max PA efficiency of the BS
         - Ppa_max: max PA power consumption
@@ -346,24 +355,25 @@ class BaseStation:
         """
         M = self.num_ant
         K = self.num_ue
-        if 3 not in C:
-            B = self.band_width / 1e9
-            C[3] = B / (3 * Tc * Lbs)
-            C[11] = B / Lbs * (2 + 1/Tc)
-            C[12] = 3 * B / Lbs
-            C['ET-PA'] = (self.ant_power + eps*Ppa_max) / ((1+eps)*eta)
+        if 'K3' not in C:
+            B = self.bandwidth / 1e9
+            # assume ET-PA (envelope tracking power amplifier)
+            C['PA-fx'] = eps * Ppa_max / ((1 + eps) * eta)
+            C['PA-ld'] = self.ant_power / ((1 + eps) * eta)
+            C['K3'] = B / (3 * Tc * Lbs)
+            C['MK1'] = (2 + 1/Tc) * B / Lbs
+            C['MK2'] = 3 * B / Lbs
+        P_load_indep = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed
         if self.sleep:
-            Ppa = 0
-            Pbb = M * Pbs * sm_discounts[self.sleep]
-        else:  # assume ET-PA (envelope tracking power amplifier)
-            Ppa = M / C['ET-PA']
-            Pbb = Psyn + M * Pbs
+            P = P_load_indep * sm_deltas[self.sleep]
+        else:
+            P_load_dep = M * C['PA-ld']
             if K > 0:
-                R = sum(ue.data_rate for ue in self.ues.values()) / 1e6
-                Pbb += Pcd * R + C[3]*K**3 + M * (C[11]*K + C[12]*K**2)
-        p = Ppa + Pbb + Poth
+                R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
+                P_load_dep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+            P = P_load_dep + P_load_indep
         # debug(f'BS {self.id}: Ppa={Ppa}, Pbb={Pbb}, P={p}')
-        return p
+        return P
     
     def consume_energy(self, e, k):
         self._energy_consumed[k] += e
@@ -447,9 +457,13 @@ class BaseStation:
         return obs, other_obs
     
     @staticmethod
-    def calc_sum_rate(ues):
-        required_thrp = sum(ue.required_rate for ue in ues)
-        real_thrp = sum(ue.data_rate for ue in ues)
+    def calc_sum_rate(ues, kind=None):
+        if kind is None or kind == 'actual':
+            real_thrp = sum(ue.data_rate for ue in ues)
+            if kind: return real_thrp
+        if kind is None or kind == 'required':
+            required_thrp = sum(ue.required_rate for ue in ues)
+            if kind: return required_thrp
         if required_thrp > 0:
             required_thrp *= 1e-6
             if real_thrp == 0:
@@ -469,16 +483,18 @@ class BaseStation:
                            np.vstack([self._buffer[i:], self._buffer[:j]])
                            for i, j in zip(idx[:-1], idx[1:])], dtype=np.float32)
         # yield chunks
-        return chunks.mean(axis=1).flatten()
+        return chunks.mean(axis=1).reshape(-1)
 
     def get_ue_stats(self):
         thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
-        thrp_req_queued = self.calc_sum_rate(self.queue)[1]
-        thrp_req_idle = self.calc_sum_rate(ue for ue in self.covered_ues if ue.bs is None)[1]
+        thrp_req_queued = self.calc_sum_rate(self.queue, kind='required')
+        idle_ues = self.covered_idle_ues
+        thrp_req_idle = self.calc_sum_rate(idle_ues, kind='required')
+        thrp_cell, thrp_req_cell, log_ratio_cell = self.calc_sum_rate(self.covered_ues)
         return [
-            len(self.ues), len(self.queue), len(self.covered_ues),
-            thrp, log_ratio,
-            thrp_req, thrp_req_queued, thrp_req_idle, 
+            len(self.ues), len(self.queue), len(idle_ues), len(self.covered_ues),
+            thrp, thrp_cell, log_ratio, log_ratio_cell,
+            thrp_req, thrp_req_queued, thrp_req_idle, thrp_req_cell
         ]
 
     def update_timer(self, dt):
@@ -491,7 +507,9 @@ class BaseStation:
         record = [self.power_consumption, self.cell_traffic_rate]
         # debug(f'BS {self.id}: power consumption {record[0]} W')
         self.insert_buffer(record)
-        self._total_energy_consumed += record[0] * self._timer
+        if DEBUG:
+            self._total_energy_consumed += record[0] * self._timer
+            
 
     def reset_stats(self):
         self._steps = 0
@@ -503,29 +521,43 @@ class BaseStation:
 
     @cache_obs
     def info_dict(self):
-        obs = self.observe_self()
-        return dict(
-            num_ant=self.num_ant,
-            conn_mode=self.conn_mode,
-            sleep=self.sleep,
-            next_sleep=self._next_sleep,
-            wakeup=self.wakeup_time,
-            pc=self.power_consumption,
-            num_s=len(self.ues),
-            num_q=len(self.queue),
-            num_c=len(self.covered_ues),
-            thrp=obs[-7],
-            thrp_req=obs[-5],
-            thrp_req_q=obs[-4],
-            thrp_req_o=obs[-3],
-            thrp_ratio_o=np.exp(obs[-1])
-        )
+        return self.annotate_obs(self.get_observation())
+        # obs = self.observe_self()
+        # return dict(
+        #     num_ant=self.num_ant,
+        #     conn_mode=self.conn_mode,
+        #     sleep=self.sleep,
+        #     next_sleep=self._next_sleep,
+        #     wakeup=self.wakeup_time,
+        #     pc=self.power_consumption,
+        #     num_s=len(self.ues),
+        #     num_q=len(self.queue),
+        #     num_c=len(self.covered_ues),
+        #     thrp=obs[-8],
+        #     thrp_req=obs[-4],
+        #     thrp_req_q=obs[-3],
+        #     thrp_req_i=obs[-2],
+        #     # thrp_req_c=obs[-1]
+        # )
+        
+    @classmethod
+    def annotate_obs(cls, obs, trunc=None, keys=config.all_obs_keys):
+        def squeeze_onehot(obs, i, j):
+            if i >= len(obs): return obs
+            return np.concatenate([obs[:i], [list(obs[i:j]).index(1)], obs[j:]])
+        for i, key in enumerate(keys):
+            if key.endswith('sleep_mode'):
+                obs = squeeze_onehot(obs, i, i+cls.num_sleep_modes)
+        if trunc is None:
+            assert len(keys) == len(obs)
+        else:
+            keys = keys[:trunc]
+        return dict(zip(keys, obs))
 
     def __repr__(self):
         if not DEBUG:
             return 'BS(%d)' % self.id
+        obs = self.annotate_obs(self.observe_self(), trunc=5)
         return 'BS({})'.format(kwds_str(
-            id=self.id,
-            pos=self.pos,
-            **self.info_dict()
+            id=self.id, pos=self.pos, **obs
         ))
