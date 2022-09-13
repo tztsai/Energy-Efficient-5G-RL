@@ -116,7 +116,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     t = t[-ws:]
     rate_plts = []
     y_max = 0
-    for i, key in enumerate(['arrival_rate', 'real_rate', 'required_rate']):
+    for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
         new_y = info[key] / 8
         if fr:
             y = fr['data'][i+3]['y'] + [new_y]

@@ -1,6 +1,7 @@
+import os
 import argparse
 
-DEBUG = 0
+DEBUG = os.path.exists('DEBUG')
 
 def get_config():
     """

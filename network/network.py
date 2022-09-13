@@ -14,11 +14,7 @@ class MultiCellNetwork:
     default_bs_poses = config.bsPositions
     
     global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3))
-    bs_obs_space = concat_box_envs(
-        BaseStation.self_obs_space,
-        duplicate_box_env(
-            BaseStation.other_obs_space,
-            config.numBS - 1))
+    bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
         duplicate_box_env(BaseStation.self_obs_space, config.numBS),
@@ -114,10 +110,10 @@ class MultiCellNetwork:
         return self.ues[id]
 
     def add_base_station(self, bs):
-        # assert bs.id not in self.bss, "BS %d already in the network" % bs.id
+        assert bs.id not in self.bss, "BS %d already in the network" % bs.id
         bs.net = self
         self.bss[bs.id] = bs
-        info(f'{bs} added to the network')
+        notice(f'{bs} added to the network')
 
     def create_new_bs(self, id, pos, **kwargs):
         pos = np.append(pos, BaseStation.bs_height)
@@ -126,12 +122,13 @@ class MultiCellNetwork:
         return bs
 
     def add_user(self, ue):
-        # assert ue.id not in self.ues, "UE %s already in the network" % ue.id
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
         self._demand[ue.app_type] += ue.demand / 1e6
-        # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
+        if DEBUG:
+            assert ue.id not in self.ues, "UE %s already in the network" % ue.id
+            # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
 
     @timeit
     def scan_connections(self):
@@ -146,18 +143,17 @@ class MultiCellNetwork:
         ue.channel_gains = compute_channel_gain(ue.distances)
 
     def remove_user(self, ue_id):
-        assert ue_id in self.ues
         ue = self.ues[ue_id]
         del self.ues[ue_id]
-        if ue.done:
-            self._total_done[ue.app_type] += [1, ue.served/1e6, ue.delay]
-            # debug(f"{ue} done")
-        else:
-            if ue.demand <= 0: breakpoint()
-            dropped = ue.demand / 1e6
-            self._dropped[ue.app_type] += dropped
-            self._total_dropped[ue.app_type] += [1, dropped, ue.delay]
-            debug(f"{ue} dropped")
+        if ue.dropped:
+            self._dropped[ue.app_type] += ue.demand / 1e6
+        if DEBUG:
+            if ue.done:
+                self._total_done[ue.app_type] += [1, ue.served/1e6, ue.delay]
+            else:
+                if ue.demand <= 0: breakpoint()
+                self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.delay]
+                debug(f"{ue} dropped")
 
     @timeit
     def generate_new_ues(self, dt, **kwargs):
@@ -173,8 +169,11 @@ class MultiCellNetwork:
     def consume_energy(self, energy):
         self._energy_consumed += energy
 
+    def add_stat(self, key, val, dt):
+        self._other_stats[key] += [1, val, dt]
+
     def reset(self):
-        info('Resetting %s', self)
+        notice('Resetting %s', self)
         for bs in self.bss.values():
             bs.reset()
         self.ues.clear()
@@ -184,6 +183,7 @@ class MultiCellNetwork:
         self._total_dropped = np.zeros((self.traffic_model.num_apps, 3))
         self._total_done = np.zeros((self.traffic_model.num_apps, 3))
         self._total_energy_consumed = 0
+        self._other_stats = defaultdict(lambda: np.zeros(3, dtype=np.float32))
         self.reset_stats()
 
     @timeit
@@ -221,7 +221,8 @@ class MultiCellNetwork:
     def update_stats(self):
         for bs in self.bss.values():
             bs.update_stats()
-        self._total_energy_consumed += self._energy_consumed
+        if DEBUG:
+            self._total_energy_consumed += self._energy_consumed
     
     @cache_obs
     def observe_network(self):
@@ -250,9 +251,13 @@ class MultiCellNetwork:
             power_consumption=obs[0],
             arrival_rate=obs[1:4].sum(),
             dropped_rate=obs[4:7].sum(),
-            real_rate=obs[7],
+            actual_rate=obs[7],
             required_rate=obs[8],
             avg_pc=self.avg_power_consumption,
+            total_done_vol=self._total_done[:, 1],
+            total_dropped_vol=self._total_dropped[:, 1],
+            avg_serve_time=1000 * (self._total_done[:, 2] + self._total_dropped[:, 2]) /
+                (self._total_done[:, 0] + self._total_dropped[:, 0] + 1e-6),
             avg_data_rates=self._total_done[:, 1] /
                 np.maximum(self._total_done[:, 2], 1e-6),
             avg_drop_rates=self._total_dropped[:, 1] /
@@ -265,12 +270,21 @@ class MultiCellNetwork:
             # ue_info=pd.DataFrame({i: ue.info_dict() for i, ue in self.ues.items()}).T
         )
         
+    def annotate_obs(self, obs):
+        keys = ['power_consumption',
+                *[f'arrival_rate_cat{i}' for i in range(3)],
+                *[f'drop_rate_cat{i}' for i in range(3)],
+                'sum_rate', 'sum_rate_req', 'rate_log_ratio',
+                *[f'bs{i}_obs{j}' for i in range(self.num_bs) for j in range(self.bs_obs_ndims)]]
+        assert len(keys) == len(obs)
+        return dict(zip(keys, obs))
+        
     def __repr__(self) -> str:
         if not DEBUG:
             return 'Network'
         return '{}({})'.format(
             type(self).__name__,
             kwds_str(area=self.area, num_bs=self.num_bs,
-                     scenario=self.traffic_model.scenario,
+                     scenario=self.traffic_model.scenario.name,
                      start_time=self.traffic_model.get_time_slot(self.start_time))
         )

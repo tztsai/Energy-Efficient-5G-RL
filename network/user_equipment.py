@@ -22,9 +22,8 @@ class User:
         self.net = None
         self.app_type = app_type
         self.status = UEStatus.IDLE
-        self.demand = demand
+        self.demand = self.total_demand = demand
         self.delay_budget = delay_budget
-        self.served = 0.
         self.delay = 0.
         self._dists = None
         self._gains = None
@@ -125,7 +124,7 @@ class User:
         """
         self._sinr = self.compute_sinr()
         if self._sinr == 0: return 0
-        return self.bs.band_width * np.log2(1 + self._sinr)
+        return self.bs.bandwidth * np.log2(1 + self._sinr)
     
     def update_data_rate(self):
         self._thruput = None
@@ -167,6 +166,7 @@ class User:
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
+        self.served = self.total_demand - self.demand
         if self.demand <= 0:
             self.status = UEStatus.DONE
         else:
@@ -179,9 +179,7 @@ class User:
         # if self.bs is None:
         #     self.request_connection()
         if self.active:
-            size = self.data_rate * dt
-            self.demand -= size
-            self.served += size
+            self.demand -= self.data_rate * dt
         if self.demand <= 0 or self.delay >= self.delay_budget:
             self.quit()
         # debug(f'>> {self}')

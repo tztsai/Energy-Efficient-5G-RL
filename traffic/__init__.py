@@ -23,6 +23,7 @@ class TrafficModel:
     file_size = config.fileSize  # in bits
     delay_budgets = config.delayBudgets
     num_apps = config.numApps
+    app_names = config.appNames
     period = 60 * 60 * 24 * 7  # a week (in seconds)
     
     profiles_path = config.profilesPath
@@ -47,9 +48,10 @@ class TrafficModel:
     def fit(self, data_rate_df):
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
-        self.interval, rem = divmod(self.period, len(data_rate_df))
+        df = data_rate_df[self.app_names]
+        self.interval, rem = divmod(self.period, len(df))
         assert rem == 0, (self.interval, rem)
-        self.rates = data_rate_df * self.area / self.file_size  # files / s
+        self.rates = df * self.area / self.file_size  # files / s
         return self
     
     @property
@@ -88,22 +90,23 @@ if __name__ == '__main__':
     from collections import defaultdict
     
     area = (800, 800)
+    area_km2 = area[0] * area[1] / 1e6
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
         model = TrafficModel.from_scenario(traffic_type, area)
-        thrp_df = model.rates * model.file_size / (1 << 20) # throughput (Mb/s)
+        thrp_df = model.rates * model.file_size / (1 << 20) / area_km2 # (Mb/(s*km^2))
+        thrp_df['Total'] = thrp_df.sum(axis=1)
         print(thrp_df.describe())
-        print(model.rates.max() * 1e-3)
         peak_time = model.rates.sum(axis=1).idxmax()
         peak_time_secs = model.get_start_time_of_slot(peak_time)
         print(peak_time, peak_time_secs)
         for cat, rates in thrp_df.items():
             days_idx = rates.index.get_level_values(0).unique()
             df = rates.unstack().reindex(days_idx)
-            fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/s'))
+            fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/(s⋅km²)'))
             print(cat)
-            fig.show()
+            # fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)
         print()
     for cat, fig in figs.items():

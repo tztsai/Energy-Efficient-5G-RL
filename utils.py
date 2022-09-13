@@ -1,3 +1,4 @@
+# %%
 import io
 import os
 import sys
@@ -54,8 +55,11 @@ def onehot_vec(n, k):
     v[k] = 1
     return v
 
+def onehot_keys(name, n):
+    return ['{}_{}'.format(name, i) for i in range(n)]
+
 def onehot_dict(name, n, k):
-    return OrderedDict(('{}_{}'.format(name, i), 1 if i == k else 0) for i in range(n))
+    return OrderedDict(zip(onehot_keys(name, n), onehot_vec(n, k)))
 
 def first(iterable, k=None):
     if k is None:
@@ -109,3 +113,5 @@ if not DEBUG:
     timeit = lambda fn: fn
 else:
     atexit.register(Profile.print_debug_exit)
+    
+# %%
