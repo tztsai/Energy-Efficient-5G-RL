@@ -1,3 +1,3 @@
-DEBUG = True
-TRAIN = False
-EVAL = True
+DEBUG = False
+TRAIN = True
+EVAL = False
