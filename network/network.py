@@ -1,7 +1,7 @@
 from utils import *
 from . import config
 from .env_utils import *
-from .user_equipment import User, UEStatus
+from .user_equipment import User
 from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel
@@ -12,8 +12,8 @@ class MultiCellNetwork:
     inter_bs_dist = config.interBSDist
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
-    
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3))
+
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3 + 3))
     bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
@@ -102,6 +102,10 @@ class MultiCellNetwork:
         if self._timer:
             return self._dropped / self._timer
         return np.zeros_like(self._dropped)
+    
+    @property
+    def service_delays(self):
+        return self._delays[:,0] / np.maximum(self._delays[:,1], 1)
 
     def get_bs(self, id):
         return self.bss[id]
@@ -147,6 +151,7 @@ class MultiCellNetwork:
         del self.ues[ue_id]
         if ue.dropped:
             self._dropped[ue.app_type] += ue.demand / 1e6
+        self._delays[ue.app_type] += [ue.delay, 1]
         if EVAL:
             if ue.done:
                 self._total_done[ue.app_type] += [1, ue.served/1e6, ue.delay]
@@ -179,6 +184,7 @@ class MultiCellNetwork:
         self._time = 0
         self._demand = np.zeros(self.traffic_model.num_apps)
         self._dropped = np.zeros(self.traffic_model.num_apps)
+        self._delays = np.zeros((self.traffic_model.num_apps, 2))
         self._total_dropped = np.zeros((self.traffic_model.num_apps, 3))
         self._total_done = np.zeros((self.traffic_model.num_apps, 3))
         self._total_energy_consumed = 0
@@ -214,6 +220,7 @@ class MultiCellNetwork:
             bs.reset_stats()
         self._demand[:] = 0
         self._dropped[:] = 0
+        self._delays[:] = 0
         self._energy_consumed = 0
         self._timer = 0
 
@@ -235,9 +242,10 @@ class MultiCellNetwork:
         thrp, thrp_req, log_ratio = BaseStation.calc_sum_rate(self.ues.values())
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             self.drop_rates,            # dropped rates in different delay cats (3)
-            [thrp, thrp_req, log_ratio],# throughput (2)
+            self.service_delays,        # avg delay in different delay cats (3)
+            self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
+            [thrp, thrp_req, log_ratio],# throughput (3)
             bs_obs                      # bs observations
         ], dtype=np.float32)
 

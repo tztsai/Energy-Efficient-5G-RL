@@ -15,7 +15,8 @@ from dash.dependencies import ClientsideFunction
 
 acceleration = 60000  # 1 substep = 1 minute
 substeps = 20
-n_steps = 3 * 24 # * 7  # a week
+days = 1
+n_steps = 3 * 24 * days
 
 # %%
 def parse_env_args(args):
@@ -26,7 +27,7 @@ def parse_env_args(args):
                         help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
-    parser.add_argument("--accel_rate", type=float,
+    parser.add_argument("--accel_rate", type=float, default=acceleration,
                         help="acceleration rate of the simulation")
     return parser.parse_args(args)
 
@@ -34,13 +35,9 @@ parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
 
-args = sys.argv[1:] + [
-    "-T", str(n_steps),
-    "--accel_rate", str(acceleration),
-    # "--use_render",
-    # "--use_dash", 
-]
-args, env_args = parser.parse_known_args(args)
+parser.set_defaults(num_env_steps=n_steps)
+
+args, env_args = parser.parse_known_args()
 env_args = parse_env_args(env_args)
 
 # %%
