@@ -22,7 +22,9 @@ class MultiCellNetEnv(MultiAgentEnv):
     - Switch antennae: -16, -4, 0, 4, 16
     """
     w_drop_cats = np.array(config.droppedAppWeights)
+    w_delay_cats = np.array(config.delayAppWeights)
     w_drop = config.droppedTrafficWeight
+    w_delay = config.delayWeight
     w_pc = config.powerConsumptionWeight
     episode_time_len = config.episodeTimeLen
     bs_poses = net_config.bsPositions
@@ -92,11 +94,18 @@ class MultiCellNetEnv(MultiAgentEnv):
     def need_action(self):
         return self._sim_steps % self.action_interval == 0
     
-    def get_reward(self):
-        pc = self.net.power_consumption
-        dr = self.net.drop_rates
-        dropped = np.sum(dr * self.w_drop_cats)
-        return -self.w_drop * dropped - self.w_pc * pc
+    def get_reward(self, obs=None):
+        if obs is None:
+            pc = self.net.power_consumption
+            dr = self.net.drop_rates
+            dl = self.net.service_delays
+        else:  # use already calculated values
+            pc = obs[0]
+            dr = obs[1:4]
+            dl = obs[4:7]
+        dropped = dr @ self.w_drop_cats
+        delay = dl @ self.w_delay_cats
+        return -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
 
     def get_obs_agent(self, agent_id):
         return self.net.observe_bs(agent_id)
@@ -136,7 +145,7 @@ class MultiCellNetEnv(MultiAgentEnv):
 
         obs = self.get_obs()
         cent_obs = self.get_cent_obs()
-        reward = self.get_reward()
+        reward = self.get_reward(cent_obs[0])
 
         if EVAL:
             infos = self.info_dict()
