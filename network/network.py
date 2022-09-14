@@ -5,7 +5,7 @@ from .user_equipment import User, UEStatus
 from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel
-from config import DEBUG
+from config import *
 
 
 class MultiCellNetwork:
@@ -147,13 +147,12 @@ class MultiCellNetwork:
         del self.ues[ue_id]
         if ue.dropped:
             self._dropped[ue.app_type] += ue.demand / 1e6
-        if DEBUG:
+        if EVAL:
             if ue.done:
                 self._total_done[ue.app_type] += [1, ue.served/1e6, ue.delay]
             else:
                 if ue.demand <= 0: breakpoint()
                 self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.delay]
-                debug(f"{ue} dropped")
 
     @timeit
     def generate_new_ues(self, dt, **kwargs):
@@ -169,8 +168,8 @@ class MultiCellNetwork:
     def consume_energy(self, energy):
         self._energy_consumed += energy
 
-    def add_stat(self, key, val, dt):
-        self._other_stats[key] += [1, val, dt]
+    # def add_stat(self, key, val, dt):
+    #     self._other_stats[key] += [1, val, dt]
 
     def reset(self):
         notice('Resetting %s', self)
@@ -221,7 +220,7 @@ class MultiCellNetwork:
     def update_stats(self):
         for bs in self.bss.values():
             bs.update_stats()
-        if DEBUG:
+        if EVAL:
             self._total_energy_consumed += self._energy_consumed
     
     @cache_obs

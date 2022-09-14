@@ -1,5 +1,6 @@
 import numpy as np
 from utils import dB2lin, lin2dB
+from config import TRAIN
 
 renderMode = 'none'
 
@@ -25,6 +26,7 @@ disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joule
 bufferShape = (60, 2)  # shape of the buffer used to record past observations 
 bufferChunkSize = 5  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
+includeActionPC = TRAIN
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)

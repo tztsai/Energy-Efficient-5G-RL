@@ -110,7 +110,7 @@ class User:
     
     @property
     def urgent(self):
-        return self.time_limit < 0.03 and self.throughput_ratio < 1.
+        return self.time_limit < 0.03
 
     def compute_sinr(self, noise_var=config.noiseVariance):
         if self.bs is None: return 0
@@ -161,8 +161,9 @@ class User:
         else:
             self.bs.pop_from_queue(self)
         self.update_data_rate()
-        
+
     def quit(self):
+        bs = self.bs
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
@@ -171,6 +172,8 @@ class User:
             self.status = UEStatus.DONE
         else:
             self.status = UEStatus.DROPPED
+            if DEBUG:
+                debug(f"{self} dropped" + ("" if bs is None else f" by BS {bs.id}"))
         self.net.remove_user(self.id)
     
     def step(self, dt):
@@ -190,14 +193,11 @@ class User:
             bs_id=self.bs.id if self.bs is not None else -1,
             status=self.status,
             demand=self.demand / 1e3,   # in kb
-            deadline=self.time_limit * 1e3,  # in ms
-            data_rate=self.data_rate / 1e6,  # in mb/s
+            ddl=self.time_limit * 1e3,  # in ms
+            rate=self.data_rate / 1e6,  # in mb/s
             thrp_ratio=self.throughput_ratio,
             urgent=self.urgent
         )
-
-    def get_state(self):
-        return np.array(list(self.get_state_dict().values()))
     
     def __repr__(self):
         if not DEBUG:

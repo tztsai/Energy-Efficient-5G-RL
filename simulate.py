@@ -70,7 +70,7 @@ def get_latest_model_dir(args, run_dir):
     print(run_dir)
     return max(run_dir.glob(p), key=os.path.getmtime)
 
-env = MultiCellNetEnv(**get_env_kwargs(env_args), add_action_pc=False, seed=args.seed)
+env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
 env.print_info()
 obs_space = env.observation_space[0]
 cent_obs_space = env.cent_observation_space

@@ -11,7 +11,7 @@ from network.network import MultiCellNetwork
 from network.base_station import BaseStation
 from network import config as net_config
 from visualize import render, animate
-from config import DEBUG
+from config import *
 
 
 class MultiCellNetEnv(MultiAgentEnv):
@@ -36,7 +36,6 @@ class MultiCellNetEnv(MultiAgentEnv):
                  time_step=config.timeStep,
                  accel_rate=config.accelRate,
                  action_interval=action_interval,
-                 add_action_pc=config.includeActionPC,
                  w_drop=w_drop,
                  w_pc=w_pc,
                  seed=0):
@@ -58,9 +57,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.cent_observation_space = self.net.net_obs_space
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
-        
-        BaseStation.use_action_pc = add_action_pc
-        
+
         self.w_drop = w_drop
         self.w_pc = w_pc
         self._seed = seed
@@ -113,7 +110,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_steps = 0
         self._sim_steps = 0
         self._figure = None
-        if DEBUG and not hasattr(self, '_steps_info'):
+        if EVAL and not hasattr(self, '_steps_info'):
             self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
@@ -127,6 +124,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                 self.net.set_action(i, actions[i])
 
         for i in range(substeps):
+            debug('Substep %d', i + 1)
             self.net.step(self._dt)
 
         self.net.update_stats()
@@ -140,11 +138,12 @@ class MultiCellNetEnv(MultiAgentEnv):
         cent_obs = self.get_cent_obs()
         reward = self.get_reward()
 
-        if DEBUG:
+        if EVAL:
             infos = self.info_dict()
             self._steps_info.append(infos)
             notice('\nTime: %s', infos['time'])
             notice('Power consumption: {}'.format(self.net.power_consumption))
+            notice('Arrival rates: {}'.format(self.net.arrival_rates))
             notice('Dropped rates: {}'.format(self.net.drop_rates))
             info('\nBS states:\n{}'.format(infos['bs_info']))
             # ue_info = infos.pop('ue_info')
@@ -176,7 +175,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         return info
 
     def close(self):
-        if DEBUG:
+        if EVAL:
             bs_df = pd.concat([info.pop('bs_info') for info in self._steps_info],
                               keys=range(len(self._steps_info))).unstack()
             bs_df.columns = bs_df.columns.map(lambda p: f'bs_{p[1]}_{p[0]}')
