@@ -25,6 +25,7 @@ class User:
         self.demand = self.total_demand = demand
         self.delay_budget = delay_budget
         self.delay = 0.
+        self.served_time = 0.
         self._dists = None
         self._gains = None
         self._thruput = None
@@ -179,8 +180,8 @@ class User:
     def step(self, dt):
         # debug(f'<< {self}')
         self.delay += dt
-        # if self.bs is None:
-        #     self.request_connection()
+        if EVAL and self.active:
+            self.served_time += dt
         if self.active:
             self.demand -= self.data_rate * dt
         if self.demand <= 0 or self.delay >= self.delay_budget:

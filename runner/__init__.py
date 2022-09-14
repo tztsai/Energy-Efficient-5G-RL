@@ -1,1 +1,1 @@
-from .multicellnet_runner import MultiCellNetRunner
+from .network_runner import MultiCellNetRunner
