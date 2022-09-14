@@ -154,10 +154,10 @@ class MultiCellNetwork:
         self._delays[ue.app_type] += [ue.delay, 1]
         if EVAL:
             if ue.done:
-                self._total_done[ue.app_type] += [1, ue.served/1e6, ue.delay]
+                self._total_done[ue.app_type] += [1, ue.served/1e6, ue.served_time, ue.delay]
             else:
                 if ue.demand <= 0: breakpoint()
-                self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.delay]
+                self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.served_time, ue.delay]
 
     @timeit
     def generate_new_ues(self, dt, **kwargs):
@@ -185,8 +185,8 @@ class MultiCellNetwork:
         self._demand = np.zeros(self.traffic_model.num_apps)
         self._dropped = np.zeros(self.traffic_model.num_apps)
         self._delays = np.zeros((self.traffic_model.num_apps, 2))
-        self._total_dropped = np.zeros((self.traffic_model.num_apps, 3))
-        self._total_done = np.zeros((self.traffic_model.num_apps, 3))
+        self._total_dropped = np.zeros((self.traffic_model.num_apps, 4))
+        self._total_done = np.zeros((self.traffic_model.num_apps, 4))
         self._total_energy_consumed = 0
         self._other_stats = defaultdict(lambda: np.zeros(3, dtype=np.float32))
         self.reset_stats()
@@ -264,12 +264,13 @@ class MultiCellNetwork:
             avg_pc=self.avg_power_consumption,
             total_done_vol=self._total_done[:, 1],
             total_dropped_vol=self._total_dropped[:, 1],
-            avg_serve_time=1000 * (self._total_done[:, 2] + self._total_dropped[:, 2]) /
+            avg_latency=1000 * (self._total_done[:, -1] + self._total_dropped[:, -1]) /
                 (self._total_done[:, 0] + self._total_dropped[:, 0] + 1e-6),
             avg_data_rates=self._total_done[:, 1] /
                 np.maximum(self._total_done[:, 2], 1e-6),
             avg_drop_rates=self._total_dropped[:, 1] /
-                np.maximum(self._total_dropped[:, 2], 1e-6),
+                max(self._time, 1e-6),
+                # np.maximum(self._total_dropped[:, 2], 1e-6),
             total_done_count=self._total_done[:, 0].sum(),
             total_dropped_count=self._total_dropped[:, 0].sum(),
             total_drop_ratios=self._total_dropped[:, 1] / 

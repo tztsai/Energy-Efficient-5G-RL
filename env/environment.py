@@ -107,8 +107,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             dl = obs[4:7]
             if DEBUG:
                 assert abs(pc - self.net.power_consumption) < 1e-6
-                assert np.abs(dr - self.net.drop_rates).sum() < 1e-6
-                assert np.abs(dl - self.net.service_delays).sum() < 1e-6
+                assert np.abs(dr - self.net.drop_rates).sum() < 1e-4
+                assert np.abs(dl - self.net.service_delays).sum() < 1e-4
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
         return -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
@@ -130,8 +130,11 @@ class MultiCellNetEnv(MultiAgentEnv):
         return self.get_obs(), self.get_cent_obs(), None
     
     def step(self, actions=None, substeps=action_interval):
-        info(f'\nStep {self._sim_steps}:\n')
-        
+        if EVAL:
+            notice(f'\nStep {self._sim_steps}:\n')
+            info('traffic distribution: %s',
+                 self.net.traffic_model.get_arrival_rates(self.net.world_time, self._dt))
+            
         self.net.reset_stats()
         
         if actions is not None:
@@ -139,7 +142,8 @@ class MultiCellNetEnv(MultiAgentEnv):
                 self.net.set_action(i, actions[i])
 
         for i in range(substeps):
-            debug('Substep %d', i + 1)
+            if EVAL:
+                debug('Substep %d', i + 1)
             self.net.step(self._dt)
 
         self.net.update_stats()
@@ -153,7 +157,18 @@ class MultiCellNetEnv(MultiAgentEnv):
         cent_obs = self.get_cent_obs()
         reward = self.get_reward(cent_obs[0])
 
+        rewards = [[reward]]  # shared reward for all agents
+
+        done = self._episode_steps >= self.episode_len
+        infos = {}
+
+        if done:
+            self._episode_count += 1
+
         if EVAL:
+            notice('Reward: %.2f', reward)
+
+        if EVAL and self._episode_steps % 12 == 0:
             infos = self.info_dict()
             self._steps_info.append(infos)
             notice('\nTime: %s', infos['time'])
@@ -169,23 +184,11 @@ class MultiCellNetEnv(MultiAgentEnv):
             notice('  %d users dropped', infos['total_dropped_count'])
             notice('  done traffic (Mb): %.2f, %.2f, %.2f', *infos['total_done_vol']),
             notice('  dropped traffic (Mb): %.2f, %.2f, %.2f', *infos['total_dropped_vol']),
-            notice('  serving time (ms): %.1f, %.1f, %.1f', *infos['avg_serve_time'])
+            notice('  latency (ms): %.1f, %.1f, %.1f', *infos['avg_latency'])
             notice('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
             notice('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
             notice('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
 
-        info('Reward: %.2f', reward)
-
-        rewards = [[reward]]  # shared reward for all agents
-
-        done = self._episode_steps >= self.episode_len
-        infos = {}
-        
-        if done:
-            self._episode_count += 1
-            if EVAL:
-                infos = self.info_dict()
-        
         return obs, cent_obs, rewards, done, infos, None
     
     def info_dict(self):

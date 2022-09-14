@@ -9,15 +9,14 @@ if __name__ == '__main__':
 else:
     from . import config
     from utils import timeit
-
-
+    from config import DEBUG
+    
 class TrafficType(enum.IntEnum):
     UNKNOWN = 0
     A = 1
     B = 2
     C = 3
     # D = 4
-
 
 class TrafficModel:
     file_size = config.fileSize  # in bits
@@ -52,6 +51,7 @@ class TrafficModel:
         self.interval, rem = divmod(self.period, len(df))
         assert rem == 0, (self.interval, rem)
         self.rates = df * self.area / self.file_size  # files / s
+        assert self.rates.max().max() * 1e-3 <= 1.
         return self
     
     @property
@@ -89,13 +89,14 @@ if __name__ == '__main__':
     from plotly.subplots import make_subplots
     from collections import defaultdict
 
-    area = (800, 800)
+    area = (1300, 1300)
     area_km2 = area[0] * area[1] / 1e6
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
         model = TrafficModel.from_scenario(traffic_type, area)
         thrp_df = model.rates * model.file_size / (1 << 20) / area_km2 # (Mb/(s*km^2))
+        print(model.rates.max())
         thrp_df['Total'] = thrp_df.sum(axis=1)
         print(thrp_df.describe())
         peak_time = model.rates.sum(axis=1).idxmax()

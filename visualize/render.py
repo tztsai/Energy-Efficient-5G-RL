@@ -60,19 +60,33 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     )
     
     # plot cell coverages
-    cl_plt = dict(
-        type='scatter',
-        x=x, y=y, mode='markers', ids=i,
-        marker=dict(
-            size=config.cellRadius,
-            line_width=3,
-            line_color=['red' if c > 0 else color for c, color in zip(c, color_sequence)],
-            color=['grey' if c < 0 else color for c, color in zip(c, color_sequence)],
-            symbol='circle',
-            opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.06,
-        ),
-        hoverinfo='skip',
-        showlegend=False)
+    # cl_plt = dict(
+    #     type='scatter',
+    #     x=x, y=y, mode='markers', ids=i,
+    #     marker=dict(
+    #         size=config.cellRadius,
+    #         line_width=3,
+    #         line_color=['red' if c > 0 else color for c, color in zip(c, color_sequence)],
+    #         color=['grey' if c < 0 else color for c, color in zip(c, color_sequence)],
+    #         symbol='circle',
+    #         opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.06,
+    #     ),
+    #     hoverinfo='skip',
+    #     showlegend=False)
+    cell_shapes = [dict(
+        type="circle",
+        xref="x", yref="y",
+        x0=x-r, y0=y-r, x1=x+r, y1=y+r,
+        fillcolor='grey' if c < 0 else color,
+        line_color='red' if c > 0 else color,
+        line_width=3,
+        opacity=0.015 * np.clip(v/1e8, 0, 30) + (c < 0) * 0.06,
+        layer="below")
+        for (i, (c, v, color)) in enumerate(zip(c, r, color_sequence)) 
+        for bs in [net.get_bs(i)]
+        for x, y, _ in [bs.pos]
+        for r in [bs.cell_radius]
+    ]
     
     # plot users
     hover_text_template = """
@@ -95,7 +109,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
             type='scatter',
             x=x, y=y, mode='markers', ids=i,
             marker=dict(
-                size=s/1e5+2,
+                size=s/1.5e5+2,
                 line_width=0,
                 # line_color='grey',
                 symbol=symbols,
@@ -111,14 +125,14 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     # plot data rates
     ws = 80  # window size
     fr = fig['frames'][-1] if fig['frames'] else None
-    t = fr['data'][3]['x'] + [net._time] if fr else [net._time]
+    t = fr['data'][2]['x'] + [net._time] if fr else [net._time]
     t = t[-ws:]
     rate_plts = []
     y_max = 0
     for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
         new_y = info[key] / 8
         if fr:
-            y = fr['data'][i+3]['y'] + [new_y]
+            y = fr['data'][i+2]['y'] + [new_y]
         else:
             y = [new_y]
         y = y[-ws:]
@@ -170,6 +184,13 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     )
     
     # plot drop penalty
+    # if fr:
+    #     y_pc = fr['data'][-3]['y'] + [info['power_consumption']]
+    #     # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
+    # else:
+    #     y_pc = [info['power_consumption']]
+    #     # y2_range = [0, info['power_consumption'] + 0.1]
+    # y_pc = y_pc[-ws:]
     dr_plt = dict(
         type='scatter',
         x=t[::-1]+t, y=y_pen[::-1]+y_pc,
@@ -183,11 +204,12 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     
     # append frame
     time = info['time']
-    data = [bs_plt, ue_plt, cl_plt, *rate_plts, dr_plt, pc_plt, rw_plt]
+    data = [bs_plt, ue_plt, *rate_plts, dr_plt, pc_plt, rw_plt]
     layout = {
         'xaxis2': dict( range=[t[0], t[-1]] ),
         'yaxis2': dict( range=y2_range ),
-        'yaxis3': dict( range=y3_range )
+        'yaxis3': dict( range=y3_range ),
+        'shapes': cell_shapes
     }
     frame = dict(data=data, name=time, layout=layout)
     
@@ -247,18 +269,6 @@ def make_figure(net):
             yaxis2=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
             yaxis3=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
             margin=dict(l=25, r=25, b=25, t=25),
-            # shapes=[dict(
-            #     type="circle",
-            #     xref="x", yref="y",
-            #     x0=x-r, y0=y-r, x1=x+r, y1=y+r,
-            #     fillcolor=color_sequence[i],
-            #     line_color=color_sequence[i],
-            #     line_width=1,
-            #     opacity=0.05,
-            #     layer="below"
-            #     ) for i, bs in net.bss.items() for x, y, _ in [bs.pos]
-            #     for r in [bs.cell_radius]
-            # ],
             transition={"duration": 300, "easing": "cubic-in-out"},
             updatemenus=[{
                 "buttons": [
