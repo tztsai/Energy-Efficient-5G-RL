@@ -146,7 +146,7 @@ def main(args):
     #     from onpolicy.runner.shared.mpe_runner import MPERunner as Runner
     # else:
     #     from onpolicy.runner.separated.mpe_runner import MPERunner as Runner
-    from runner import Green5GRunner as Runner
+    from runner import MultiCellNetRunner as Runner
 
     runner = Runner(config)
     runner.run()

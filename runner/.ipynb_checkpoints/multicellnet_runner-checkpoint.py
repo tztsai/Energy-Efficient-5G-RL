@@ -6,7 +6,7 @@ from .runner import Runner, _t2n
 from utils import sys, time, trange, notice
 
 
-class Green5GRunner(Runner):
+class MultiCellNetRunner(Runner):
     """Runner class to perform training, evaluation. and data collection for the MPEs. See parent class for details."""
 
     def run(self):
