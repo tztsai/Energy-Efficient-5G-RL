@@ -56,12 +56,11 @@ class Green5GRunner(Runner):
                                 total_num_steps, self.num_env_steps,
                                 int(total_num_steps / (end - start))))
                 
-                sim_infos = [env.info_dict() for env in self.envs.envs]
-                log_fields = ['avg_pc', 'avg_serve_time',
-                              'avg_data_rates', 'avg_drop_rates', 'total_done_vol']
-                for name in log_fields:
-                    values = [infos[name] for infos in sim_infos]
-                    train_infos[name] = np.mean(values)
+                # log_fields = ['avg_pc', 'avg_serve_time',
+                #               'avg_data_rates', 'avg_drop_rates', 'total_done_vol']
+                # for name in log_fields:
+                #     values = [dct[name] for dct in info]
+                #     train_infos[name] = np.mean(values)
 
                 step_rew = train_infos["average_step_reward"] = np.mean(self.buffer.rewards)
                 train_infos["average_episode_reward"] = step_rew * self.episode_length
