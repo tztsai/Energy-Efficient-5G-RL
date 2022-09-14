@@ -14,7 +14,4 @@ data/RAN_PM_data/
 results/**/check/run*/
 results/*.csv
 analysis/*.csv
-DEBUG
-EVAL
-TRAIN
 # train.sh

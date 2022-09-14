@@ -7,7 +7,7 @@ import socket
 import numpy as np
 from pathlib import Path
 import torch
-from config import get_config
+from arguments import get_config
 from env import MultiCellNetEnv
 from argparse import ArgumentParser
 
