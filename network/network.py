@@ -36,7 +36,7 @@ class MultiCellNetwork:
         self.reset()
         for i, pos in enumerate(bs_poses):
             self.create_new_bs(i, pos)
-        print('Initialized green 5G network: area={}, num_bs={}, scenario={}, start_time={}.'
+        print('Initialized 5G multi-cell network: area={}, num_bs={}, scenario={}, start_time={}.'
               .format(self.area, self.num_bs, traffic_type, self.start_time))
 
     def _parse_start_time(self, start_time):
