@@ -34,6 +34,7 @@ class AdaptivePolicy:
             sm = info['sleep_mode']
             next_sm = info['next_sleep_mode']
             wakeup_time = info['wakeup_time']
+            thrp_req_queue = info['thrp_req_queued']
             thrp_req_idle = info['thrp_req_idle']
             arrival_rate = info['arrival_rate-1']
             thrp_req = info['thrp_req_served']
@@ -46,7 +47,8 @@ class AdaptivePolicy:
                 self._sleep_timer += self.act_interval
                 if sm != next_sm:
                     pass
-                elif thrp_req_idle or obs_others[:,-1].min() < self.wakeup_threshold:  # wakeup
+                elif thrp_req_queue + thrp_req_idle or \
+                    obs_others[:,-1].min() < self.wakeup_threshold:  # wakeup
                         new_sm = 0
                         ant_switch = 4  # +16
                         if wakeup_time <= 3e-3:

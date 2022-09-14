@@ -365,6 +365,7 @@ class BaseStation:
         """
         M = self.num_ant
         K = self.num_ue
+        S = self.sleep
         R = 0
         if 'K3' not in C:
             B = self.bandwidth / 1e9
@@ -376,8 +377,8 @@ class BaseStation:
             C['MK2'] = 3 * B / Lbs
         Pind = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # independent of traffic load
         Pdep = 0
-        if self.sleep:
-            P = Pind * sm_deltas[self.sleep]
+        if S:
+            P = Pind * sm_deltas[S]
         else:
             Pdep = M * C['PA-ld']
             if K > 0:
@@ -385,8 +386,8 @@ class BaseStation:
                 Pdep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
             P = Pdep + Pind
         if EVAL:
-            self._pc_records.append([M, K, R, P])
-            debug(f'BS {self.id}: P_indep={Pind}, P_depend={Pdep}, P={P}')
+            self._pc_records.append([M, K, R, S, Pind, Pdep, P])
+            debug(f'BS {self.id}: K={K}, R={R}, P_nl={Pind}, P_ld={Pdep}, P={P}')
         return P
     
     def consume_energy(self, e, k):
