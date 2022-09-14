@@ -3,7 +3,7 @@
 import torch
 from utils import *
 from agents import *
-from config import get_config, DEBUG
+from arguments import get_config
 from env import MultiCellNetEnv
 import numpy as np
 import plotly.graph_objects as go

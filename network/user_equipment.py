@@ -1,5 +1,5 @@
 from utils import *
-from config import DEBUG
+from config import *
 from . import config
 
 

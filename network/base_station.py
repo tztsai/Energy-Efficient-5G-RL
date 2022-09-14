@@ -33,7 +33,7 @@ class BaseStation:
     buffer_shape = config.bufferShape
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
-    include_action_pc = True  # include power consumption of actions
+    include_action_pc = TRAIN
     bs_stats_dim = buffer_num_chunks * buffer_shape[1]
     ue_stats_dim = 12
     mutual_obs_dim = 5
@@ -189,7 +189,7 @@ class BaseStation:
         Mode 3: accept new connections and take over all UEs in cell range
         """
         if DEBUG:
-            assert mode in {-1, 0, 1}
+            assert mode in ConnectMode._member_map_.values()
         self.conn_mode = mode
         # if self.conn_mode > 0 and self.sleep > 2:  # cannot accept new connections in SM3
         #     self.consume_energy(2, 'connect')
@@ -337,7 +337,7 @@ class BaseStation:
     def disconnect_all(self):
         if not TRAIN:
             if self.ues or self.queue:
-                info('BS {}: disconnects all UEs'.format(self.id))
+                info('BS {}: disconnects {} UEs'.format(self.id, self.num_ue))
             # self._disc_all = 1
         for ue in list(self.ues.values()):
             ue.disconnect()
@@ -525,7 +525,7 @@ class BaseStation:
         if EVAL:
             self._total_energy_consumed += record[0] * self._timer
             pcs = {k: v / self._timer for k, v in self._energy_consumed.items()}
-            debug(f'BS {self.id}: power consumption {kwds_str(**pcs)}')
+            debug(f'BS {self.id}: power consumption {kwds_str(**pcs)} [total={record[0]}]')
 
     def reset_stats(self):
         self._steps = 0

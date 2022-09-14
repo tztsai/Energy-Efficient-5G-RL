@@ -1,6 +1,5 @@
 import numpy as np
 from utils import dB2lin, lin2dB
-from config import TRAIN
 
 renderMode = 'none'
 
@@ -10,8 +9,8 @@ interBSDist = 300  # the distance between two adjacent BSs
 cellRadius = 500  # the radius of a hexagon cell in meters
 antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 5e9  # carrier frequency in Hz
-antennaGain = 18  # power gain in dB of each antenna of a BS
-# feederLoss = 1  # feeder loss in dB (XXX: included in antennaGain)
+feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
+antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
 numAntennas = 64  # max number of antennas
 bandWidth = 40e6  # communication bandwidth in Hz
 bsHeight = 30  # height difference between a BS and a user in meters
@@ -22,11 +21,10 @@ sleepModeDeltas = [1, 0.69, 0.50, 0.29]
 wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.02  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0, 0.01, 0.03, 0.1]  # energy consumption of switching sleep mode in Joules
-disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
+disconnectEnergy = 0.06  # energy consumption of an early disconnection in Joules
 bufferShape = (60, 2)  # shape of the buffer used to record past observations 
 bufferChunkSize = 5  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
-includeActionPC = TRAIN
 
 # channel model params
 noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
