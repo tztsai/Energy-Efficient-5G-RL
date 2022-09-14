@@ -5,14 +5,12 @@
 *.h5
 *.sql
 *.parquet
-events.out.tfevents.*
-.vscode/
-.misc/
-**.ipynb_checkpoints/*
-data/cells-traffic/
-data/RAN_PM_data/
-results/**/check/run*/
-results/*.csv
-analysis/*.csv
-./config.py
-# train.sh
+/.vscode/
+/.misc/
+/.ipynb_checkpoints/*
+/data/cells-traffic/
+/data/RAN_PM_data/
+/results/**/check/run*/
+/results/*.csv
+/analysis/*.csv
+/config.py
