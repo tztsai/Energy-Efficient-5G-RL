@@ -16,8 +16,8 @@ critic_lr=7e-4
 ppo_epoch=10
 num_mini_batch=1
 
-w_pc=1.0
-w_drop=0.1
+# w_pc=1.0
+# w_drop=0.1
 
 log_interval=1
 
