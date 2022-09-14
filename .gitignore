@@ -5,9 +5,10 @@
 *.h5
 *.sql
 *.parquet
+*-checkpoint.py
+.ipynb_checkpoints/
 /.vscode/
 /.misc/
-/.ipynb_checkpoints/*
 /data/cells-traffic/
 /data/RAN_PM_data/
 /results/**/check/run*/
