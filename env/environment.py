@@ -105,6 +105,10 @@ class MultiCellNetEnv(MultiAgentEnv):
             pc = obs[0]
             dr = obs[1:4]
             dl = obs[4:7]
+            if DEBUG:
+                assert abs(pc - self.net.power_consumption) < 1e-6
+                assert np.abs(dr - self.net.drop_rates).sum() < 1e-6
+                assert np.abs(dl - self.net.service_delays).sum() < 1e-6
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
         return -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
@@ -156,6 +160,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             notice('Power consumption: {}'.format(self.net.power_consumption))
             notice('Arrival rates: {}'.format(self.net.arrival_rates))
             notice('Dropped rates: {}'.format(self.net.drop_rates))
+            notice('Service delays: {}'.format(self.net.service_delays))
             # info('\nBS states:\n{}'.format(infos['bs_info']))
             # info('\nUE states:\n{}'.format(infos['ue_info']))
             notice('\nStatistics:')
@@ -174,10 +179,14 @@ class MultiCellNetEnv(MultiAgentEnv):
         rewards = [[reward]]  # shared reward for all agents
 
         done = self._episode_steps >= self.episode_len
+        infos = {}
+        
         if done:
             self._episode_count += 1
-
-        return obs, cent_obs, rewards, done, {}, None
+            if EVAL:
+                infos = self.info_dict()
+        
+        return obs, cent_obs, rewards, done, infos, None
     
     def info_dict(self):
         info = self.net.info_dict()

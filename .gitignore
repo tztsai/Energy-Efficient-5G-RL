@@ -14,5 +14,5 @@ data/RAN_PM_data/
 results/**/check/run*/
 results/*.csv
 analysis/*.csv
-config.py
+./config.py
 # train.sh
