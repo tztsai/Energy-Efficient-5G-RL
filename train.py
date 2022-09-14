@@ -53,6 +53,7 @@ def parse_env_args(args):
     parser.add_argument("--accel_rate", type=float, help="acceleration rate of the simulation")
     parser.add_argument("--w_drop", type=float, help="weight of dropped rate in reward")
     parser.add_argument("--w_pc", type=float, help="weight of power consumption in reward")
+    parser.add_argument("--w_delay", type=float, help="weight of avg delay per UE in reward")
 
     return parser.parse_args(args)
 
