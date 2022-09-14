@@ -40,6 +40,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                  action_interval=action_interval,
                  w_drop=w_drop,
                  w_pc=w_pc,
+                 w_delay=w_delay,
                  seed=0):
         super().__init__()
         
@@ -62,6 +63,7 @@ class MultiCellNetEnv(MultiAgentEnv):
 
         self.w_drop = w_drop
         self.w_pc = w_pc
+        self.w_delay = w_delay
         self._seed = seed
         self._dt = time_step
         self._episode_count = 0
@@ -154,9 +156,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             notice('Power consumption: {}'.format(self.net.power_consumption))
             notice('Arrival rates: {}'.format(self.net.arrival_rates))
             notice('Dropped rates: {}'.format(self.net.drop_rates))
-            info('\nBS states:\n{}'.format(infos['bs_info']))
-            # ue_info = infos.pop('ue_info')
-            # info('\nUE states:\n{}'.format(info_dict['ue_info']))
+            # info('\nBS states:\n{}'.format(infos['bs_info']))
+            # info('\nUE states:\n{}'.format(infos['ue_info']))
             notice('\nStatistics:')
             notice('  average PC: %.3f', infos['avg_pc']),
             notice('  %d users done', infos['total_done_count'])

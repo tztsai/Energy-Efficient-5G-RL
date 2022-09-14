@@ -1,0 +1,36 @@
+{
+    "os": "Windows-10-10.0.19041-SP0",
+    "python": "3.9.1",
+    "heartbeatAt": "2022-09-14T16:24:14.685735",
+    "startedAt": "2022-09-14T16:24:12.679442",
+    "docker": null,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [
+        "--use_wandb",
+        "--n_rollout_threads",
+        "1",
+        "--num_env_steps",
+        "80",
+        "--accel_rate",
+        "600000",
+        "--log_level",
+        "notice",
+        "--traffic_type",
+        "B",
+        "--experiment_name",
+        "test"
+    ],
+    "state": "running",
+    "codePath": "train.py",
+    "program": "D:\\Personal\\Work\\master-thesis-project\\BS-Sleeping-RL\\train.py",
+    "git": {
+        "remote": "https://github.com/TZTsai/BS-Sleeping-RL.git",
+        "commit": "2f8a01832edfd2a8cb0cf4ccca4ee0a0ca442071"
+    },
+    "email": "13818704679@163.com",
+    "root": "D:/Personal/Work/master-thesis-project/BS-Sleeping-RL",
+    "host": "DESKTOP-O6495LQ",
+    "username": "13818",
+    "executable": "D:\\DevTools\\Miniconda\\python.exe"
+}
