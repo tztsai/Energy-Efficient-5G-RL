@@ -2,6 +2,8 @@ import os
 import argparse
 
 DEBUG = os.path.exists('DEBUG')
+EVAL = os.path.exists('EVAL')
+TRAIN = os.path.exists('TRAIN')
 
 def get_config():
     """

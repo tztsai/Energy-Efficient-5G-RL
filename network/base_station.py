@@ -5,7 +5,7 @@ from . import config
 from .env_utils import *
 from .user_equipment import User, UEStatus
 # from visualize.obs import VisBSStats
-from config import DEBUG
+from config import *
 
 
 class ConnectMode(enum.IntEnum):
@@ -30,10 +30,10 @@ class BaseStation:
     sleep_switch_energy = config.sleepSwitchEnergy
     disconnect_energy = config.disconnectEnergy
     power_alloc_weights = config.powerAllocWeights
-    use_action_pc = True  # include power consumption of actions
     buffer_shape = config.bufferShape
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
+    include_action_pc = True  # include power consumption of actions
     bs_stats_dim = buffer_num_chunks * buffer_shape[1]
     ue_stats_dim = 12
     mutual_obs_dim = 5
@@ -122,7 +122,7 @@ class BaseStation:
     @property
     def power_consumption(self):
         ec = sum(v for k, v in self._energy_consumed.items() if
-                 self.use_action_pc or k == 'operation')
+                 self.include_action_pc or k == 'operation')
         return self._timer and ec / self._timer
     
     @property
@@ -141,13 +141,14 @@ class BaseStation:
     @timeit
     def take_action(self, action):
         assert len(action) == len(self.action_dims)
-        # info(f'BS {self.id} takes action:\n{action}')
+        info(f'BS {self.id} takes action:\n{action}')
         self.switch_antennae(int(action[0]))
         self.switch_sleep_mode(int(action[1]))
-        self.switch_connection_mode(int(action[2]))
+        self.switch_connection_mode(int(action[2]) - 1)
     
     def switch_antennae(self, opt):
-        assert opt in range(self.num_ant_switch_opts)
+        if DEBUG:
+            assert opt in range(self.num_ant_switch_opts)
         num_switch = self.ant_switch_opts[opt]
         if num_switch == 0: return
         energy_cost = self.ant_switch_energy * abs(num_switch)
@@ -158,12 +159,13 @@ class BaseStation:
         self.num_ant = num_ant_new
         for ue in self.ues.values():
             ue.update_data_rate()
-        info(f'BS {self.id}: switched to {self.num_ant} antennas')
+        debug(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
         self.update_power_consumption()
     
     def switch_sleep_mode(self, mode):
-        assert mode in range(self.num_sleep_modes)
+        if DEBUG:
+            assert mode in range(self.num_sleep_modes)
         if mode == self.sleep:
             self._next_sleep = mode
             return
@@ -172,7 +174,8 @@ class BaseStation:
             return  # cannot go to deep sleep if there are inactive UEs in coverage
         self._next_sleep = mode
         if mode > self.sleep:
-            info('BS {}: goes to sleep {} -> {}'.format(self.id, self.sleep, mode))
+            if DEBUG:
+                info('BS {}: goes to sleep {} -> {}'.format(self.id, self.sleep, mode))
             self._prev_sleep = self.sleep
             self.sleep = mode
         elif mode < self.sleep:
@@ -185,15 +188,15 @@ class BaseStation:
         Mode 2: accept new connections
         Mode 3: accept new connections and take over all UEs in cell range
         """
-        assert mode in range(self.num_conn_modes)
-        mode -= 1  # -1, 0, 1
+        if DEBUG:
+            assert mode in {-1, 0, 1}
         self.conn_mode = mode
-        if self.conn_mode > 0 and self.sleep == 3:  # cannot accept new connections in SM3
-            self.consume_energy(2, 'connect')
-            self.conn_mode = -1
+        # if self.conn_mode > 0 and self.sleep > 2:  # cannot accept new connections in SM3
+        #     self.consume_energy(2, 'connect')
+        #     self.conn_mode = -1
         if self.conn_mode < 0:  # disconnect all ues and empty the queue
             self.disconnect_all()
-        # elif mode == 3:  # take over all ues
+        # elif mode == 2:  # take over all ues
         #     if self.sleep:  # cannot take over UEs if asleep
         #         self.consume_energy(2, 'connect')  # add EC penalty
         #     else:
@@ -294,18 +297,21 @@ class BaseStation:
 
     @timeit
     def update_sleep(self, dt):
+        if EVAL:
+            self._sleep_times[self.sleep] += dt
         if self._next_sleep == self.sleep:
             if self.queue and self.sleep in (1, 2):
-                # info('BS {}: automatically waking up'.format(self.id))
+                info('BS {}: automatically waking up'.format(self.id))
                 self.switch_sleep_mode(0)
             elif self.sleep == 0 and not self.ues and self._prev_sleep == 1:
+                info('BS {}: automatically goes to sleep'.format(self.id))
                 self.switch_sleep_mode(1)
-                info('BS {}: automatically goes to sleep mode 1'.format(self.id))
             return
         self._wake_timer += dt
         if self._wake_timer >= self._wake_delay:
-            info('BS {}: switched sleep mode {} -> {}'
-                  .format(self.id, self.sleep, self._next_sleep))
+            if DEBUG:
+                info('BS {}: switched sleep mode {} -> {}'
+                     .format(self.id, self.sleep, self._next_sleep))
             self.consume_energy(self.sleep_switch_energy[self.sleep], 'wakeup')
             self._prev_sleep = self.sleep
             self.sleep = self._next_sleep
@@ -317,18 +323,22 @@ class BaseStation:
 
     @timeit
     def update_connections(self):
-        if self.sleep:  # move all current ues to the queue
+        if self.sleep:
             for ue in list(self.ues.values()):
                 ue.disconnect()
-                self.add_to_queue(ue)
-        else:  # connect ues in the queue
+                if self.conn_mode >= 0:
+                    self.add_to_queue(ue)
+        else:
             while self.queue and not self.ues_full:
                 ue = self.pop_from_queue()
-                self.connect(ue)
+                if self.conn_mode >= 0:
+                    self.connect(ue)
 
     def disconnect_all(self):
-        if self.ues or self.queue:
-            info('BS {}: disconnects all UEs'.format(self.id))
+        if not TRAIN:
+            if self.ues or self.queue:
+                info('BS {}: disconnects all UEs'.format(self.id))
+            # self._disc_all = 1
         for ue in list(self.ues.values()):
             ue.disconnect()
             self.consume_energy(self.disconnect_energy, 'disconnect')
@@ -355,6 +365,7 @@ class BaseStation:
         """
         M = self.num_ant
         K = self.num_ue
+        R = 0
         if 'K3' not in C:
             B = self.bandwidth / 1e9
             # assume ET-PA (envelope tracking power amplifier)
@@ -363,16 +374,19 @@ class BaseStation:
             C['K3'] = B / (3 * Tc * Lbs)
             C['MK1'] = (2 + 1/Tc) * B / Lbs
             C['MK2'] = 3 * B / Lbs
-        P_load_indep = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed
+        Pind = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # independent of traffic load
+        Pdep = 0
         if self.sleep:
-            P = P_load_indep * sm_deltas[self.sleep]
+            P = Pind * sm_deltas[self.sleep]
         else:
-            P_load_dep = M * C['PA-ld']
+            Pdep = M * C['PA-ld']
             if K > 0:
                 R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-                P_load_dep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
-            P = P_load_dep + P_load_indep
-        # debug(f'BS {self.id}: Ppa={Ppa}, Pbb={Pbb}, P={p}')
+                Pdep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+            P = Pdep + Pind
+        if EVAL:
+            self._pc_records.append([M, K, R, P])
+            debug(f'BS {self.id}: P_indep={Pind}, P_depend={Pdep}, P={P}')
         return P
     
     def consume_energy(self, e, k):
@@ -403,6 +417,8 @@ class BaseStation:
         self._wake_delay = 0
         self._energy_consumed = defaultdict(float)
         self._total_energy_consumed = 0
+        self._pc_records = []
+        self._sleep_times = [0] * self.num_sleep_modes
 
     def step(self, dt):
         self.update_sleep(dt)
@@ -503,25 +519,23 @@ class BaseStation:
         self._timer += dt
 
     def update_stats(self):
-        # debug(f'BS {self.id}: energy consumption {kwds_str(**self._energy_consumed)}')
         record = [self.power_consumption, self.cell_traffic_rate]
-        # debug(f'BS {self.id}: power consumption {record[0]} W')
         self.insert_buffer(record)
-        if DEBUG:
+        if EVAL:
             self._total_energy_consumed += record[0] * self._timer
-            
+            pcs = {k: v / self._timer for k, v in self._energy_consumed.items()}
+            debug(f'BS {self.id}: power consumption {kwds_str(**pcs)}')
 
     def reset_stats(self):
         self._steps = 0
         self._timer = 0
+        # self._disc_all = 0  # used to mark a disconnect_all action
         self._arrival_rate = 0
         self._energy_consumed.clear()
-        if self.conn_mode < 0:
-            self.conn_mode = 0
 
     @cache_obs
     def info_dict(self):
-        obs = self.get_observation()
+        obs = self.observe_self()
         info = self.annotate_obs(obs, trunc=self.self_obs_ndims)
         for k, v in list(info.items()):
             if '-' in k:
@@ -530,6 +544,7 @@ class BaseStation:
                 elif k == 'arrival_rate-1':
                     info['arrival_rate'] = v
                 del info[k]
+        # info['disconnect'] = self._disc_all
         return info
         # obs = self.observe_self()
         # return dict(

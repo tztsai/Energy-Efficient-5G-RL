@@ -18,7 +18,6 @@ numSleepModes = 4
 numConnModes = 3
 
 # reward parameters
-includeActionPC = True
 droppedAppWeights = [.5, .3, .2]
 droppedTrafficWeight = 0.1
 powerConsumptionWeight = 1.

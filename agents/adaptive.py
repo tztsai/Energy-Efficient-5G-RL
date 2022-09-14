@@ -64,7 +64,6 @@ class AdaptivePolicy:
                 self._sleep_timer = 0
                 if thrp_req == 0:
                     new_sm = 1
-                    conn_mode = 0
                 elif obs_others[:,-1].min() < 0:
                     ant_switch = 3  # +4
                 elif log_ratio > 1:
