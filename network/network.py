@@ -113,7 +113,7 @@ class MultiCellNetwork:
         assert bs.id not in self.bss, "BS %d already in the network" % bs.id
         bs.net = self
         self.bss[bs.id] = bs
-        notice(f'{bs} added to the network')
+        info(f'{bs} added to the network')
 
     def create_new_bs(self, id, pos, **kwargs):
         pos = np.append(pos, BaseStation.bs_height)
@@ -172,7 +172,7 @@ class MultiCellNetwork:
     #     self._other_stats[key] += [1, val, dt]
 
     def reset(self):
-        notice('Resetting %s', self)
+        info('Resetting %s', self)
         for bs in self.bss.values():
             bs.reset()
         self.ues.clear()

@@ -2,11 +2,12 @@
 seed_max=1
 log_level="NOTICE"
 
-traffic_type="A"
+traffic_type="B"
 accel_rate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=6552000
+num_env_steps=$((50400 * 130))  # steps_per_episode * episodes
+experiment="check"
 
 algo="mappo"
 gain=0.01
@@ -16,7 +17,7 @@ ppo_epoch=10
 num_mini_batch=1
 
 w_pc=1.0
-w_drop=0.12
+w_drop=0.1
 
 log_interval=1
 
@@ -27,5 +28,5 @@ echo "algo is ${algo}, traffic type is ${traffic_type}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
 do
     echo "seed is ${seed}:"
-    CUDA_VISIBLE_DEVICES=0 python train.py $@ --algorithm_name ${algo} --traffic_type ${traffic_type} --accel_rate ${accel_rate} --seed ${seed} --n_training_threads ${n_training_threads} --n_rollout_threads ${n_rollout_threads} --num_mini_batch ${num_mini_batch} --num_env_steps ${num_env_steps} --ppo_epoch ${ppo_epoch} --gain ${gain} --lr ${lr} --critic_lr ${critic_lr} --user_name ${wandb_user} --log_level ${log_level} --log_interval ${log_interval} #--use_eval --eval_interval ${eval_interval} --n_eval_rollout_threads ${n_eval_rollout_threads}
+    CUDA_VISIBLE_DEVICES=0 python train.py $@ --algorithm_name ${algo} --experiment_name ${experiment} --traffic_type ${traffic_type} --accel_rate ${accel_rate} --seed ${seed} --n_training_threads ${n_training_threads} --n_rollout_threads ${n_rollout_threads} --num_mini_batch ${num_mini_batch} --num_env_steps ${num_env_steps} --ppo_epoch ${ppo_epoch} --gain ${gain} --lr ${lr} --critic_lr ${critic_lr} --user_name ${wandb_user} --log_level ${log_level} --log_interval ${log_interval} #--use_eval --eval_interval ${eval_interval} --n_eval_rollout_threads ${n_eval_rollout_threads}
 done
