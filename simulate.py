@@ -15,7 +15,7 @@ from dash.dependencies import ClientsideFunction
 
 acceleration = 60000  # 1 substep = 1 minute
 substeps = 20
-days = 1
+days = 7
 n_steps = 3 * 24 * days
 
 # %%
