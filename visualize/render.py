@@ -15,7 +15,7 @@ drop_penalty_color = 'plum'
 power_line_color = 'slateblue'
 
 
-def render(env: 'MultiCellNetEnv', mode='none'):
+def render(env: 'MultiCellNetEnv', mode=None):
     net = env.net
     info = env.info_dict()
     

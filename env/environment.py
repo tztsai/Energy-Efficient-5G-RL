@@ -129,7 +129,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
-    def step(self, actions=None, substeps=action_interval):
+    def step(self, actions=None, substeps=action_interval, 
+             render_interval=None, render_mode=None):
         if EVAL:
             notice(f'\nStep {self._sim_steps}:\n')
             info('traffic distribution: %s',
@@ -145,6 +146,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             if EVAL:
                 debug('Substep %d', i + 1)
             self.net.step(self._dt)
+            if render_interval is not None and (i + 1) % render_interval == 0:
+                self.render(render_mode)
 
         self.net.update_stats()
 
