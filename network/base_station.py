@@ -399,8 +399,8 @@ class BaseStation:
                 Pld += Pcd*R + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
             P = Pld + Pnl
         if EVAL:
-            self._pc_records.append([M, K, R, S, Pnl, Pld, P])
-            debug(f'BS {self.id}: K={K}, R={R}, P_nl={Pnl}, P_ld={Pld}, P={P}')
+            self.net.add_stat('pc', [M, K, R, S, Pnl, Pld, P])
+            debug(f'BS {self.id}: M={M}, K={K}, R={R}, P_nl={Pnl}, P_ld={Pld}, P={P}')
         return P
     
     def consume_energy(self, e, k):
@@ -431,7 +431,6 @@ class BaseStation:
         self._wake_delay = 0
         self._energy_consumed = defaultdict(float)
         self._total_energy_consumed = 0
-        self._pc_records = []
         self._sleep_times = [0] * self.num_sleep_modes
 
     def step(self, dt):
