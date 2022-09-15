@@ -15,6 +15,7 @@ from dash.dependencies import ClientsideFunction
 
 acceleration = 36000  # 1 substep = 1 minute
 substeps = 20
+render_interval = 2
 days = 7
 n_steps = 5 * 24 * days
 
@@ -23,7 +24,7 @@ def parse_env_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
-    parser.add_argument("-S", "--traffic_type", type=str, default="A",
+    parser.add_argument("-S", "--traffic_type", type=str, default="B",
                         help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
@@ -93,17 +94,16 @@ else:
 from datetime import datetime
 
 obs, _, _ = env.reset()
+
 if args.use_render:
     env.render()
+else:
+    render_interval = None
 
 def step_env(obs):
     actions = agent.act(obs) if env.need_action else None
-    obs, _, reward, done, _, _ = env.step(actions, substeps=substeps)
-    if args.use_render:
-        # if env._episode_steps > 20:
-        #     env.render(mode='human')
-        #     exit()
-        env.render()
+    obs, _, reward, done, _, _ = env.step(
+        actions, substeps=substeps, render_interval=render_interval)
     return obs, reward[0], done
 
 T = args.num_env_steps
@@ -129,7 +129,7 @@ def simulate(obs=obs):
         save_path, mode='a', header=not save_path.exists())
     if args.use_render and not args.use_dash:
         return env.animate()
-    
+
 simulate()
 env.close()
 
