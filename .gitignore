@@ -13,6 +13,7 @@
 /data/cells-traffic/
 /data/RAN_PM_data/
 /results/**/*/run*/
+!/results/**/*/wandb/*
 /results/*.csv
 /results/*.txt
 /analysis/*.csv
