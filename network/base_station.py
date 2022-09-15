@@ -141,8 +141,9 @@ class BaseStation:
     
     @timeit
     def take_action(self, action):
-        assert len(action) == len(self.action_dims)
-        notice(f'BS {self.id} takes action:\n{action}')
+        if not TRAIN:
+            assert len(action) == len(self.action_dims)
+            notice(f'BS {self.id} takes action:\n{action}')
         self.switch_antennae(int(action[0]))
         self.switch_sleep_mode(int(action[1]))
         self.switch_connection_mode(int(action[2]) - 1)
