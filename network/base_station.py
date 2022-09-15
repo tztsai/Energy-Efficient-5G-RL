@@ -395,7 +395,7 @@ class BaseStation:
             Pld = M * C['PA-ld']
             if K > 0:
                 R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-                Pld += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+                Pld += Pcd*R + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
             P = Pld + Pnl
         if EVAL:
             self._pc_records.append([M, K, R, S, Pnl, Pld, P])
