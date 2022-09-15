@@ -548,34 +548,34 @@ class BaseStation:
 
     @cache_obs
     def info_dict(self):
-        obs = self.observe_self()
-        info = self.annotate_obs(obs, trunc=self.self_obs_ndims)
-        for k, v in list(info.items()):
-            if '-' in k:
-                if k == 'pc-1':
-                    info['pc'] = v
-                elif k == 'arrival_rate-1':
-                    info['arrival_rate'] = v
-                del info[k]
-        # info['disconnect'] = self._disc_all
-        return info
         # obs = self.observe_self()
-        # return dict(
-        #     num_ant=self.num_ant,
-        #     conn_mode=self.conn_mode,
-        #     sleep=self.sleep,
-        #     next_sleep=self._next_sleep,
-        #     wakeup=self.wakeup_time,
-        #     pc=self.power_consumption,
-        #     num_s=len(self.ues),
-        #     num_q=len(self.queue),
-        #     num_c=len(self.covered_ues),
-        #     thrp=obs[-8],
-        #     thrp_req=obs[-4],
-        #     thrp_req_q=obs[-3],
-        #     thrp_req_i=obs[-2],
-        #     # thrp_req_c=obs[-1]
-        # )
+        # info = self.annotate_obs(obs, trunc=self.self_obs_ndims)
+        # for k, v in list(info.items()):
+        #     if '-' in k:
+        #         if k == 'pc-1':
+        #             info['pc'] = v
+        #         elif k == 'arrival_rate-1':
+        #             info['arrival_rate'] = v
+        #         del info[k]
+        # return info
+        num_s = len(self.ues)
+        num_q = len(self.queue)
+        num_c = len(self.covered_ues)
+        thrp = sum(ue.compute_data_rate() for ue in self.ues.values())
+        thrp_req = sum(ue.required_rate for ue in self.ues.values())
+        return dict(
+            num_antennas=self.num_ant,
+            conn_mode=self.conn_mode,
+            sleep_mode=self.sleep,
+            next_sleep=self._next_sleep,
+            wakeup_time=self.wakeup_time,
+            pc=self.power_consumption,
+            num_served=num_s,
+            num_queued=num_q,
+            num_covered=num_c,
+            thrp_served=thrp,
+            thrp_req_served=thrp_req,
+        )
         
     @classmethod
     def annotate_obs(cls, obs, trunc=None, keys=config.all_obs_keys):
