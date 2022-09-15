@@ -89,7 +89,7 @@ if __name__ == '__main__':
     from plotly.subplots import make_subplots
     from collections import defaultdict
 
-    area = (1300, 1300)
+    area = (1000, 1000)
     area_km2 = area[0] * area[1] / 1e6
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
