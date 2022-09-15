@@ -6,7 +6,7 @@ renderMode = 'none'
 # base station params
 numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
-cellRadius = 500  # the radius of a hexagon cell in meters
+cellRadius = 600  # the radius of a hexagon cell in meters
 antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 5e9  # carrier frequency in Hz
 feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)

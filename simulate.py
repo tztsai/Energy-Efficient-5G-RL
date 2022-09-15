@@ -13,10 +13,10 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 6000  # 1 substep = 1 minute
+acceleration = 36000  # 1 substep = 1 minute
 substeps = 20
 days = 7
-n_steps = 30 * 24 * days
+n_steps = 5 * 24 * days
 
 # %%
 def parse_env_args(args):
@@ -35,6 +35,7 @@ parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
 
+parser.set_defaults(log_level='NOTICE')
 parser.set_defaults(num_env_steps=n_steps)
 
 args, env_args = parser.parse_known_args()
