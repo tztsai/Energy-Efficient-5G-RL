@@ -130,6 +130,7 @@ def simulate(obs=obs):
         return env.animate()
     
 simulate()
+env.close()
 
 # %%
 if not args.use_dash: exit()

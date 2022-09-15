@@ -144,8 +144,11 @@ class User:
         """
         self._sinr = self.compute_sinr()
         if self._sinr == 0: return 0
-        return self.bs.bandwidth * np.log2(1 + self._sinr)
-    
+        r = self.bs.bandwidth * np.log2(1 + self._sinr)
+        if EVAL and self.bs.num_ue > 1:
+            self.net.add_stat('p-r', [self.tx_power, self._sinr, r])
+        return r
+
     def update_data_rate(self):
         self._thruput = None
         if self.active:
@@ -158,7 +161,7 @@ class User:
     #     bs.queue[self.id] = self
     #     bs.schedule_action()
     #     info(f'UE {self.id}: added to queue of BS {bs.id}')
-        
+
     # def remove_from_queue(self):
     #     if self._in_queue_of_bs:
     #         bs = self._in_queue_of_bs

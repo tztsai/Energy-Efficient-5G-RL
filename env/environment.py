@@ -203,6 +203,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             bs_df.columns = bs_df.columns.map(lambda p: f'bs_{p[1]}_{p[0]}')
             df = pd.concat([pd.DataFrame(self._steps_info), bs_df], axis=1)
             df.set_index('time').to_csv('results/steps_info.csv')
+            self.net.save_other_stats()
     
     render = render
     animate = animate

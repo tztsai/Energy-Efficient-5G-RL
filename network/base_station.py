@@ -163,7 +163,7 @@ class BaseStation:
         debug(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
         self.update_power_consumption()
-    
+
     def switch_sleep_mode(self, mode):
         if DEBUG:
             assert mode in range(self.num_sleep_modes)
@@ -292,12 +292,15 @@ class BaseStation:
     @timeit
     def alloc_power(self):
         if not self.ues: return
-        # r = np.array([ue.required_rate for ue in self.ues.values()])
-        # w = self.power_alloc_exponent ** np.minimum(r / 1e7, 6.)
-        # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
-        w = np.array([self.power_alloc_weights[ue.app_type]
-                      for ue in self.ues.values()])
-        ps = self.transmit_power * w / w.sum()
+        if len(self.ues) > 1:
+            r = np.array([ue.required_rate for ue in self.ues.values()]) / 1e7
+            w = self.power_alloc_exponent ** np.minimum(r, 50.)
+            # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
+            # w = np.array([self.power_alloc_weights[ue.app_type]
+            #               for ue in self.ues.values()])
+            ps = self.transmit_power * w / w.sum()
+        else:
+            ps = [self.transmit_power]
         self._power_alloc = dict(zip(self.ues.keys(), ps))
         for ue in self.ues.values():
             ue.update_data_rate()
