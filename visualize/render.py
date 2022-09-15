@@ -32,15 +32,13 @@ def render(env: 'MultiCellNetEnv', mode=None):
     num antennas: {num_antennas}<br>
     sleep mode: {sleep_mode}<br>
     wake up: {wakeup_time}<br>
-    responding: {responding}<br>
+    conn mode: {conn_mode}<br>
     power consumption: {pc:.2f}<br>
     ues in service: {num_served}<br>
     ues in queue: {num_queued}<br>
     ues in coverage: {num_covered}<br>
     throughput: {thrp_served:.2f}<br>
     demand rate: {thrp_req_served:.2f}<br>
-    queued demand rate: {thrp_req_queued:.2f}<br>
-    idle demand rate: {thrp_req_idle:.2f}<br>
     """
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = dict(
