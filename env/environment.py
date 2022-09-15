@@ -36,7 +36,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                  traffic_type=config.trafficType,
                  start_time=config.startTime,
                  time_step=config.timeStep,
-                 accel_rate=config.accelRate,
+                 accelerate=config.accelRate,
                  action_interval=action_interval,
                  w_drop=w_drop,
                  w_pc=w_pc,
@@ -49,9 +49,9 @@ class MultiCellNetEnv(MultiAgentEnv):
             bs_poses=self.bs_poses,
             start_time=start_time,
             traffic_type=traffic_type,
-            accel_rate=accel_rate)
+            accelerate=accelerate)
         
-        self.episode_len = int(self.episode_time_len / accel_rate /
+        self.episode_len = int(self.episode_time_len / accelerate /
                                time_step / action_interval)
         self.action_interval = action_interval
         
@@ -74,7 +74,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         notice('Traffic type: {}'.format(self.net.traffic_model.scenario))
         notice('Start time: {} s'.format(self.net.start_time))
         notice('Time step: {} ms'.format(self._dt * 1000))
-        notice('Acceleration: {}'.format(self.net.accel_rate))
+        notice('Acceleration: {}'.format(self.net.accelerate))
         notice('Action interval: {} ms'.format(self.action_interval * self._dt * 1000))
         notice('Episode length: {}'.format(self.episode_len))
         notice('Episode time length: {} h'.format(self.episode_time_len / 3600))

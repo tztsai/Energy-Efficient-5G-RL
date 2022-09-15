@@ -210,9 +210,7 @@ class MappoTrainer:
         train_info['critic_grad_norm'] = 0
         train_info['ratio'] = 0
 
-        notice('Training...')
-        
-        for _ in trange(self.ppo_epoch):
+        for _ in trange(self.ppo_epoch, postfix='optimizing'):
             if self._use_recurrent_policy:
                 data_generator = buffer.recurrent_generator(advantages, self.num_mini_batch, self.data_chunk_length)
             elif self._use_naive_recurrent:

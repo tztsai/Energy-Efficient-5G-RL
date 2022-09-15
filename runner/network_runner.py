@@ -14,14 +14,13 @@ class MultiCellNetRunner(Runner):
 
         start = time.time()
         episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads
+        pbar = trange(episodes)
 
-        for episode in trange(episodes):
+        for episode in pbar:
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)
 
-            notice('Experimenting...')
-            
-            for step in trange(self.episode_length, file=sys.stdout):
+            for step in trange(self.episode_length, file=sys.stdout, postfix='collecting'):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states, rnn_states_critic = self.collect(step)
 
@@ -48,13 +47,13 @@ class MultiCellNetRunner(Runner):
 
             # log information
             if episode % self.log_interval == 0:
-                end = time.time()
-                print("\nAlgo {} Exp {} Episode {}/{}, Timesteps {}/{}, FPS {}.\n"
-                        .format(self.algorithm_name,
-                                self.experiment_name,
-                                episode, episodes,
-                                total_num_steps, self.num_env_steps,
-                                int(total_num_steps / (end - start))))
+                # end = time.time()
+                # notice("\nAlgo {} Exp {} Episode {}/{}, Timesteps {}/{}, FPS {}.\n"
+                #         .format(self.algorithm_name,
+                #                 self.experiment_name,
+                #                 episode, episodes,
+                #                 total_num_steps, self.num_env_steps,
+                #                 int(total_num_steps / (end - start))))
                 
 #                 sim_infos = [env.info_dict() for env in self.envs.envs]
 #                 log_fields = ['avg_pc', 'avg_serve_time',
@@ -65,7 +64,7 @@ class MultiCellNetRunner(Runner):
 
                 step_rew = train_infos["average_step_reward"] = np.mean(self.buffer.rewards)
                 train_infos["average_episode_reward"] = step_rew * self.episode_length
-                print("average step reward is {}".format(step_rew))
+                pbar.set_postfix(step_reward=step_rew)
                 self.log_train(train_infos, total_num_steps)
 
             # eval

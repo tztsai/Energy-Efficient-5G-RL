@@ -12,7 +12,7 @@
 /.misc/
 /data/cells-traffic/
 /data/RAN_PM_data/
-/results/**/check/run*/
+/results/**/*/run*/
 /results/*.csv
 /results/*.txt
 /analysis/*.csv

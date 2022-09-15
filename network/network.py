@@ -25,11 +25,11 @@ class MultiCellNetwork:
     bs_obs_ndims = box_env_ndims(bs_obs_space)
     net_obs_ndims = box_env_ndims(net_obs_space)
     
-    def __init__(self, area, bs_poses, traffic_type, start_time=0, accel_rate=1):
+    def __init__(self, area, bs_poses, traffic_type, start_time=0, accelerate=1):
         self.area = area
         self.traffic_model = TrafficModel.from_scenario(traffic_type, area)
         self.start_time = self._parse_start_time(start_time)
-        self.accel_rate = accel_rate
+        self.accelerate = accelerate
         self.bss = {}
         self.ues = {}
         self._bs_poses = None
@@ -49,7 +49,7 @@ class MultiCellNetwork:
     
     @property
     def world_time(self):
-        return self.start_time + self._time * self.accel_rate
+        return self.start_time + self._time * self.accelerate
     
     @property
     def world_time_tuple(self):

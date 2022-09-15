@@ -27,7 +27,7 @@ def parse_env_args(args):
                         help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
-    parser.add_argument("--accel_rate", type=float, default=acceleration,
+    parser.add_argument("--accelerate", type=float, default=acceleration,
                         help="acceleration rate of the simulation")
     return parser.parse_args(args)
 
@@ -120,7 +120,7 @@ def simulate(obs=obs):
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     info['scenario'] = env_args.traffic_type
     info['total_steps'] = T
-    info['accel_rate'] = env_args.accel_rate
+    info['accelerate'] = env_args.accelerate
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
     save_path = Path(__file__).parent / "results" / 'records.csv'
