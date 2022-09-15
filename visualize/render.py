@@ -92,7 +92,7 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     hover_text_template = """
     status: {status}<br>
     base station: {bs_id}<br>
-    data rate: {rate:.2f}<br>
+    data rate: {thrp:.2f}<br>
     demand: {demand:.2f}<br>
     deadline: {ddl:.0f}<br>
     thrp ratio: {thrp_ratio:.2f}<br>

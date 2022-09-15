@@ -8,10 +8,12 @@
 *-checkpoint.py
 .ipynb_checkpoints/
 /.vscode/
+/.idea/
 /.misc/
 /data/cells-traffic/
 /data/RAN_PM_data/
 /results/**/check/run*/
 /results/*.csv
 /analysis/*.csv
+/wandb/
 /config.py

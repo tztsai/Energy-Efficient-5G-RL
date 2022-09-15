@@ -5,7 +5,7 @@ renderMode = 'none'
 
 # base station params
 numBS = 7
-interBSDist = 500  # the distance between two adjacent BSs
+interBSDist = 400  # the distance between two adjacent BSs
 cellRadius = 500  # the radius of a hexagon cell in meters
 antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 5e9  # carrier frequency in Hz
@@ -14,7 +14,8 @@ antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
 numAntennas = 64  # max number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
 bsHeight = 30  # height difference between a BS and a user in meters
-powerAllocWeights = [64, 4, 1]  # weights of the power allocation
+powerAllocWeights = [95, 4, 1]  # weights of the power allocation
+powerAllocExponent = 8
 # powerAllocWeights = [1, 1, 1]  # weights of the power allocation
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepModeDeltas = [1, 0.69, 0.50, 0.29]
@@ -34,7 +35,7 @@ noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
 ueHeight = 1.5  # height of a user equipment in meters
 
 # default network configuration
-areaSize = np.array([2.6, 2.6]) * interBSDist
+areaSize = np.array([2.5, 2.5]) * interBSDist
 bsPositions = np.vstack([
     np.array(
         [[areaSize[0]/2 + interBSDist * np.cos(a + np.pi/6),

@@ -128,7 +128,7 @@ class MultiCellNetwork:
     def add_user(self, ue):
         if DEBUG:
             assert ue.id not in self.ues, "UE %s already in the network" % ue.id
-            # debug(f'UE({ue.id}, cat={ue.app_type}) added to the network')
+            debug(f'{ue} added to the network')
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
@@ -143,7 +143,6 @@ class MultiCellNetwork:
     @timeit
     def measure_distances_and_gains(self, ue):
         ue.distances = np.sqrt(np.sum((self.bs_positions - ue.pos)**2, axis=1))
-        # debug(f'Distances of UE {ue.id} to BSs: {ue.dists}')
         ue.channel_gains = compute_channel_gain(ue.distances)
 
     def remove_user(self, ue_id):

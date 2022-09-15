@@ -14,6 +14,7 @@ class UEStatus(enum.IntEnum):
 class User:
     ue_height: float = config.ueHeight
     state_dim: int = 10
+    _cache = defaultdict(dict)
 
     def __init__(self, pos, app_type, demand, delay_budget):
         self.id = id(self)
@@ -35,6 +36,23 @@ class User:
     for status in UEStatus._member_names_:
         exec(f"""@property\ndef {status.lower()}(self):
              return self.status == UEStatus.{status}""")
+    
+    def cached(func, _C=_cache):
+        @wraps(func)
+        def wrapped(self, *args):
+            cache = _C[self.id]
+            if self.delay != cache.get('__t'):
+                print(self.delay, cache)
+                cache.clear()
+                print(cache)
+                cache['__t'] = self.delay
+            else:
+                try: return cache[args]
+                except: pass
+            ret = func(self, *args)
+            cache[args] = ret
+            return ret
+        return wrapped
         
     @property
     def distances(self):
@@ -91,7 +109,8 @@ class User:
     def data_rate(self):
         if self._thruput is None:
             self._thruput = self.compute_data_rate()
-            # debug('UE {}: computed data rate {:.2f} mb/s'.format(self.id, self._thruput/1e6))
+            if DEBUG:
+                debug('UE {}: computed data rate {:.2f} mb/s'.format(self.id, self._thruput/1e6))
         return self._thruput
     
     @property
@@ -99,12 +118,14 @@ class User:
         return self.delay_budget - self.delay
     
     @property
+    # @cached
     def required_rate(self):
         t_lim = self.time_limit
         if t_lim <= 0: return 0.
         return self.demand / t_lim
     
     @property
+    # @cached
     def throughput_ratio(self):
         if self.required_rate <= 0: return 1.
         return min(self.data_rate / self.required_rate, 10.)
@@ -156,7 +177,8 @@ class User:
 
     def disconnect(self):
         if self.bs is None: return
-        # debug(f'UE {self.id} disconnects from BS {self.bs.id}')
+        if DEBUG:
+            debug(f'UE {self.id} disconnects from BS {self.bs.id}')
         if self.active:
             self.bs._disconnect(self.id)
         else:
@@ -176,9 +198,10 @@ class User:
             if DEBUG:
                 debug(f"{self} dropped" + ("" if bs is None else f" by BS {bs.id}"))
         self.net.remove_user(self.id)
+        # del self.__class__._cache[self.id]
     
     def step(self, dt):
-        # debug(f'<< {self}')
+        DEBUG and debug(f'<< {self}')
         self.delay += dt
         if EVAL and self.active:
             self.served_time += dt
@@ -186,7 +209,7 @@ class User:
             self.demand -= self.data_rate * dt
         if self.demand <= 0 or self.delay >= self.delay_budget:
             self.quit()
-        # debug(f'>> {self}')
+        DEBUG and debug(f'>> {self}')
 
     @timeit
     def info_dict(self):
@@ -194,8 +217,8 @@ class User:
             bs_id=self.bs.id if self.bs is not None else -1,
             status=self.status,
             demand=self.demand / 1e3,   # in kb
+            thrp=self.data_rate / 1e6,  # in mb/s
             ddl=self.time_limit * 1e3,  # in ms
-            rate=self.data_rate / 1e6,  # in mb/s
             thrp_ratio=self.throughput_ratio,
             urgent=self.urgent
         )
