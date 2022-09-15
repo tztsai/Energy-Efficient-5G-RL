@@ -50,7 +50,7 @@ def parse_env_args(args):
     parser.add_argument("--area_size", type=float, help="width of the square area in meters")
     parser.add_argument("--traffic_type", type=str, help="type of traffic to generate")
     parser.add_argument("--start_time", type=str, help="start time of the simulation")
-    parser.add_argument("--accel_rate", type=float, help="acceleration rate of the simulation")
+    parser.add_argument("--accelerate", type=float, help="acceleration rate of the simulation")
     parser.add_argument("--w_drop", type=float, help="weight of dropped rate in reward")
     parser.add_argument("--w_pc", type=float, help="weight of power consumption in reward")
     parser.add_argument("--w_delay", type=float, help="weight of avg delay per UE in reward")

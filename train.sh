@@ -3,7 +3,7 @@ seed_max=1
 log_level="NOTICE"
 
 traffic_type="B"
-accel_rate=600
+accelerate=600
 n_training_threads=4
 n_rollout_threads=42
 num_env_steps=$((50400 * 130))  # steps_per_episode * episodes
