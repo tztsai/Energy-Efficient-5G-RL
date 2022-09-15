@@ -21,5 +21,5 @@ numConnModes = 3
 droppedAppWeights = [.5, .3, .2]
 delayAppWeights = [6/9, 2/9, 1/9]
 droppedTrafficWeight = 0.12
-delayWeight = 8.
+delayWeight = 3.
 powerConsumptionWeight = 1.
