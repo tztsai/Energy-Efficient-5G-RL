@@ -2,7 +2,7 @@
 seed_max=1
 log_level="NOTICE"
 
-traffic_type="B"
+traffic_type="A"
 accelerate=600
 n_training_threads=4
 n_rollout_threads=42
