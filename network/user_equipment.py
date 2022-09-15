@@ -36,19 +36,19 @@ class User:
     for status in UEStatus._member_names_:
         exec(f"""@property\ndef {status.lower()}(self):
              return self.status == UEStatus.{status}""")
-    
-    def cached(func, _C=_cache):
+
+    def cached_property(func, _C=_cache):
+        @property
         @wraps(func)
-        def wrapped(self, *args):
+        def wrapped(self):
             cache = _C[self.id]
-            if self.delay != cache.get('__t'):
+            if self.delay != cache.get('_t'):
                 cache.clear()
-                cache['__t'] = self.delay
+                cache['_t'] = self.delay
             else:
-                try: return cache[args]
-                except: pass
-            ret = func(self, *args)
-            cache[args] = ret
+                return cache[None]
+            ret = func(self)
+            cache[None] = ret
             return ret
         return wrapped
         
@@ -115,15 +115,13 @@ class User:
     def time_limit(self):
         return self.delay_budget - self.delay
     
-    @property
-    @cached
+    @cached_property
     def required_rate(self):
         t_lim = self.time_limit
         if t_lim <= 0: return 0.
         return self.demand / t_lim
     
-    @property
-    @cached
+    @cached_property
     def throughput_ratio(self):
         if self.required_rate <= 0: return 1.
         return min(self.data_rate / self.required_rate, 10.)
