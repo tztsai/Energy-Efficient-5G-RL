@@ -13,10 +13,10 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 60000  # 1 substep = 1 minute
+acceleration = 6000  # 1 substep = 1 minute
 substeps = 20
 days = 7
-n_steps = 3 * 24 * days
+n_steps = 30 * 24 * days
 
 # %%
 def parse_env_args(args):

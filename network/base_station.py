@@ -387,19 +387,19 @@ class BaseStation:
             C['K3'] = B / (3 * Tc * Lbs)
             C['MK1'] = (2 + 1/Tc) * B / Lbs
             C['MK2'] = 3 * B / Lbs
-        Pind = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # independent of traffic load
-        Pdep = 0
+        Pnl = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # no-load part of PC
+        Pld = 0  # load-dependent part of PC
         if S:
-            P = Pind * sm_deltas[S]
+            P = Pnl * sm_deltas[S]
         else:
-            Pdep = M * C['PA-ld']
+            Pld = M * C['PA-ld']
             if K > 0:
                 R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-                Pdep += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
-            P = Pdep + Pind
+                Pld += Pcd*R*K + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+            P = Pld + Pnl
         if EVAL:
-            self._pc_records.append([M, K, R, S, Pind, Pdep, P])
-            debug(f'BS {self.id}: K={K}, R={R}, P_nl={Pind}, P_ld={Pdep}, P={P}')
+            self._pc_records.append([M, K, R, S, Pnl, Pld, P])
+            debug(f'BS {self.id}: K={K}, R={R}, P_nl={Pnl}, P_ld={Pld}, P={P}')
         return P
     
     def consume_energy(self, e, k):
