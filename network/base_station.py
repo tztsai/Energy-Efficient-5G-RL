@@ -29,8 +29,8 @@ class BaseStation:
     ant_switch_energy = config.antSwitchEnergy
     sleep_switch_energy = config.sleepSwitchEnergy
     disconnect_energy = config.disconnectEnergy
-    power_alloc_weights = config.powerAllocWeights
-    power_alloc_exponent = config.powerAllocExponent
+    # power_alloc_weights = config.powerAllocWeights
+    power_alloc_base = config.powerAllocBase
     buffer_shape = config.bufferShape
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
@@ -294,7 +294,7 @@ class BaseStation:
         if not self.ues: return
         if len(self.ues) > 1:
             r = np.array([ue.required_rate for ue in self.ues.values()]) / 1e7
-            w = self.power_alloc_exponent ** np.minimum(r, 50.)
+            w = self.power_alloc_base ** np.minimum(r, 50.)
             # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
             # w = np.array([self.power_alloc_weights[ue.app_type]
             #               for ue in self.ues.values()])
