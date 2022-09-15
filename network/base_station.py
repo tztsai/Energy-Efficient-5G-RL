@@ -30,6 +30,7 @@ class BaseStation:
     sleep_switch_energy = config.sleepSwitchEnergy
     disconnect_energy = config.disconnectEnergy
     power_alloc_weights = config.powerAllocWeights
+    power_alloc_exponent = config.powerAllocExponent
     buffer_shape = config.bufferShape
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
@@ -220,7 +221,8 @@ class BaseStation:
         ue.status = UEStatus.ACTIVE
         self.update_power_allocation()
         self.update_power_consumption()
-        # debug('BS {}: connected UE {}'.format(self.id, ue.id))
+        if DEBUG:
+            debug('BS {}: connected UE {}'.format(self.id, ue.id))
 
     def _disconnect(self, ue_id):
         """ Don't call this directly. Use UE.disconnect() instead. """
@@ -229,7 +231,8 @@ class BaseStation:
         ue.status = UEStatus.IDLE
         self.update_power_allocation()
         self.update_power_consumption()
-        # debug('BS {}: disconnected UE {}'.format(self.id, ue_id))
+        if DEBUG:
+            debug('BS {}: disconnected UE {}'.format(self.id, ue_id))
 
     def respond_connection_request(self, ue):
         if self.responding:
@@ -249,22 +252,23 @@ class BaseStation:
     def remove_from_cell(self, ue):
         self.covered_ues.remove(ue)
 
-    def takeover_all(self):
-        if self.covered_ues:
-            info(f'BS {self.id}: takes over all UEs in cell')
-        for ue in self.covered_ues:
-            if ue.bs is not self:
-                if ue.bs is not None:
-                    ue.disconnect()
-                    self.consume_energy(self.disconnect_energy, 'disconnect')
-                self.add_to_queue(ue)  # delay connection to the next step
+    # def takeover_all(self):
+    #     if self.covered_ues and DEBUG:
+    #         info(f'BS {self.id}: takes over all UEs in cell')
+    #     for ue in self.covered_ues:
+    #         if ue.bs is not self:
+    #             if ue.bs is not None:
+    #                 ue.disconnect()
+    #                 self.consume_energy(self.disconnect_energy, 'disconnect')
+    #             self.add_to_queue(ue)  # delay connection to the next step
 
     def add_to_queue(self, ue):
         assert ue.idle
         self.queue.append(ue)
         ue.bs = self
         ue.status = UEStatus.WAITING
-        # debug('BS {}: added UE {} to queue'.format(self.id, ue.id))
+        if DEBUG:
+            debug('BS {}: added UE {} to queue'.format(self.id, ue.id))
         
     def pop_from_queue(self, ue=None):
         if ue is None:
@@ -273,7 +277,8 @@ class BaseStation:
             self.queue.remove(ue)
         ue.bs = None
         ue.status = UEStatus.IDLE
-        # debug('BS {}: removed UE {} from queue'.format(self.id, ue.id))
+        if DEBUG:
+            debug('BS {}: removed UE {} from queue'.format(self.id, ue.id))
         return ue
     
     ### state transition ###
@@ -287,6 +292,9 @@ class BaseStation:
     @timeit
     def alloc_power(self):
         if not self.ues: return
+        # r = np.array([ue.required_rate for ue in self.ues.values()])
+        # w = self.power_alloc_exponent ** np.minimum(r / 1e7, 6.)
+        # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
         w = np.array([self.power_alloc_weights[ue.app_type]
                       for ue in self.ues.values()])
         ps = self.transmit_power * w / w.sum()
@@ -301,10 +309,12 @@ class BaseStation:
             self._sleep_times[self.sleep] += dt
         if self._next_sleep == self.sleep:
             if self.queue and self.sleep in (1, 2):
-                info('BS {}: automatically waking up'.format(self.id))
+                if DEBUG:
+                    info('BS {}: automatically waking up'.format(self.id))
                 self.switch_sleep_mode(0)
             elif self.sleep == 0 and not self.ues and self._prev_sleep == 1:
-                info('BS {}: automatically goes to sleep'.format(self.id))
+                if DEBUG:
+                    info('BS {}: automatically goes to sleep'.format(self.id))
                 self.switch_sleep_mode(1)
             return
         self._wake_timer += dt
@@ -335,10 +345,8 @@ class BaseStation:
                     self.connect(ue)
 
     def disconnect_all(self):
-        if not TRAIN:
-            if self.ues or self.queue:
-                info('BS {}: disconnects {} UEs'.format(self.id, self.num_ue))
-            # self._disc_all = 1
+        if DEBUG and (self.ues or self.queue):
+            info('BS {}: disconnects {} UEs'.format(self.id, self.num_ue))
         for ue in list(self.ues.values()):
             ue.disconnect()
             self.consume_energy(self.disconnect_energy, 'disconnect')
