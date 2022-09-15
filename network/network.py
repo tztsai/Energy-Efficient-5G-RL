@@ -172,8 +172,8 @@ class MultiCellNetwork:
     def consume_energy(self, energy):
         self._energy_consumed += energy
 
-    # def add_stat(self, key, val, dt):
-    #     self._other_stats[key] += [1, val, dt]
+    def add_stat(self, key, val):
+        self._other_stats[key].append(val)
 
     def reset(self):
         info('Resetting %s', self)
@@ -187,7 +187,7 @@ class MultiCellNetwork:
         self._total_dropped = np.zeros((self.traffic_model.num_apps, 4))
         self._total_done = np.zeros((self.traffic_model.num_apps, 4))
         self._total_energy_consumed = 0
-        self._other_stats = defaultdict(lambda: np.zeros(3, dtype=np.float32))
+        self._other_stats = defaultdict(list)
         self.reset_stats()
 
     @timeit
@@ -286,7 +286,11 @@ class MultiCellNetwork:
                 *[f'bs{i}_obs{j}' for i in range(self.num_bs) for j in range(self.bs_obs_ndims)]]
         assert len(keys) == len(obs)
         return dict(zip(keys, obs))
-        
+    
+    def save_other_stats(self):
+        for k, v in self._other_stats.items():
+            np.savetxt(f'results/{k}.txt', np.array(v))
+
     def __repr__(self) -> str:
         if not DEBUG:
             return 'Network'
