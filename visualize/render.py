@@ -95,12 +95,11 @@ def render(env: 'MultiCellNetEnv', mode='none'):
     data rate: {thrp:.2f}<br>
     demand: {demand:.2f}<br>
     deadline: {ddl:.0f}<br>
-    thrp ratio: {thrp_ratio:.2f}<br>
     """
     try:
         x, y, b, s, r, u, i = \
             np.array([[ue.pos[0], ue.pos[1], ue.bs.id if ue.bs else net.num_bs,
-                       ue.demand, ue.throughput_ratio, ue.urgent, i] 
+                       ue.demand, ue.data_rate, ue.urgent, i] 
                       for i, ue in net.ues.items()]).T
         hover_texts = [hover_text_template.format(**ue.info_dict()) for ue in net.ues.values()]
         b = np.nan_to_num(b, nan=net.num_bs).astype(int)

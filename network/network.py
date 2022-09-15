@@ -128,7 +128,7 @@ class MultiCellNetwork:
     def add_user(self, ue):
         if DEBUG:
             assert ue.id not in self.ues, "UE %s already in the network" % ue.id
-            debug(f'{ue} added to the network')
+            # debug(f'{ue.id} added to the network')
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
