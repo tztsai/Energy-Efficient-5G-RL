@@ -168,7 +168,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         if EVAL:
             notice('Reward: %.2f', reward)
 
-        if EVAL and self._episode_steps % 12 == 0:
+        if EVAL and self._episode_steps % 4 == 0:
             infos = self.info_dict()
             self._steps_info.append(infos)
             notice('\nTime: %s', infos['time'])

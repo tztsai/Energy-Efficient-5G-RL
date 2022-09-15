@@ -42,9 +42,7 @@ class User:
         def wrapped(self, *args):
             cache = _C[self.id]
             if self.delay != cache.get('__t'):
-                print(self.delay, cache)
                 cache.clear()
-                print(cache)
                 cache['__t'] = self.delay
             else:
                 try: return cache[args]
@@ -118,14 +116,14 @@ class User:
         return self.delay_budget - self.delay
     
     @property
-    # @cached
+    @cached
     def required_rate(self):
         t_lim = self.time_limit
         if t_lim <= 0: return 0.
         return self.demand / t_lim
     
     @property
-    # @cached
+    @cached
     def throughput_ratio(self):
         if self.required_rate <= 0: return 1.
         return min(self.data_rate / self.required_rate, 10.)
@@ -198,10 +196,10 @@ class User:
             if DEBUG:
                 debug(f"{self} dropped" + ("" if bs is None else f" by BS {bs.id}"))
         self.net.remove_user(self.id)
-        # del self.__class__._cache[self.id]
+        del self.__class__._cache[self.id]
     
     def step(self, dt):
-        DEBUG and debug(f'<< {self}')
+        # DEBUG and debug(f'<< {self}')
         self.delay += dt
         if EVAL and self.active:
             self.served_time += dt
@@ -209,7 +207,7 @@ class User:
             self.demand -= self.data_rate * dt
         if self.demand <= 0 or self.delay >= self.delay_budget:
             self.quit()
-        DEBUG and debug(f'>> {self}')
+        # DEBUG and debug(f'>> {self}')
 
     @timeit
     def info_dict(self):
@@ -217,9 +215,8 @@ class User:
             bs_id=self.bs.id if self.bs is not None else -1,
             status=self.status,
             demand=self.demand / 1e3,   # in kb
-            thrp=self.data_rate / 1e6,  # in mb/s
+            thrp=self._thruput and self._thruput / 1e6,  # in mb/s
             ddl=self.time_limit * 1e3,  # in ms
-            thrp_ratio=self.throughput_ratio,
             urgent=self.urgent
         )
     

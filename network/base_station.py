@@ -158,7 +158,7 @@ class BaseStation:
         if num_ant_new <= self.num_ue or num_ant_new > self.num_antennas:
             return  # invalid action
         self.num_ant = num_ant_new
-        for ue in self.ues.values():
+        for ue in self.net.ues.values():
             ue.update_data_rate()
         debug(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
@@ -299,9 +299,10 @@ class BaseStation:
                       for ue in self.ues.values()])
         ps = self.transmit_power * w / w.sum()
         self._power_alloc = dict(zip(self.ues.keys(), ps))
-        for ue in self.net.ues.values():
+        for ue in self.ues.values():
             ue.update_data_rate()
-        # info('BS {}: allocated power {}'.format(self.id, self._power_alloc))
+        if DEBUG:
+            debug('BS {}: allocated power {}'.format(self.id, self._power_alloc))
 
     @timeit
     def update_sleep(self, dt):
