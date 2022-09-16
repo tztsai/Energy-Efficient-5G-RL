@@ -19,6 +19,6 @@ numConnModes = 3
 # reward parameters
 droppedAppWeights = [.5, .3, .2]
 delayAppWeights = [6/9, 2/9, 1/9]
-droppedTrafficWeight = 1.  # per Mbps
+droppedTrafficWeight = 0.6  # per Mbps
 delayWeight = 2.  # per second
 powerConsumptionWeight = 1.  # per kW

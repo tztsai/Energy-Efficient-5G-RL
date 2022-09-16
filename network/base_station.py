@@ -341,6 +341,7 @@ class BaseStation:
         if self.sleep:
             for ue in list(self.ues.values()):
                 ue.disconnect()
+                self.consume_energy(self.disconnect_energy, 'disconnect')
                 if self.conn_mode >= 0:
                     self.add_to_queue(ue)
         else:
