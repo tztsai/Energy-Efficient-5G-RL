@@ -24,14 +24,19 @@ class TrafficModel:
     num_apps = config.numApps
     app_names = config.appNames
     period = 60 * 60 * 24 * 7  # a week (in seconds)
-    sample_rate = config.dpiSampleRate
+    sample_rates = config.dpiSampleRates
     profiles_path = config.profilesPath
 
     def __init__(self, area=None, period=period, scenario=None, sample_rate=None):
         self.area = 1 if area is None else area[0] * area[1] / 1e6  # km^2
         self.period = period
         self.scenario = scenario
-        if sample_rate is not None:
+        if sample_rate is None:
+            if scenario is None:
+                self.sample_rate = 1
+            else:
+                self.sample_rate = self.sample_rates[scenario.value - 1]
+        else:
             self.sample_rate = sample_rate
 
     @classmethod

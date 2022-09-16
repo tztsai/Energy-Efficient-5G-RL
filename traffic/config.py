@@ -5,5 +5,5 @@ fileSize = 2 << 20  # file size in bits
 delayBudgets = [.05, .15, .30]  # in seconds
 appNames = ['Delay Stringent', 'Delay Sensitive', 'Delay Tolerant']
 # peakSumRate = 1 << 30  # maximum downlink sum rate in bps
-dpiSampleRate = 1/150  # probability of inspecting a traffic session in DPI data
+dpiSampleRates = [1/50, 1/100, 1/100]  # probability of inspecting a traffic session in DPI data
 profilesPath = Path(__file__).parent.parent/'data/cluster_traffic_profiles.csv'
