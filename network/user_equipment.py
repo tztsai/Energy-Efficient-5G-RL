@@ -130,9 +130,15 @@ class User:
     def urgent(self):
         return self.time_limit < 0.03
 
-    def compute_sinr(self, noise_var=config.noiseVariance):
+    def compute_sinr(self, N=config.noisePower):
         if self.bs is None: return 0
-        return self.signal_power / (self.interference + noise_var)
+        S = self.signal_power
+        I = self.interference
+        SINR = S / (I + N)
+        if EVAL:
+            self.net.add_stat('sinr', [bs.transmit_power for bs in self.net.bss.values()] +
+                              [self.bs.id, self.tx_power, self.channel_gain, S, I, SINR])
+        return SINR
     
     @timeit
     def compute_data_rate(self):
