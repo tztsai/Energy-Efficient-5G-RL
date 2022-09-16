@@ -13,11 +13,11 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 36000  # 1 substep = 1 minute
+acceleration = 60000  # 1 substep = 1 minute
 substeps = 20
 render_interval = 2
 days = 7
-n_steps = 5 * 24 * days
+n_steps = 180000 // acceleration * 24 * days
 
 # %%
 def parse_env_args(args):
