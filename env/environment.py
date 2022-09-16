@@ -21,9 +21,9 @@ class MultiCellNetEnv(MultiAgentEnv):
     - Connection mode: 0, 1, 2, 3
     - Switch antennae: -16, -4, 0, 4, 16
     """
-    w_drop_cats = np.array(config.droppedAppWeights)
+    w_drop_cats = np.array(config.dropAppWeights)
     w_delay_cats = np.array(config.delayAppWeights)
-    w_drop = config.droppedTrafficWeight
+    w_drop = config.dropRatioWeight
     w_delay = config.delayWeight
     w_pc = config.powerConsumptionWeight
     episode_time_len = config.episodeTimeLen
@@ -101,7 +101,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     def get_reward(self, obs=None):
         if obs is None:
             pc = self.net.power_consumption
-            dr = self.net.drop_rates
+            dr = self.net.drop_ratios
             dl = self.net.service_delays
         else:  # use already calculated values
             pc = obs[0]
@@ -109,7 +109,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             dl = obs[4:7]
             if DEBUG:
                 assert abs(pc - self.net.power_consumption) < 1e-6
-                assert np.abs(dr - self.net.drop_rates).sum() < 1e-4
+                assert np.abs(dr - self.net.drop_ratios).sum() < 1e-4
                 assert np.abs(dl - self.net.service_delays).sum() < 1e-4
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
@@ -177,22 +177,23 @@ class MultiCellNetEnv(MultiAgentEnv):
             infos = self.info_dict()
             self._steps_info.append(infos)
             notice('\nTime: %s', infos['time'])
-            notice('Power consumption: {}'.format(self.net.power_consumption))
-            notice('Arrival rates: {}'.format(self.net.arrival_rates))
-            notice('Dropped rates: {}'.format(self.net.drop_rates))
-            notice('Service delays: {}'.format(self.net.service_delays))
+            notice('Power consumption: %.2f W', self.net.power_consumption * 1000)
+            notice('Arrival rates: %s', self.net.arrival_rates)
+            notice('Drop ratios: %s', self.net.drop_ratios)
+            notice('Service delays: %s', self.net.service_delays)
             # info('\nBS states:\n{}'.format(infos['bs_info']))
             # info('\nUE states:\n{}'.format(infos['ue_info']))
             notice('\nStatistics:')
-            notice('  average PC: %.3f', infos['avg_pc']),
-            notice('  %d users done', infos['total_done_count'])
-            notice('  %d users dropped', infos['total_dropped_count'])
-            notice('  done traffic (Mb): %.2f, %.2f, %.2f', *infos['total_done_vol']),
-            notice('  dropped traffic (Mb): %.2f, %.2f, %.2f', *infos['total_dropped_vol']),
-            notice('  latency (ms): %.1f, %.1f, %.1f', *infos['avg_latency'])
+            notice('  average PC: %.2f W', infos['avg_pc'] * 1000),
+            # notice('  %d users done', infos['total_done_count'])
+            # notice('  %d users dropped', infos['total_dropped_count'])
+            notice('  users arrived: %d, %d, %d', *infos['total_ue_count'])
+            notice('  done traffic (Mb): %.2f, %.2f, %.2f', *infos['total_done_vol'])
+            notice('  dropped traffic (Mb): %.2f, %.2f, %.2f', *infos['total_dropped_vol'])
+            notice('  average delay (ms): %.1f, %.1f, %.1f', *infos['avg_delay'])
             notice('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
-            notice('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
-            notice('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['total_drop_ratios']*100)
+            # notice('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
+            notice('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['avg_drop_ratios']*100)
 
         return obs, cent_obs, rewards, done, infos, None
     

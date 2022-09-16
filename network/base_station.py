@@ -80,6 +80,9 @@ class BaseStation:
         self._nb_dists = dict()
         self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
         self._buf_idx = 0
+        self._sleep_times = np.zeros(self.num_sleep_modes)
+        if EVAL:
+            self.net.add_stat('sleep', self._sleep_times)
         self.reset()
 
     ### properties ###
@@ -163,7 +166,6 @@ class BaseStation:
             ue.update_data_rate()
         debug(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
-        self.update_power_consumption()
 
     def switch_sleep_mode(self, mode):
         if DEBUG:
@@ -221,7 +223,6 @@ class BaseStation:
         ue.bs = self
         ue.status = UEStatus.ACTIVE
         self.update_power_allocation()
-        self.update_power_consumption()
         if DEBUG:
             debug('BS {}: connected UE {}'.format(self.id, ue.id))
 
@@ -231,7 +232,6 @@ class BaseStation:
         ue.bs = None
         ue.status = UEStatus.IDLE
         self.update_power_allocation()
-        self.update_power_consumption()
         if DEBUG:
             debug('BS {}: disconnected UE {}'.format(self.id, ue_id))
 
@@ -286,6 +286,9 @@ class BaseStation:
 
     def update_power_allocation(self):
         self._power_alloc = None
+        for ue in self.ues.values():
+            ue.update_data_rate()
+        self.update_power_consumption()
 
     def update_power_consumption(self):
         self._pc = None
@@ -331,10 +334,10 @@ class BaseStation:
             self._prev_sleep = self.sleep
             self.sleep = self._next_sleep
             self._wake_timer = 0.
-        # else:
-        #     wake_time = (self._wake_delay - self._wake_timer) * 1000
-        #     info('BS {}: switching sleep mode {} -> {} (after {:.0f} ms)'
-        #          .format(self.id, self.sleep, self._next_sleep, wake_time))
+        elif DEBUG:
+            wake_time = (self._wake_delay - self._wake_timer) * 1000
+            info('BS {}: switching sleep mode {} -> {} (after {:.0f} ms)'
+                 .format(self.id, self.sleep, self._next_sleep, wake_time))
 
     @timeit
     def update_connections(self):
@@ -432,7 +435,9 @@ class BaseStation:
         self._wake_delay = 0
         self._energy_consumed = defaultdict(float)
         self._total_energy_consumed = 0
-        self._sleep_times = [0] * self.num_sleep_modes
+        self._buffer[:] = 0
+        self._buf_idx = 0
+        self._sleep_times[:] = 0
 
     def step(self, dt):
         self.update_sleep(dt)
@@ -593,9 +598,8 @@ class BaseStation:
         return dict(zip(keys, obs))
 
     def __repr__(self):
-        if not DEBUG:
-            return 'BS(%d)' % self.id
-        obs = self.annotate_obs(self.observe_self(), trunc=5)
-        return 'BS({})'.format(kwds_str(
-            id=self.id, pos=self.pos, **obs
-        ))
+        return 'BS(%d)' % self.id
+        # obs = self.annotate_obs(self.observe_self(), trunc=5)
+        # return 'BS({})'.format(kwds_str(
+        #     id=self.id, pos=self.pos, **obs
+        # ))
