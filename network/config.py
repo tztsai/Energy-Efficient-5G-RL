@@ -7,7 +7,7 @@ renderMode = 'none'
 numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
 cellRadius = 600  # the radius of a hexagon cell in meters
-antennaPower = 0.2  # maximum antenna power in watts (src: Energy Saving Game for Massive MIMO)
+antennaPower = 0.4  # average antenna power in watts (src: Energy Saving Game for Massive MIMO)
 bsFrequency = 5e9  # carrier frequency in Hz
 feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
@@ -27,7 +27,7 @@ bufferChunkSize = 5  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
 
 # channel model params
-noiseVariance = bandWidth * dB2lin(-174 - 30 + 7)
+noisePower = bandWidth * dB2lin(-174 - 30 + 7)
 # thermal noise variance
 
 # user equipment params
