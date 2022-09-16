@@ -12,7 +12,7 @@ class UEStatus(enum.IntEnum):
 
 
 class User:
-    ue_height: float = config.ueHeight
+    height: float = config.ueHeight
     state_dim: int = 10
     _cache = defaultdict(dict)
 
@@ -195,7 +195,7 @@ class User:
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
-        self.served = self.total_demand - self.demand
+        # self.served = self.total_demand - self.demand
         if self.demand <= 0:
             self.status = UEStatus.DONE
         else:
@@ -228,8 +228,7 @@ class User:
         )
     
     def __repr__(self):
-        if not DEBUG:
-            return 'UE(%d)' % self.id
+        return 'UE(%d)' % self.id
         return 'UE({})'.format(kwds_str(
             id=self.id,
             # pos=self.pos,
