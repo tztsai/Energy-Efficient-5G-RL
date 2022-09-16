@@ -4,10 +4,11 @@ import pandas as pd
 
 try:
     from . import config
-    from utils import timeit
+    from utils import timeit, notice
 except ImportError:
     import config
     timeit = lambda func: func
+    notice = print
 
 
 class TrafficType(enum.IntEnum):
@@ -23,31 +24,37 @@ class TrafficModel:
     num_apps = config.numApps
     app_names = config.appNames
     period = 60 * 60 * 24 * 7  # a week (in seconds)
-    
-    profiles_path = config.profilesPath
     sample_rate = config.dpiSampleRate
+    profiles_path = config.profilesPath
 
-    def __init__(self, area, period=period, scenario=None):
-        self.area = area[0] * area[1] / 1e6  # km^2
+    def __init__(self, area=None, period=period, scenario=None, sample_rate=None):
+        self.area = 1 if area is None else area[0] * area[1] / 1e6  # km^2
         self.period = period
         self.scenario = scenario
+        if sample_rate is not None:
+            self.sample_rate = sample_rate
 
     @classmethod
-    def from_scenario(cls, scenario, area):
+    def from_scenario(cls, scenario, **kwargs):
         if type(scenario) is str:
             scenario = TrafficType[scenario.upper()]
         else:
             scenario = TrafficType(scenario)
         profiles_df = pd.read_csv(cls.profiles_path, index_col=[0, 1, 2])
-        profiles_df /=  cls.sample_rate
         profile = profiles_df.loc[int(scenario)]
-        return cls(area, scenario=scenario).fit(profile)
+        return cls(scenario=scenario, **kwargs).fit(profile)
 
     def fit(self, data_rate_df):
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
-        df = data_rate_df[self.app_names]
+        df = data_rate_df[self.app_names] / self.sample_rate
         self.interval, rem = divmod(self.period, len(df))
+        density_df = df / 1e6
+        density_df['Total'] = density_df.sum(axis=1)
+        info_df = density_df.describe()
+        info_df.loc['peak time'] = density_df.idxmax(axis=0)
+        notice('Traffic scenario: {}'.format(self.scenario.name))
+        notice(str(info_df) + '\n')
         assert rem == 0, (self.interval, rem)
         self.rates = df * self.area / self.file_size  # files / s
         assert self.rates.max().max() * 1e-3 <= 1.

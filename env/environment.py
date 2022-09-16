@@ -38,6 +38,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                  time_step=config.timeStep,
                  accelerate=config.accelRate,
                  action_interval=action_interval,
+                 dpi_sample_rate=None,
                  w_drop=w_drop,
                  w_pc=w_pc,
                  w_delay=w_delay,
@@ -49,7 +50,9 @@ class MultiCellNetEnv(MultiAgentEnv):
             bs_poses=self.bs_poses,
             start_time=start_time,
             traffic_type=traffic_type,
-            accelerate=accelerate)
+            accelerate=accelerate,
+            dpi_sample_rate=dpi_sample_rate
+        )
         
         self.episode_len = int(self.episode_time_len / accelerate /
                                time_step / action_interval)
@@ -71,7 +74,6 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._total_steps = 0
         
     def print_info(self):
-        notice('Traffic type: {}'.format(self.net.traffic_model.scenario))
         notice('Start time: {} s'.format(self.net.start_time))
         notice('Time step: {} ms'.format(self._dt * 1000))
         notice('Acceleration: {}'.format(self.net.accelerate))
