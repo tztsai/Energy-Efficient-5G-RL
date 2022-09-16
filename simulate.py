@@ -30,6 +30,8 @@ def parse_env_args(args):
                         help="start time of the simulation")
     parser.add_argument("--accelerate", type=float, default=acceleration,
                         help="acceleration rate of the simulation")
+    parser.add_argument("--dpi_sample_rate", type=float,
+                        help="DPI sample rate (inversely proportion to traffic density)")
     return parser.parse_args(args)
 
 parser = get_config()
