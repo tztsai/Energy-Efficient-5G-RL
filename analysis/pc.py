@@ -21,4 +21,7 @@ px.scatter_3d(df.loc[df.S == 0],
               x='M', y='R', z='Pld')
 
 # %%
-px.scatter_3d(df, x='S', y='M', z='Pnl')
+# px.scatter_3d(df, x='S', y='M', z='Pnl')
+px.scatter(df, x='S', y='Pnl')
+
+# %%

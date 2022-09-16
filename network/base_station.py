@@ -361,7 +361,7 @@ class BaseStation:
 
     @timeit
     def compute_power_consumption(
-        self, eta=0.25, eps=8.2e-3, Ppa_max=10, Psyn=1,
+        self, eta=0.25, eps=8.2e-3, Ppa_max=4, Psyn=1,
         Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=18, C={},
         sm_deltas=config.sleepModeDeltas
     ):
@@ -392,13 +392,13 @@ class BaseStation:
         Pnl = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # no-load part of PC
         Pld = 0  # load-dependent part of PC
         if S:
-            P = Pnl * sm_deltas[S]
+            Pnl *= sm_deltas[S]
         else:
             Pld = M * C['PA-ld']
             if K > 0:
                 R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
                 Pld += Pcd*R + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
-            P = Pld + Pnl
+        P = Pld + Pnl
         if EVAL:
             self.net.add_stat('pc', [M, K, R, S, Pnl, Pld, P])
             debug(f'BS {self.id}: M={M}, K={K}, R={R}, P_nl={Pnl}, P_ld={Pld}, P={P}')
