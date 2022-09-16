@@ -39,7 +39,7 @@ class AdaptivePolicy:
             arrival_rate = info['arrival_rate-1']
             thrp_req = info['thrp_req_served']
             log_ratio = info['log_ratio_served']
-            
+
             new_sm = sm
             ant_switch = 2
             if sm:
