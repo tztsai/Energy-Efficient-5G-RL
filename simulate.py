@@ -13,36 +13,44 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 60000  # 1 substep = 1 minute
-substeps = 20
+acceleration = 60000  # 1 substep = 1 minute, 1 step = 20 minutes
 render_interval = 2
-days = 7
-n_steps = 180000 // acceleration * 24 * days
 
 # %%
 def parse_env_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
-    parser.add_argument("-S", "--traffic_type", type=str, default="B",
+    parser.add_argument("-S", "--scenario", type=str, default="B",
                         help="type of traffic to generate")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
-    parser.add_argument("--accelerate", type=float, default=acceleration,
+    parser.add_argument("--accelerate", type=int, default=acceleration,
                         help="acceleration rate of the simulation")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
+    parser.add_argument("--stats_save_path",
+                        help="path to save the statistics of the simulation")
     return parser.parse_args(args)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
+parser.add_argument("--perf_save_path", default="results/performance.csv",
+                    help="path to save the performance of the simulation")
+parser.add_argument("--log_path",
+                    help="path to save the log of the simulation")
+parser.add_argument("--render_interval", type=int, default=render_interval,
+                    help="interval of rendering")
+parser.add_argument("--days", type=int, default=7,
+                    help="number of days to simulate")
 
 parser.set_defaults(log_level='NOTICE')
-parser.set_defaults(num_env_steps=n_steps)
 
 args, env_args = parser.parse_known_args()
 env_args = parse_env_args(env_args)
+
+args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
 
 # %%
 set_log_level(args.log_level)
@@ -61,7 +69,7 @@ def get_env_kwargs(args):
 
 def get_run_dir(args, env_args):
     return Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
-        / args.env_name / env_args.traffic_type / args.algorithm_name / args.experiment_name
+        / args.env_name / env_args.scenario / args.algorithm_name / args.experiment_name
 
 def get_latest_model_dir(args, run_dir):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
@@ -73,11 +81,22 @@ def get_latest_model_dir(args, run_dir):
 
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
 env.print_info()
+env.net.traffic_model.print_info()
+
 obs_space = env.observation_space[0]
 cent_obs_space = env.cent_observation_space
 action_space = env.action_space[0]
 
 run_dir = get_run_dir(args, env_args)
+
+if args.log_path is None:
+    fn = '{}_{}({})(acc-{}).log'.format(
+        args.agent, env_args.scenario, 
+        re.sub('(, |:)', '-', env.net.world_time_repr),
+        env.net.accelerate)
+    args.log_path = 'logs/' + fn
+
+set_log_file(args.log_path)
 
 # match args.agent.lower():
 if args.agent == 'mappo':
@@ -107,7 +126,7 @@ else:
 def step_env(obs):
     actions = agent.act(obs) if env.need_action else None
     obs, _, reward, done, _, _ = env.step(
-        actions, substeps=substeps, render_interval=render_interval)
+        actions, render_interval=render_interval)
     return obs, reward[0], done
 
 T = args.num_env_steps
@@ -123,14 +142,14 @@ def simulate(obs=obs):
     info.index = ['reward_' + str(i) for i in info.index]
     info['agent'] = args.agent
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    info['scenario'] = env_args.traffic_type
+    info['scenario'] = env_args.scenario
     info['total_steps'] = T
     info['accelerate'] = env_args.accelerate
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
-    save_path = Path(__file__).parent / "results" / 'performance.csv'
+    save_path = args.perf_save_path
     info.to_frame().T.set_index('time').to_csv(
-        save_path, mode='a', header=not save_path.exists())
+        save_path, mode='a', header=not os.path.exists(str(save_path)))
     if args.use_render and not args.use_dash:
         return env.animate()
 

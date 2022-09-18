@@ -1,6 +1,7 @@
 # %%
 import io
 import os
+import re
 import sys
 import time
 import enum
@@ -41,6 +42,11 @@ def set_log_level(level):
         # format='%(levelname)s: %(message)s',
         format='%(message)s',
         level=level)
+
+def set_log_file(log_file):
+    if log_file is not None:
+        logger.addHandler(logging.FileHandler(log_file))
+        logger.propagate = False
 
 def dB2lin(dB):
     return 10 ** (dB / 10)

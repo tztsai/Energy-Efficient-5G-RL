@@ -9,7 +9,7 @@ accelRate = 600  # 1h in real time = 6s (600 env steps) in simulation time
 episodeTimeLen = 60 * 60 * 24 * 7  # the duration of an episode in simulation (seconds in a week)
 
 # traffic parameters
-trafficType = 'B'  # 'A', 'B', 'C'
+trafficScenario = 'B'  # 'A', 'B', 'C'
 
 # action parameters
 numAntSwitchOpts = 5

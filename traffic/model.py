@@ -54,19 +54,22 @@ class TrafficModel:
         assert data_rate_df.shape[1] == self.num_apps
         df = data_rate_df[self.app_names] / self.sample_rate
         self.interval, rem = divmod(self.period, len(df))
-        self.density_df = density_df = df / 1e6
-        density_df['Total'] = density_df.sum(axis=1)
-        info_df = density_df.describe()
-        info_df.loc['highest time'] = density_df.idxmax(axis=0)
-        info_df.loc['lowest time'] = density_df.idxmin(axis=0)
-        notice('Traffic scenario: {}'.format(self.scenario.name))
-        notice(str(info_df) + '\n')
+        self.density_df = df / 1e6
+        self.density_df['Total'] = self.density_df.sum(axis=1)
         assert rem == 0, (self.interval, rem)
         self.rates = df * self.area / self.file_size  # files / s
         assert self.rates.max().max() * 1e-3 <= 1.
-        notice(str(self.rates.describe()) + '\n')
         return self
     
+    def print_info(self):
+        df = self.density_df
+        info_df = df.describe()
+        info_df.loc['highest time'] = df.idxmax(axis=0)
+        info_df.loc['lowest time'] = df.idxmin(axis=0)
+        notice('Traffic scenario: %s', self.scenario.name)
+        notice('%s\n', info_df)
+        notice('%s\n', self.rates.describe())
+        
     @property
     def time_slots(self):
         return self.rates.index
