@@ -128,7 +128,7 @@ def simulate(obs=obs):
     info['accelerate'] = env_args.accelerate
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
-    save_path = Path(__file__).parent / "results" / 'records.csv'
+    save_path = Path(__file__).parent / "results" / 'performance.csv'
     info.to_frame().T.set_index('time').to_csv(
         save_path, mode='a', header=not save_path.exists())
     if args.use_render and not args.use_dash:
