@@ -30,6 +30,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     bs_poses = net_config.bsPositions
     num_agents = len(bs_poses)
     action_interval = config.actionInterval
+    sim_info_path = 'results/simulation.csv'
     
     def __init__(self,
                  area_size=net_config.areaSize,
@@ -108,9 +109,9 @@ class MultiCellNetEnv(MultiAgentEnv):
             dr = obs[1:4]
             dl = obs[4:7]
             if DEBUG:
-                assert abs(pc - self.net.power_consumption) < 1e-6
+                assert abs(pc - self.net.power_consumption) < 1e-3
                 assert np.abs(dr - self.net.drop_ratios).sum() < 1e-4
-                assert np.abs(dl - self.net.service_delays).sum() < 1e-4
+                assert np.abs(dl - self.net.service_delays).sum() < 1e-5
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
         return -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
@@ -171,29 +172,12 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._episode_count += 1
 
         if EVAL:
-            notice('Reward: %.2f', reward)
-
-        if EVAL and self._episode_steps % 4 == 0:
             infos = self.info_dict()
             self._steps_info.append(infos)
-            notice('\nTime: %s', infos['time'])
-            notice('Power consumption: %.2f W', self.net.power_consumption * 1000)
-            notice('Arrival rates: %s', self.net.arrival_rates)
-            notice('Drop ratios: %s', self.net.drop_ratios)
-            notice('Service delays: %s', self.net.service_delays)
-            # info('\nBS states:\n{}'.format(infos['bs_info']))
-            # info('\nUE states:\n{}'.format(infos['ue_info']))
-            notice('\nStatistics:')
-            notice('  average PC: %.2f W', infos['avg_pc'] * 1000),
-            # notice('  %d users done', infos['total_done_count'])
-            # notice('  %d users dropped', infos['total_dropped_count'])
-            notice('  users arrived: %d, %d, %d', *infos['total_ue_count'])
-            notice('  done traffic (Mb): %.2f, %.2f, %.2f', *infos['total_done_vol'])
-            notice('  dropped traffic (Mb): %.2f, %.2f, %.2f', *infos['total_dropped_vol'])
-            notice('  average delay (ms): %.1f, %.1f, %.1f', *infos['avg_delay'])
-            notice('  data rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_data_rates'])
-            # notice('  drop rate (Mbps): %.2f, %.2f, %.2f', *infos['avg_drop_rates'])
-            notice('  drop ratio: %.2f%%, %.2f%%, %.2f%%', *infos['avg_drop_ratios']*100)
+            for k, v in infos.items():
+                if k in {'bs_info'} or k.startswith('bs_'):
+                    continue
+                notice('%s: %s', k, v)
 
         return obs, cent_obs, rewards, done, infos, None
     
@@ -204,11 +188,7 @@ class MultiCellNetEnv(MultiAgentEnv):
 
     def close(self):
         if EVAL:
-            bs_df = pd.concat([info.pop('bs_info') for info in self._steps_info],
-                              keys=range(len(self._steps_info))).unstack()
-            bs_df.columns = bs_df.columns.map(lambda p: f'bs_{p[1]}_{p[0]}')
-            df = pd.concat([pd.DataFrame(self._steps_info), bs_df], axis=1)
-            df.set_index('time').to_csv('results/steps_info.csv')
+            pd.DataFrame(self._steps_info).set_index('time').to_csv(self.sim_info_path)
             self.net.save_other_stats()
     
     render = render

@@ -14,15 +14,15 @@ feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
 numAntennas = 64  # max number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
-bsHeight = 30  # height difference between a BS and a user in meters
+bsHeight = 30  # height of a BS in meters
 # powerAllocWeights = [95, 4, 1]  # weights of the power allocation
 powerAllocBase = 2.
 antennaSwitchOpts = [-16, -4, 0, 4, 16]
 sleepModeDeltas = [1, 0.69, 0.50, 0.29]
 wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
-antSwitchEnergy = 0.01  # energy consumption of switch per antenna in Joules
+antSwitchEnergy = 5e-3  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0, 0.01, 0.01, 0.01]  # energy consumption of switching sleep mode in Joules
-disconnectEnergy = 0.01  # energy consumption of an early disconnection in Joules
+disconnectEnergy = 0.02  # energy consumption of an early disconnection in Joules
 bufferShape = (50, 2)  # shape of the buffer used to record past observations 
 bufferChunkSize = 5  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
@@ -32,7 +32,7 @@ noisePower = bandWidth * dB2lin(-174 - 30 + 7)
 # thermal noise variance
 
 # user equipment params
-ueHeight = 1.5  # height of a user equipment in meters
+ueHeight = 1.5  # height of a UE in meters
 
 # default network configuration
 areaSize = np.array([2.5, 2.5]) * interBSDist
