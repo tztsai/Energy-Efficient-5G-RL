@@ -33,11 +33,11 @@ class MultiCellNetwork:
     # stats_ws = 15  # window size for computing recent stats
     stats_save_path = 'analysis/'
 
-    def __init__(self, area, bs_poses, traffic_type,
+    def __init__(self, area, bs_poses, traffic_scenario,
                  start_time=0, accelerate=1, dpi_sample_rate=None):
         self.area = area
         self.traffic_model = TrafficModel.from_scenario(
-            traffic_type, area=area, sample_rate=dpi_sample_rate)
+            traffic_scenario, area=area, sample_rate=dpi_sample_rate)
         self.start_time = self._parse_start_time(start_time)
         self.accelerate = accelerate
         self.bss = {}
@@ -50,7 +50,7 @@ class MultiCellNetwork:
             self.create_new_bs(i, pos)
 
         print('Initialized 5G multi-cell network: area={}, num_bs={}, scenario={}, start_time={}.'
-              .format(self.area, self.num_bs, traffic_type, self.start_time))
+              .format(self.area, self.num_bs, traffic_scenario, self.start_time))
 
     def reset(self):
         info('Resetting %s', self)
@@ -120,11 +120,11 @@ class MultiCellNetwork:
         return self.start_time + self._time * self.accelerate
     
     @property
-    def world_time_tuple(self):
+    def world_time_repr(self):
         m, s = divmod(round(self.world_time), 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
-        return int(d % 7), int(h), int(m), s
+        return f'{calendar.day_abbr[d%7]}, {h:02}:{m:02}:{s:02}'
 
     @property
     def time_slot(self):
@@ -236,12 +236,12 @@ class MultiCellNetwork:
                 info('UE %s dropped' % ue_id)
         if EVAL:
             dropped = max(ue.demand, 0.)
-            s = self._eval_stats.loc[ue.app_type]
-            s['num'] += 1
-            s['done'] += ue.file_size - dropped
-            s['dropped'] += dropped
-            s['time'] += ue.delay
-            s['service_time'] += ue.t_served
+            s, a = self._eval_stats, ue.app_type
+            s.at[a, 'num'] += 1
+            s.at[a, 'done'] += ue.file_size - dropped
+            s.at[a, 'dropped'] += dropped
+            s.at[a, 'time'] += ue.delay
+            s.at[a, 'service_time'] += ue.t_served
         #     record = [1, drop_ratio, ue.delay, ue.t_served]
         # else:
         #     record = [1, drop_ratio, ue.delay]
@@ -306,21 +306,15 @@ class MultiCellNetwork:
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
-    @cache_obs
-    def info_dict(self, include_bs=True):
-        assert self._stats_updated
-        
-        time = eval("f'{day[d]}, {h:02}:{m:02}:{s:02}'", dict(day=calendar.day_abbr),
-                    dict(zip('dhms', self.world_time_tuple)))
-
+    __info_dict_src = re.sub(r'\n\s*', '\n', """
         # current step info
-        pc = self.power_consumption / 1e3  # kW
+        time = self.world_time_repr
+        pc = self.power_consumption  # W
         drop_ratios = self.drop_ratios
         delays = self.service_delays * 1e3  # ms
         actual_sum_rate = sum(ue.data_rate for ue in self.ues.values()) / 1e6  # Mb/s
         required_sum_rate = sum(ue.required_rate for ue in self.ues.values()) / 1e6
         arrival_rates = div0(self._eval_stats.arrived.values, self._timer) / 1e6
-
         # all steps stats
         total_time = self._time
         total_counts = self._total_stats.num.values
@@ -328,20 +322,27 @@ class MultiCellNetwork:
         total_done = self._total_stats.done.values / 1e6
         total_dropped = self._total_stats.dropped.values / 1e6
         total_quitted = total_done + total_dropped
-        total_energy = self._total_stats.energy.values  # J
-        
-        avg_pc = div0(total_energy, total_time) / 1e3
-        avg_delays = div0(self._total_stats.time.values, total_counts) * 1e3
-        avg_arrival_rates = div0(total_arrived, total_time) / 1e6
-        avg_demand_sizes = div0(total_quitted, total_counts) / 1e6
-        avg_sum_rates = div0(total_done, total_time) / 1e6
-        avg_ue_rates = div0(total_done, self._total_stats.time.values) / 1e6
-        avg_energy_efficiency = div0(total_done, total_energy) / 1e6  # Mb/J
+        total_energy = self._total_stats.energy.values[0]  # J
+        avg_pc = div0(total_energy, total_time)  # W
+        avg_drop_ratios = div0(total_dropped, total_quitted)
+        avg_delays = div0(self._total_stats.time.values * 1e3, total_counts)
+        avg_arrival_rates = div0(total_arrived, total_time) 
+        avg_demand_sizes = div0(total_quitted, total_counts)
+        avg_sum_rates = div0(total_done, total_time)
+        avg_ue_rates = div0(total_done, self._total_stats.time.values)
+        avg_energy_efficiency = div0(total_done, total_energy)  # Mb/J
         avg_service_time_ratios = div0(self._total_stats.service_time.values,
                                        self._total_stats.time.values)
-        avg_drop_ratios = div0(total_dropped, total_quitted)
+    """)
+
+    @cache_obs
+    def info_dict(self, include_bs=True, _s=__info_dict_src):
+        assert self._stats_updated
         
-        (infos := locals().copy()).pop('self')
+        infos = {}
+        scope = locals()
+        scope.update(globals())
+        exec(_s, scope, infos)
         
         if include_bs:
             for i, bs in self.bss.items():
@@ -352,8 +353,9 @@ class MultiCellNetwork:
         
     def annotate_obs(self, obs):
         keys = ['power_consumption',
-                *[f'arrival_rate_cat{i}' for i in range(3)],
                 *[f'drop_rate_cat{i}' for i in range(3)],
+                *[f'delay_cat{i}' for i in range(3)],
+                # *[f'arrival_rate_cat{i}' for i in range(3)],
                 'sum_rate', 'sum_rate_req', 'rate_log_ratio',
                 *[f'bs{i}_obs{j}' for i in range(self.num_bs) for j in range(self.bs_obs_ndims)]]
         assert len(keys) == len(obs)

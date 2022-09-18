@@ -145,7 +145,8 @@ class BaseStation:
         self._timer = 0
         # self._disc_all = 0  # used to mark a disconnect_all action
         self._arrival_rate = 0
-        self._energy_consumed.clear()
+        self._energy_consumed = 0
+        # self._energy_consumed.clear()
         
     ### properties ###
     
@@ -187,7 +188,8 @@ class BaseStation:
     
     @property
     def power_consumption(self):
-        return self._timer and sum(self._energy_consumed.values()) / self._timer
+        return self._timer and self._energy_consumed / self._timer
+        # sum(self._energy_consumed.values()) / self._timer
     
     @property
     def cell_traffic_rate(self):

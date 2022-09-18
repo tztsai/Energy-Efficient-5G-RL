@@ -30,27 +30,30 @@ class MultiCellNetEnv(MultiAgentEnv):
     bs_poses = net_config.bsPositions
     num_agents = len(bs_poses)
     action_interval = config.actionInterval
-    sim_info_path = 'results/simulation.csv'
+    stats_save_path = 'analysis/stats.csv'
     
-    def __init__(self,
-                 area_size=net_config.areaSize,
-                 traffic_type=config.trafficType,
-                 start_time=config.startTime,
-                 time_step=config.timeStep,
-                 accelerate=config.accelRate,
-                 action_interval=action_interval,
-                 dpi_sample_rate=None,
-                 w_drop=w_drop,
-                 w_pc=w_pc,
-                 w_delay=w_delay,
-                 seed=0):
+    def __init__(
+        self,
+        area_size=net_config.areaSize,
+        scenario=config.trafficScenario,
+        start_time=config.startTime,
+        time_step=config.timeStep,
+        accelerate=config.accelRate,
+        action_interval=action_interval,
+        dpi_sample_rate=None,
+        w_drop=w_drop,
+        w_pc=w_pc,
+        w_delay=w_delay,
+        seed=0,
+        stats_save_path=stats_save_path,
+    ):
         super().__init__()
         
         self.net = MultiCellNetwork(
             area=area_size,
             bs_poses=self.bs_poses,
             start_time=start_time,
-            traffic_type=traffic_type,
+            traffic_scenario=scenario,
             accelerate=accelerate,
             dpi_sample_rate=dpi_sample_rate
         )
@@ -68,6 +71,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.w_drop = w_drop
         self.w_pc = w_pc
         self.w_delay = w_delay
+        self.stats_save_path = stats_save_path
+        
         self._seed = seed
         self._dt = time_step
         self._episode_count = 0
@@ -175,8 +180,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             infos = self.info_dict()
             self._steps_info.append(infos)
             for k, v in infos.items():
-                if k in {'bs_info'} or k.startswith('bs_'):
-                    continue
+                if k.startswith('bs_'): continue
                 notice('%s: %s', k, v)
 
         return obs, cent_obs, rewards, done, infos, None
@@ -188,7 +192,7 @@ class MultiCellNetEnv(MultiAgentEnv):
 
     def close(self):
         if EVAL:
-            pd.DataFrame(self._steps_info).set_index('time').to_csv(self.sim_info_path)
+            pd.DataFrame(self._steps_info).set_index('time').to_csv(self.stats_save_path)
             self.net.save_other_stats()
     
     render = render
