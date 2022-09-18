@@ -7,11 +7,11 @@ import socket
 import numpy as np
 from pathlib import Path
 import torch
-from arguments import get_config
+from arguments import *
 from env import MultiCellNetEnv
 from argparse import ArgumentParser
 
-from utils import set_log_level
+from utils import set_log_level, get_run_dir
 from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
 
@@ -45,20 +45,6 @@ def make_env(args, env_args, for_eval=False):
     return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
 
 
-def parse_env_args(args):
-    parser = ArgumentParser()
-    
-    parser.add_argument("--area_size", type=float, help="width of the square area in meters")
-    parser.add_argument("--scenario", type=str, help="type of traffic to generate")
-    parser.add_argument("--start_time", type=str, help="start time of the simulation")
-    parser.add_argument("--accelerate", type=float, help="acceleration rate of the simulation")
-    parser.add_argument("--w_drop", type=float, help="weight of dropped rate in reward")
-    parser.add_argument("--w_pc", type=float, help="weight of power consumption in reward")
-    parser.add_argument("--w_delay", type=float, help="weight of avg delay per UE in reward")
-
-    return parser.parse_args(args)
-
-
 def main(args):
     parser = get_config()
     args, env_args = parser.parse_known_args(args)
@@ -87,8 +73,7 @@ def main(args):
         torch.set_num_threads(args.n_training_threads)
 
     # run dir
-    run_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
-        / args.env_name / env_args.scenario / args.algorithm_name / args.experiment_name
+    run_dir = get_run_dir(args, env_args)
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
