@@ -600,12 +600,13 @@ class BaseStation:
 
     @cache_obs
     def info_dict(self):
+        ts = self._total_stats['sleep_time']
         infos = dict(
             conn_mode=self.conn_mode,
             sleep_mode=self.sleep,
             next_sleep=self._next_sleep,
             wakeup_time=self.wakeup_time,
-            total_sleep_times=(ts := self._total_stats['sleep_time']),
+            total_sleep_times=ts,
             avg_sleep_ratios=div0(ts, ts.sum())
         )
         infos.update(self._stats)

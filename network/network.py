@@ -12,8 +12,8 @@ from config import *
 
 
 class MultiCellNetwork:
-    bss: dict[int, BaseStation]
-    ues: dict[int, UserEquipment]
+    bss: Dict[int, BaseStation]
+    ues: Dict[int, UserEquipment]
     
     inter_bs_dist = config.interBSDist
     default_area = config.areaSize
@@ -118,7 +118,7 @@ class MultiCellNetwork:
                 start_time = int(start_time)
             else:
                 start_time = self.traffic_model.get_start_time_of_slot(start_time)
-        assert type(start_time) is int
+        assert isinstance(start_time, (int, float))
         return start_time  # in seconds
     
     @property
