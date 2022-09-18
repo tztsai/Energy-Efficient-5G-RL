@@ -19,7 +19,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     Action space:
     - Sleep mode: 0, 1, 2, 3
     - Connection mode: 0, 1, 2, 3
-    - Switch antennae: -16, -4, 0, 4, 16
+    - Switch antennas: -16, -4, 0, 4, 16
     """
     w_drop_cats = np.array(config.dropAppWeights)
     w_delay_cats = np.array(config.delayAppWeights)
@@ -119,7 +119,14 @@ class MultiCellNetEnv(MultiAgentEnv):
                 assert np.abs(dl - self.net.service_delays).sum() < 1e-5
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
-        return -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
+        penalty = self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay
+        if EVAL:
+            self.net.add_stat('reward', dict(
+                n_drop=self.net._eval_stats['num_dropped'].values.copy(),
+                v_drop=dr, drop=dropped,
+                v_delay=dl, delay=delay,
+                pc=pc, penalty=penalty))
+        return -penalty
 
     def get_obs_agent(self, agent_id):
         return self.net.observe_bs(agent_id)

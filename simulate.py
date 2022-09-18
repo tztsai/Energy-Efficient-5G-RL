@@ -13,7 +13,7 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 60000  # 1 substep = 1 minute, 1 step = 20 minutes
+acceleration = 1000  # 1 step = 20 ms * 1000 = 20 s
 render_interval = 2
 
 # %%
@@ -42,7 +42,7 @@ parser.add_argument("--log_path",
                     help="path to save the log of the simulation")
 parser.add_argument("--render_interval", type=int, default=render_interval,
                     help="interval of rendering")
-parser.add_argument("--days", type=int, default=7,
+parser.add_argument("--days", type=int, default=1,
                     help="number of days to simulate")
 
 parser.set_defaults(log_level='NOTICE')

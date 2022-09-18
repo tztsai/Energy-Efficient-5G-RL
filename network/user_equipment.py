@@ -91,8 +91,10 @@ class UserEquipment:
     
     @property
     def signal_power(self):
-        if not self.active: return 0.
-        assert self.bs.num_ant > self.bs.num_ue
+        if not self.active:
+            return 0.
+        if DEBUG:
+            assert self.bs.num_ant > self.bs.num_ue
         return (self.bs.num_ant - self.bs.num_ue) * self.channel_gain * self.tx_power
     
     @property

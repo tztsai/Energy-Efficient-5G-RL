@@ -52,7 +52,7 @@ def dB2lin(dB):
     return 10 ** (dB / 10)
 
 def lin2dB(lin):
-    return 10 * np.log10(lin) if lin > 1e-10 else -100
+    return 10 * np.log10(np.maximum(lin, 1e-30))
 
 def kwds_str(**kwds):
     return ', '.join(f'{k}={v}' for k, v in kwds.items())
@@ -130,5 +130,33 @@ if not DEBUG:
     timeit = lambda fn: fn
 else:
     atexit.register(Profile.print_debug_exit)
+
+
+class TraceLocals:
+    def __init__(self, func):
+        self._locals = {}
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        def tracer(frame, event, arg):
+            if event == 'return':
+                self._locals = frame.f_locals.copy()
+
+        # tracer is activated on next call, return or exception
+        sys.setprofile(tracer)
+        try:
+            # trace the function call
+            res = self.func(*args, **kwargs)
+        finally:
+            # disable tracer and replace with old one
+            sys.setprofile(None)
+        return res
+
+    def clear_locals(self):
+        self._locals = {}
+
+    @property
+    def locals(self):
+        return self._locals
     
 # %%
