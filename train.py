@@ -47,8 +47,9 @@ def make_env(args, env_args, for_eval=False):
 
 def main(args):
     parser = get_config()
+    env_parser = get_env_config()
     args, env_args = parser.parse_known_args(args)
-    env_args = parse_env_args(env_args)
+    env_args = env_parser.parse_args(env_args)
     
     if args.algorithm_name == "rmappo":
         assert (args.use_recurrent_policy or args.use_naive_recurrent_policy), (
