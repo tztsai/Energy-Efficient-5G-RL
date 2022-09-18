@@ -176,10 +176,10 @@ def get_config():
                         help="Number of parallel envs for evaluating rollouts")
     parser.add_argument("--n_render_rollout_threads", type=int, default=1,
                         help="Number of parallel envs for rendering rollouts")
-    parser.add_argument("-T", "--num_env_steps", type=int, default=1000,
-                        help='Number of environment steps to train (default: 1000)')
+    parser.add_argument("-T", "--num_env_steps", type=int, default=1000000,
+                        help='Number of environment steps to train (default: 1000000)')
     parser.add_argument("--user_name", type=str, default='tcai7',help="[for wandb usage], to specify user's name for simply collecting training data.")
-    parser.add_argument("--use_wandb", action='store_true', default=not DEBUG,
+    parser.add_argument("--use_wandb", action='store_false',
                         help="[for wandb usage], will log date to wandb server. or else will use tensorboard to log data.")
 
     # env parameters
@@ -291,7 +291,7 @@ def get_config():
     return parser
 
 
-def parse_env_args(args):
+def get_env_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
@@ -311,4 +311,4 @@ def parse_env_args(args):
                         help="weight of power consumption in reward")
     parser.add_argument("--w_delay", type=float,
                         help="weight of avg delay per UE in reward")
-    return parser.parse_args(args)
+    return parser

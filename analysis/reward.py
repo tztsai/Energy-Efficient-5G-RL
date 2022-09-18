@@ -34,6 +34,3 @@ df['penalty'].describe()
 df.corr()
 
 # %%
-df.plot(kind='scatter', x='power', y='rate')
-
-df.plot(kind='scatter', x='power', y='sinr', logy=True)
