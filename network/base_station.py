@@ -4,7 +4,7 @@ from utils import *
 from . import config
 from .env_utils import *
 from .user_equipment import UserEquipment, UEStatus
-# from visualize.obs import VisBSStats
+# from visualize.obs import VisRolling
 from traffic.config import numApps
 from config import *
 
@@ -16,7 +16,7 @@ class ConnectMode(enum.IntEnum):
 
 
 class BaseStation:
-    num_antennas = config.numAntennas
+    total_antennas = config.totalAntennas
     ant_power = config.antennaPower
     bandwidth = config.bandWidth
     frequency = config.bsFrequency
@@ -41,7 +41,7 @@ class BaseStation:
     mutual_obs_dim = 5
     
     public_obs_space = make_box_env(
-        [[0, num_antennas], [0, 1]] +
+        [[0, total_antennas], [0, 1]] +
         [[0, 1]] * num_sleep_modes
     )
     private_obs_space = make_box_env(
@@ -68,7 +68,7 @@ class BaseStation:
 
     def __init__(
         self, id, pos, net, 
-        ant_power=None, num_antennas=None,
+        ant_power=None, total_antennas=None,
         frequency=None, bandwidth=None,
     ):
         pos = np.asarray(pos)
@@ -87,7 +87,7 @@ class BaseStation:
         self.covered_ues.clear()
         self.sleep = 0
         self.conn_mode = 1
-        self.num_ant = self.num_antennas
+        self.num_ant = self.total_antennas
         self._power_alloc = None
         self._prev_sleep = 0
         self._next_sleep = 0
@@ -102,7 +102,7 @@ class BaseStation:
         # self._energy_consumed = defaultdict(float)
         self._sleep_time = np.zeros(self.num_sleep_modes)
         self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
-        self._buf_idx = -1
+        self._buf_idx = 0
         if EVAL:
             self._stats = defaultdict(float)
             self._stats.update(
@@ -119,13 +119,13 @@ class BaseStation:
             s = self._stats
             s['pc'] = record[0]
             s['tx_power'] = self.transmit_power
-            s['n_antennas'] = self.num_antennas
+            s['n_ants'] = self.num_ant
             ue_stats = np.zeros((numApps, 6))
             for ue in self.ues.values():
-                ue_stats[ue.app_type] = [1, ue.signal_power, ue.interference,
+                ue_stats[ue.app_type] += [1, ue.signal_power, ue.interference,
                                          ue.sinr, ue.data_rate, ue.required_rate]
             s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
-            s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
+            # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
             s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
             s['sum_rate'] = div0(ue_stats[:, 4], ue_stats[:, 0])
             s['req_rate'] = div0(ue_stats[:, 5], ue_stats[:, 0])
@@ -209,11 +209,11 @@ class BaseStation:
         if not TRAIN:
             assert len(action) == len(self.action_dims)
             notice(f'BS {self.id} takes action:\n{action}')
-        self.switch_antennae(int(action[0]))
+        self.switch_antennas(int(action[0]))
         self.switch_sleep_mode(int(action[1]))
         self.switch_connection_mode(int(action[2]) - 1)
     
-    def switch_antennae(self, opt):
+    def switch_antennas(self, opt):
         if DEBUG:
             assert opt in range(self.num_ant_switch_opts)
         num_switch = self.ant_switch_opts[opt]
@@ -221,8 +221,8 @@ class BaseStation:
         energy_cost = self.ant_switch_energy * abs(num_switch)
         if TRAIN:  # reduce number of antenna switches
             self.consume_energy(energy_cost, 'antenna')
-        num_ant_new = self.num_antennas + num_switch
-        if num_ant_new <= self.num_ue or num_ant_new > self.num_antennas:
+        num_ant_new = self.num_ant + num_switch
+        if num_ant_new <= self.num_ue or num_ant_new > self.total_antennas:
             return  # invalid action
         if EVAL:
             self._stats['ant_switches'] += abs(num_switch)
@@ -570,7 +570,7 @@ class BaseStation:
             real_thrp *= 1e-6
             return real_thrp, 0, 0
 
-    # @VisBSStats
+    # @VisRolling
     # @cache_obs
     def get_bs_stats(self):
         idx = [(self._buf_idx + i * self.buffer_chunk_size) % len(self._buffer)

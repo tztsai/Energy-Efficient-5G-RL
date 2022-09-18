@@ -1,15 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import TraceLocals
 
-class VisBSStats:
+
+class VisRolling:
     fig, ax = plt.subplots()
     
     def __new__(cls, func):
+        func = TraceLocals(func)
         def wrapped(self, *args, **kwargs):
             ret = func(self, *args, **kwargs)
-            chunks = next(ret)
-            arr = np.concatenate(chunks)
-            if self.id == 0:
+            if not hasattr(self, 'id'):
+                cls.ax.cla()
+                self = func.locals['self']
+                y = self._arrival_buf[[(self._buf_idx + i + 1) % self.buffer_ws
+                                       for i in range(self.buffer_ws)]]
+                cls.ax.plot(y)
+                plt.pause(0.001)
+            elif self.id == 0:
+                chunks = func.locals['chunks']
+                arr = np.concatenate(chunks)
                 # plot chunks
                 cls.ax.cla()
                 cls.ax.plot(arr[:,0] / 100, label='pc')
@@ -21,8 +31,5 @@ class VisBSStats:
                 cls.ax.set_title('time: ' + str(self._time))
                 cls.ax.legend()
                 plt.pause(0.001)
-            try:
-                next(ret)
-            except StopIteration as e:
-                return e.value
+            return ret
         return wrapped

@@ -1,3 +1,4 @@
+import re
 import enum
 import numpy as np
 import pandas as pd
@@ -94,8 +95,11 @@ class TrafficModel:
         i = self._get_time_loc(time)
         return self.time_slots[i]
     
-    def get_start_time_of_slot(self, time_slot):
-        return self.interval * self.time_slots.get_loc(time_slot)
+    def get_start_time_of_slot(self, time_slot: str):
+        m = re.match(r'(\w{3,}),?\s*(\d+):(\d+)', time_slot)
+        d, h, m = m[1][:3], int(m[2]), int(m[3])
+        s = d, f"{h:02d}:{m:02d}"
+        return self.interval * self.time_slots.get_loc(s)
     
     def get_arrival_rates(self, time, dt):
         i = self._get_time_loc(time)
