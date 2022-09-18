@@ -17,16 +17,16 @@ critic_lr=7e-4
 ppo_epoch=15
 num_mini_batch=1
 
-w_pc=1.0
-w_drop=0.6
-w_delay=2.0
+w_pc=0.001
+w_drop=5.0
+w_delay=2.5
 
 log_interval=1
 
 wandb_user="tcai7"
 wandb_api_key="e3662fa8db0f243936c7514a1d0c69f2374ce721"
 
-echo "algo is ${algo}, traffic type is ${traffic_type}, max seed is ${seed_max}"
+echo "algo is ${algo}, traffic scenario is ${scenario}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
 do
     echo "seed is ${seed}:"

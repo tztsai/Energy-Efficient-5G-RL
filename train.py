@@ -49,7 +49,7 @@ def parse_env_args(args):
     parser = ArgumentParser()
     
     parser.add_argument("--area_size", type=float, help="width of the square area in meters")
-    parser.add_argument("--traffic_type", type=str, help="type of traffic to generate")
+    parser.add_argument("--scenario", type=str, help="type of traffic to generate")
     parser.add_argument("--start_time", type=str, help="start time of the simulation")
     parser.add_argument("--accelerate", type=float, help="acceleration rate of the simulation")
     parser.add_argument("--w_drop", type=float, help="weight of dropped rate in reward")
@@ -88,7 +88,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
-        / args.env_name / env_args.traffic_type / args.algorithm_name / args.experiment_name
+        / args.env_name / env_args.scenario / args.algorithm_name / args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -101,7 +101,7 @@ def main(args):
                          name=str(args.algorithm_name) + "_" +
                          str(args.experiment_name) +
                          "_seed" + str(args.seed),
-                         group=env_args.traffic_type,
+                         group=env_args.scenario,
                          dir=str(run_dir),
                          job_type="training",
                          reinit=True)
