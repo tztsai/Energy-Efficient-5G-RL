@@ -54,21 +54,24 @@ class TrafficModel:
         assert data_rate_df.shape[1] == self.num_apps
         df = data_rate_df[self.app_names] / self.sample_rate
         self.interval, rem = divmod(self.period, len(df))
-        self.density_df = df / 1e6
-        self.density_df['Total'] = self.density_df.sum(axis=1)
         assert rem == 0, (self.interval, rem)
         self.rates = df * self.area / self.file_size  # files / s
-        assert self.rates.max().max() * 1e-3 <= 1.
+        assert self.rates.values.max() * 1e-3 <= 1.
+        
+        df = pd.concat([df / 1e6, self.rates], axis=1, keys=['Mb/s/km^2', 'files/s'])
+        total_df = df.groupby(level=0, axis=1).sum()
+        for k in df.columns.levels[0]:
+            df[k, 'Total'] = total_df[k]
+        info_df = df.describe().T[['mean', 'std', 'min', 'max']].sort_index()
+        info_df['peak time'] = df.idxmax(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
+        info_df['vale time'] = df.idxmin(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
+        self.info_df = info_df.set_index(pd.MultiIndex.from_tuples(info_df.index))
+        
         return self
     
     def print_info(self):
-        df = self.density_df
-        info_df = df.describe()
-        info_df.loc['highest time'] = df.idxmax(axis=0)
-        info_df.loc['lowest time'] = df.idxmin(axis=0)
         notice('Traffic scenario: %s', self.scenario.name)
-        notice('%s\n', info_df)
-        notice('%s\n', self.rates.describe())
+        notice('%s\n', self.info_df)
         
     @property
     def time_slots(self):
