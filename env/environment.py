@@ -177,6 +177,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._episode_count += 1
 
         if EVAL:
+            notice('')
             infos = self.info_dict()
             self._steps_info.append(infos)
             for k, v in infos.items():

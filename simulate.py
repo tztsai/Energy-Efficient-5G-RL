@@ -90,7 +90,7 @@ action_space = env.action_space[0]
 run_dir = get_run_dir(args, env_args)
 
 if args.log_path is None:
-    fn = '{}_{}({})(acc-{}).log'.format(
+    fn = '{}_{}_{}_acc-{}.log'.format(
         args.agent, env_args.scenario, 
         re.sub('(, |:)', '-', env.net.world_time_repr),
         env.net.accelerate)
