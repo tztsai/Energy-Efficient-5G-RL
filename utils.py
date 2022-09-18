@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from config import DEBUG
 from pathlib import Path
+from copy import deepcopy
 from functools import wraps
 from tqdm import tqdm, trange
 # import matplotlib.pyplot as plt
@@ -75,6 +76,16 @@ def deep_update(dict1, dict2):
             deep_update(v1, v2)
         else:
             dict1[k] = v2
+
+def div0(x, y, eps=1e-10):
+    """ Replace 0 with eps in y before dividing x by y. """
+    return x / np.maximum(y, eps)
+
+def pd2np(func):
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        return func(*args, **kwds).values
+    return wrapper
 
 class Profile:
     debug_counts, debug_times = defaultdict(int), defaultdict(float)

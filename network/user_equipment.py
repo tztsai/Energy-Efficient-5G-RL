@@ -11,7 +11,7 @@ class UEStatus(enum.IntEnum):
     DROPPED = 4
 
 
-class User:
+class UserEquipment:
     height: float = config.ueHeight
     state_dim: int = 10
     _cache = defaultdict(dict)
@@ -23,10 +23,10 @@ class User:
         self.net = None
         self.app_type = app_type
         self.status = UEStatus.IDLE
-        self.demand = self.total_demand = demand
+        self.demand = self.file_size = demand
         self.delay_budget = delay_budget
         self.delay = 0.
-        self.served_time = 0.
+        self.t_served = 0.
         self._dists = None
         self._gains = None
         self._thruput = None
@@ -136,8 +136,20 @@ class User:
         I = self.interference
         SINR = S / (I + N)
         if EVAL:
-            self.net.add_stat('sinr', [bs.transmit_power for bs in self.net.bss.values()] +
-                              [self.bs.id, self.tx_power, self.channel_gain, S, I, SINR])
+            rec = dict(
+                x = self.pos[0],
+                y = self.pos[1],
+                bs = self.bs.id,
+                p = self.tx_power,
+                M = self.bs.num_ant,
+                K = self.bs.num_ue,
+                d = self._dists[self.bs.id],
+                g = self.channel_gain,
+                S = S, I = I, SINR = SINR,
+            )
+            for i, bs in self.net.bss.items():
+                rec[f'P_{i}'] = bs.transmit_power
+            self.net.add_stat('sinr', rec)
         return SINR
     
     @timeit
@@ -146,12 +158,9 @@ class User:
         Returns:
         The data_rate of the UE in bits/s.
         """
-        self._sinr = self.compute_sinr()
-        if self._sinr == 0: return 0
-        r = self.bs.bandwidth * np.log2(1 + self._sinr)
-        if EVAL and self.bs.num_ue > 1:
-            self.net.add_stat('p-r', [self.tx_power, self._sinr, r])
-        return r
+        self.sinr = self.compute_sinr()
+        if self.sinr == 0: return 0
+        return self.bs.bandwidth * np.log2(1 + self.sinr)
 
     def update_data_rate(self):
         self._thruput = None
@@ -191,17 +200,14 @@ class User:
         self.update_data_rate()
 
     def quit(self):
-        bs = self.bs
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
-        # self.served = self.total_demand - self.demand
         if self.demand <= 0:
             self.status = UEStatus.DONE
         else:
             self.status = UEStatus.DROPPED
-            if DEBUG:
-                debug(f"{self} dropped" + ("" if bs is None else f" by BS {bs.id}"))
+        # self.served = self.total_demand - self.demand
         self.net.remove_user(self.id)
         del self.__class__._cache[self.id]
     
@@ -209,7 +215,7 @@ class User:
         # DEBUG and debug(f'<< {self}')
         self.delay += dt
         if EVAL and self.active:
-            self.served_time += dt
+            self.t_served += dt
         if self.active:
             self.demand -= self.data_rate * dt
         if self.demand <= 0 or self.delay >= self.delay_budget:
