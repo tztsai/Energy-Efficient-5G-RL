@@ -289,3 +289,26 @@ def get_config():
     parser.add_argument("--model_dir", type=str, default=None, help="by default None. set the path to pretrained model.")
 
     return parser
+
+
+def parse_env_args(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--area_size", type=float,
+                        help="width of the square area in meters")
+    parser.add_argument("-S", "--scenario", type=str, default="B",
+                        help="type of traffic to generate")
+    parser.add_argument("--start_time", type=str,
+                        help="start time of the simulation")
+    parser.add_argument("-a", "--accelerate", type=int,
+                        help="acceleration rate of the simulation")
+    parser.add_argument("--dpi_sample_rate", type=float,
+                        help="DPI sample rate (inversely proportion to traffic density)")
+    parser.add_argument("--stats_save_path",
+                        help="path to save the statistics of the simulation")
+    parser.add_argument("--w_drop", type=float,
+                        help="weight of dropped rate in reward")
+    parser.add_argument("--w_pc", type=float,
+                        help="weight of power consumption in reward")
+    parser.add_argument("--w_delay", type=float,
+                        help="weight of avg delay per UE in reward")
+    return parser.parse_args(args)

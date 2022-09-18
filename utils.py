@@ -62,18 +62,18 @@ def onehot_vec(n, k):
     v[k] = 1
     return v
 
-def onehot_keys(name, n):
-    return ['{}_{}'.format(name, i) for i in range(n)]
+# def onehot_keys(name, n):
+#     return ['{}_{}'.format(name, i) for i in range(n)]
 
-def onehot_dict(name, n, k):
-    return OrderedDict(zip(onehot_keys(name, n), onehot_vec(n, k)))
+# def onehot_dict(name, n, k):
+#     return OrderedDict(zip(onehot_keys(name, n), onehot_vec(n, k)))
 
-def first(iterable, k=None):
-    if k is None:
-        return next(iter(iterable))
-    else:
-        it = iter(iterable)
-        return (next(it) for _ in range(k))
+# def first(iterable, k=None):
+#     if k is None:
+#         return next(iter(iterable))
+#     else:
+#         it = iter(iterable)
+#         return (next(it) for _ in range(k))
 
 def deep_update(dict1, dict2):
     for k, v2 in dict2.items():
@@ -87,11 +87,15 @@ def div0(x, y, eps=1e-10):
     """ Replace 0 with eps in y before dividing x by y. """
     return x / np.maximum(y, eps)
 
-def pd2np(func):
-    @wraps(func)
-    def wrapper(*args, **kwds):
-        return func(*args, **kwds).values
-    return wrapper
+def get_run_dir(args, env_args):
+    return Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
+        / args.env_name / env_args.scenario / args.algorithm_name / args.experiment_name
+
+# def pd2np(func):
+#     @wraps(func)
+#     def wrapper(*args, **kwds):
+#         return func(*args, **kwds).values
+#     return wrapper
 
 class Profile:
     debug_counts, debug_times = defaultdict(int), defaultdict(float)

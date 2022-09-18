@@ -3,7 +3,7 @@
 import torch
 from utils import *
 from agents import *
-from arguments import get_config
+from arguments import *
 from env import MultiCellNetEnv
 import numpy as np
 import plotly.graph_objects as go
@@ -13,26 +13,6 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-acceleration = 1000  # 1 step = 20 ms * 1000 = 20 s
-render_interval = 2
-
-# %%
-def parse_env_args(args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--area_size", type=float,
-                        help="width of the square area in meters")
-    parser.add_argument("-S", "--scenario", type=str, default="B",
-                        help="type of traffic to generate")
-    parser.add_argument("--start_time", type=str,
-                        help="start time of the simulation")
-    parser.add_argument("--accelerate", type=int, default=acceleration,
-                        help="acceleration rate of the simulation")
-    parser.add_argument("--dpi_sample_rate", type=float,
-                        help="DPI sample rate (inversely proportion to traffic density)")
-    parser.add_argument("--stats_save_path",
-                        help="path to save the statistics of the simulation")
-    return parser.parse_args(args)
-
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
@@ -40,9 +20,9 @@ parser.add_argument("--perf_save_path", default="results/performance.csv",
                     help="path to save the performance of the simulation")
 parser.add_argument("--log_path",
                     help="path to save the log of the simulation")
-parser.add_argument("--render_interval", type=int, default=render_interval,
+parser.add_argument("--render_interval", type=int, default=4,
                     help="interval of rendering")
-parser.add_argument("--days", type=int, default=1,
+parser.add_argument("--days", type=int, default=7,
                     help="number of days to simulate")
 
 parser.set_defaults(log_level='NOTICE')
@@ -66,10 +46,6 @@ np.random.seed(args.seed)
 # %%
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
-
-def get_run_dir(args, env_args):
-    return Path(os.path.dirname(os.path.abspath(__file__))) / "results" \
-        / args.env_name / env_args.scenario / args.algorithm_name / args.experiment_name
 
 def get_latest_model_dir(args, run_dir):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)

@@ -86,8 +86,9 @@ class MultiCellNetEnv(MultiAgentEnv):
         notice('Action interval: {} ms'.format(self.action_interval * self._dt * 1000))
         notice('Episode length: {}'.format(self.episode_len))
         notice('Episode time length: {} h'.format(self.episode_time_len / 3600))
-        notice('Drop rate weight: {}'.format(self.w_drop))
         notice('Power consumption weight: {}'.format(self.w_pc))
+        notice('Drop ratio weight: {}'.format(self.w_drop))
+        notice('Delay weight: {}'.format(self.w_delay))
         notice('Observation space: {}'.format(
             (self.num_agents, *self.observation_space[0].shape)))
         notice('Central observation space: {}'.format(
