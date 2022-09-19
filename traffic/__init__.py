@@ -11,7 +11,8 @@ else:
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
         model = TrafficModel.from_scenario(traffic_type)
-        for cat, rates in model.density_df.items():
+        model.print_info()
+        for cat, rates in model.densities.items():
             days_idx = rates.index.get_level_values(0).unique()
             df = rates.unstack().reindex(days_idx)
             fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/(s⋅km²)'))
