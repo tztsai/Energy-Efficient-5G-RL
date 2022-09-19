@@ -1,24 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import TraceLocals
+from utils import trace_locals
 
 
 class VisRolling:
     fig, ax = plt.subplots()
     
     def __new__(cls, func):
-        func = TraceLocals(func)
+        func = trace_locals(func)
         def wrapped(self, *args, **kwargs):
             ret = func(self, *args, **kwargs)
             if not hasattr(self, 'id'):
                 cls.ax.cla()
-                self = func.locals['self']
+                self = func['self']
                 y = self._arrival_buf[[(self._buf_idx + i + 1) % self.buffer_ws
                                        for i in range(self.buffer_ws)]]
                 cls.ax.plot(y)
                 plt.pause(0.001)
             elif self.id == 0:
-                chunks = func.locals['chunks']
+                chunks = func['chunks']
                 arr = np.concatenate(chunks)
                 # plot chunks
                 cls.ax.cla()

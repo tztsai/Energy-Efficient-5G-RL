@@ -136,10 +136,10 @@ else:
     atexit.register(Profile.print_debug_exit)
 
 
-class TraceLocals:
+class trace_locals:
     def __init__(self, func):
         self._locals = {}
-        self.func = func
+        self._func = func
 
     def __call__(self, *args, **kwargs):
         def tracer(frame, event, arg):
@@ -150,17 +150,13 @@ class TraceLocals:
         sys.setprofile(tracer)
         try:
             # trace the function call
-            res = self.func(*args, **kwargs)
+            res = self._func(*args, **kwargs)
         finally:
             # disable tracer and replace with old one
             sys.setprofile(None)
         return res
 
-    def clear_locals(self):
-        self._locals = {}
-
-    @property
-    def locals(self):
-        return self._locals
+    def __getitem__(self, key):
+        return self._locals[key]
     
 # %%

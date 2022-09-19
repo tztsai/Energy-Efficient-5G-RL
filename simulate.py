@@ -13,6 +13,8 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
+accelerate = 1000
+
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
@@ -25,10 +27,13 @@ parser.add_argument("--render_interval", type=int, default=4,
 parser.add_argument("--days", type=int, default=7,
                     help="number of days to simulate")
 
+env_parser = get_env_config()
+
 parser.set_defaults(log_level='NOTICE')
+env_parser.set_defaults(accelerate=accelerate)
 
 args, env_args = parser.parse_known_args()
-env_args = parse_env_args(env_args)
+env_args = env_parser.parse_args(env_args)
 
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
 
