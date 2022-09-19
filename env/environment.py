@@ -122,7 +122,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                 assert np.abs(dl - self.net.service_delays).sum() < 1e-5
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
-        infos.update(pc=pc, drop_ratio=dropped, delay=delay)
+        infos.update(avg_pc=pc, avg_drop=dropped, avg_delay=delay)
         penalty = self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay
         if EVAL:
             self.net.add_stat('reward', dict(

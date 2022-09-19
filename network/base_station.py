@@ -2,7 +2,7 @@ from utils import *
 from . import config
 from .env_utils import *
 from .user_equipment import UserEquipment, UEStatus
-from visualize.obs import VisRolling
+from visualize.obs import anim_rolling
 from traffic.config import numApps
 from config import *
 
@@ -121,7 +121,7 @@ class BaseStation:
             ue_stats = np.zeros((numApps, 6))
             for ue in self.ues.values():
                 ue_stats[ue.app_type] += [1, ue.signal_power, ue.interference,
-                                         ue.sinr, ue.data_rate, ue.required_rate]
+                                          ue.sinr, ue.data_rate, ue.required_rate]
             s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
             # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
             s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
@@ -169,10 +169,6 @@ class BaseStation:
     @property
     def transmit_power(self):
         return 0 if self.sleep else self.tx_power * self.num_ant
-    
-    @property
-    def sum_rate(self):
-        return sum(ue.data_rate for ue in self.ues.values()) / 1e6
 
     @property
     def power_alloc(self):
@@ -570,7 +566,7 @@ class BaseStation:
             real_thrp *= 1e-6
             return real_thrp, 0, 0
 
-    # @VisRolling
+    # @anim_rolling
     # @cache_obs
     def get_bs_stats(self):
         idx = [(self._buf_idx + i * self.buffer_chunk_size) % len(self._buffer)
@@ -578,7 +574,6 @@ class BaseStation:
         chunks = np.array([self._buffer[i:j] if i < j else
                            np.vstack([self._buffer[i:], self._buffer[:j]])
                            for i, j in zip(idx[:-1], idx[1:])], dtype=np.float32)
-        # yield chunks
         return chunks.mean(axis=1).reshape(-1)
 
     def get_ue_stats(self):

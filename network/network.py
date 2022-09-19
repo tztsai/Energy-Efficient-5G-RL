@@ -7,7 +7,7 @@ from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel
 from traffic.config import numApps, delayBudgets
-from visualize.obs import VisRolling
+from visualize.obs import anim_rolling
 from config import *
 
 
@@ -83,7 +83,7 @@ class MultiCellNetwork:
             self._eval_stats[:] = 0
             self._stats_updated = False
 
-    # @VisRolling
+    # @anim_rolling
     def update_stats(self):
         for bs in self.bss.values():
             bs.update_stats()
