@@ -19,6 +19,6 @@ numConnModes = 3
 # reward parameters
 dropAppWeights = [.5, .3, .2]
 delayAppWeights = [.66, .22, .12]
-dropRatioWeight = 5.
-delayWeight = 2.5  # per second
+dropRatioWeight = 3.
+delayWeight = 2.  # per second
 powerConsumptionWeight = 1e-3  # per watt
