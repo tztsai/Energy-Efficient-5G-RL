@@ -1,10 +1,8 @@
-from gym.spaces import Box
-from collections import deque
 from utils import *
 from . import config
 from .env_utils import *
 from .user_equipment import UserEquipment, UEStatus
-# from visualize.obs import VisRolling
+from visualize.obs import VisRolling
 from traffic.config import numApps
 from config import *
 
@@ -127,8 +125,8 @@ class BaseStation:
             s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
             # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
             s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
-            s['sum_rates'] = div0(ue_stats[:, 4], ue_stats[:, 0])
-            s['req_rates'] = div0(ue_stats[:, 5], ue_stats[:, 0])
+            s['sum_rates'] = div0(ue_stats[:, 4] / 1e6, ue_stats[:, 0])
+            s['req_rates'] = div0(ue_stats[:, 5] / 1e6, ue_stats[:, 0])
             s['sum_rate'] = s['sum_rates'].sum()
             s['req_rate'] = s['req_rates'].sum()
             s['active_ues'] = len(self.ues)
@@ -174,7 +172,7 @@ class BaseStation:
     
     @property
     def sum_rate(self):
-        return sum(ue.data_rate for ue in self.ues.values())
+        return sum(ue.data_rate for ue in self.ues.values()) / 1e6
 
     @property
     def power_alloc(self):
@@ -195,7 +193,7 @@ class BaseStation:
     
     @property
     def cell_traffic_rate(self):
-        return self._steps and self._arrival_rate / self._steps
+        return self._steps and self._arrival_rate / self._steps / 1e6
     
     @property
     def wakeup_time(self):
@@ -320,7 +318,7 @@ class BaseStation:
 
     def add_to_cell(self, ue):
         self.covered_ues.add(ue)
-        self._arrival_rate += ue.required_rate / 1e6
+        self._arrival_rate += ue.required_rate
     
     def remove_from_cell(self, ue):
         self.covered_ues.remove(ue)
@@ -447,7 +445,7 @@ class BaseStation:
     @timeit
     def compute_power_consumption(
         self, eta=0.25, eps=8.2e-3, Ppa_max=config.maxPAPower,
-        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=8, C={},
+        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=18, C={},
         sleep_deltas=config.sleepModeDeltas
     ):
         """
@@ -556,10 +554,10 @@ class BaseStation:
     @staticmethod
     def calc_sum_rate(ues, kind=None):
         if kind is None or kind == 'actual':
-            real_thrp = sum(ue.data_rate for ue in ues)
+            real_thrp = sum(ue.data_rate for ue in ues) / 1e6
             if kind: return real_thrp
         if kind is None or kind == 'required':
-            required_thrp = sum(ue.required_rate for ue in ues)
+            required_thrp = sum(ue.required_rate for ue in ues) / 1e6
             if kind: return required_thrp
         if required_thrp > 0:
             required_thrp *= 1e-6
@@ -629,7 +627,10 @@ class BaseStation:
     def annotate_obs(cls, obs, trunc=None, keys=config.all_obs_keys):
         def squeeze_onehot(obs, i, j):
             if i >= len(obs): return obs
-            return np.concatenate([obs[:i], [list(obs[i:j]).index(1)], obs[j:]])
+            return np.concatenate([
+                obs[:i],
+                np.argmax(obs[i:j], axis=0, keepdims=True), 
+                obs[j:]])
         for i, key in enumerate(keys):
             if key.endswith('sleep_mode'):
                 obs = squeeze_onehot(obs, i, i+cls.num_sleep_modes)

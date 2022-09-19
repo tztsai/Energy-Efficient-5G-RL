@@ -74,7 +74,7 @@ run_dir = get_run_dir(args, env_args)
 if args.log_path is None:
     fn = '{}_{}_{}_acc-{}.log'.format(
         args.agent, env_args.scenario, 
-        re.sub('(, |:)', '-', env.net.world_time_repr),
+        re.sub('(, |:)', '-', env.net.world_time_repr[:-6]),
         env.net.accelerate)
     args.log_path = 'logs/' + fn
 
@@ -106,7 +106,7 @@ else:
     render_interval = None
 
 def step_env(obs):
-    actions = agent.act(obs) if env.need_action else None
+    actions = agent.act(obs, deterministic=False) if env.need_action else None
     obs, _, reward, done, _, _ = env.step(
         actions, render_interval=render_interval)
     return obs, reward[0], done

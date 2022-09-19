@@ -15,7 +15,7 @@ class AdaptivePolicy:
         self.num_agents = num_agents
         self._sleep_timer = 0
 
-    def act(self, obs):
+    def act(self, obs, **__):
         def single_act(obs):
             # s = self.ue_stats_start
             # sm = list(obs[2:6]).index(1)

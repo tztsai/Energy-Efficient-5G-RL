@@ -347,14 +347,15 @@ class MultiCellNetwork:
                     infos[f'bs_{i}_{k}'] = v
 
         return infos
-        
-    def annotate_obs(self, obs):
+    
+    @classmethod
+    def annotate_obs(cls, obs):
         keys = ['power_consumption',
                 *[f'drop_rate_cat{i}' for i in range(3)],
                 *[f'delay_cat{i}' for i in range(3)],
                 *[f'arrival_rate_cat{i}' for i in range(3)],
                 'sum_rate', 'sum_rate_req', 'rate_log_ratio',
-                *[f'bs{i}_obs{j}' for i in range(self.num_bs) for j in range(self.bs_obs_ndims)]]
+                *[f'bs{i}_obs{j}' for i in range(config.numBS) for j in range(cls.bs_obs_ndims)]]
         assert len(keys) == len(obs)
         return dict(zip(keys, obs))
 

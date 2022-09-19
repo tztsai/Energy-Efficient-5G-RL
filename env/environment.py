@@ -107,7 +107,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     def need_action(self):
         return self._sim_steps % self.action_interval == 0
     
-    def get_reward(self, obs=None):
+    def get_reward(self, obs=None, infos={}):
         if obs is None:
             pc = self.net.power_consumption
             dr = self.net.drop_ratios
@@ -122,6 +122,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                 assert np.abs(dl - self.net.service_delays).sum() < 1e-5
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
+        infos.update(pc=pc, drop_ratio=dropped, delay=delay)
         penalty = self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay
         if EVAL:
             self.net.add_stat('reward', dict(
@@ -173,15 +174,15 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._sim_steps += substeps
         self._total_steps += steps
         self._episode_steps += steps
-
+        
+        infos = {}
         obs = self.get_obs()
         cent_obs = self.get_cent_obs()
-        reward = self.get_reward(cent_obs[0])
+        reward = self.get_reward(obs=cent_obs[0], infos=infos)
 
         rewards = [[reward]]  # shared reward for all agents
 
         done = self._episode_steps >= self.episode_len
-        infos = {}
 
         if done:
             self._episode_count += 1

@@ -3,7 +3,7 @@ import wandb
 import imageio
 import numpy as np
 from .runner import Runner, _t2n
-from utils import sys, time, trange, notice
+from utils import sys, time, trange, notice, pd
 
 
 class MultiCellNetRunner(Runner):
@@ -25,7 +25,7 @@ class MultiCellNetRunner(Runner):
                 values, actions, action_log_probs, rnn_states, rnn_states_critic = self.collect(step)
 
                 # Obser reward and next obs
-                obs, cent_obs, reward, done, info, avail_acts = self.envs.step(actions)
+                obs, cent_obs, reward, done, infos, avail_acts = self.envs.step(actions)
 
                 data = obs, cent_obs, reward, done, values, actions, action_log_probs, rnn_states, rnn_states_critic
 
@@ -47,8 +47,13 @@ class MultiCellNetRunner(Runner):
 
             # log information
             if episode % self.log_interval == 0:
-                step_rew = train_infos["average_step_reward"] = np.mean(self.buffer.rewards)
-                train_infos["average_episode_reward"] = step_rew * self.episode_length
+                env_info = pd.DataFrame(list(infos)).mean()
+                train_infos.update(env_info)
+                step_rew = np.mean(self.buffer.rewards)
+                train_infos.update(
+                    average_step_reward = step_rew,
+                    average_episode_reward = step_rew * self.episode_length
+                )
                 pbar.set_postfix(step_reward=step_rew)
                 self.log_train(train_infos, total_num_steps)
 
