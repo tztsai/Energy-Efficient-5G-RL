@@ -1,1 +1,1 @@
-{}
+{"value_loss": 0.030885846664508183, "_timestamp": 1663606101.4615862, "_runtime": 3570.665002346039, "policy_loss": -0.0006623273773745572, "dist_entropy": 0.9594355821609497, "actor_grad_norm": 0.034585047513246536, "critic_grad_norm": 0.6012024283409119, "ratio": 1.0000215768814087, "average_step_reward": -0.5319175124168396, "average_episode_reward": -638.3010149002075, "_step": 907200}
