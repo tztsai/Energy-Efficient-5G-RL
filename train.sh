@@ -2,7 +2,7 @@
 seed_max=1
 log_level="NOTICE"
 
-scenario="A"
+scenario="C"
 accelerate=600
 n_training_threads=4
 n_rollout_threads=42
