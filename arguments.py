@@ -303,6 +303,8 @@ def get_env_config():
                         help="acceleration rate of the simulation")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
+    parser.add_argument("--save_stats", action='store_true',
+                        help="save step info and statistics of the simulation")
     parser.add_argument("--stats_save_path",
                         help="path to save the statistics of the simulation")
     parser.add_argument("--w_drop", type=float,
