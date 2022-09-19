@@ -29,23 +29,23 @@ def render(env: 'MultiCellNetEnv', mode=None):
           bs.sum_rate, i] for i, bs in net.bss.items()]).T
     hover_text_template = """
     id: {id}<br>
-    num antennas: {num_antennas}<br>
+    num antennas: {n_ants}<br>
     sleep mode: {sleep_mode}<br>
     wake up: {wakeup_time}<br>
     conn mode: {conn_mode}<br>
     power consumption: {pc:.2f}<br>
-    ues in service: {num_served}<br>
-    ues in queue: {num_queued}<br>
-    ues in coverage: {num_covered}<br>
-    throughput: {thrp_served:.2f}<br>
-    demand rate: {thrp_req_served:.2f}<br>
+    ues in service: {active_ues}<br>
+    ues in queue: {queued_ues}<br>
+    ues in coverage: {covered_ues}<br>
+    sum rate: {sum_rate:.2f}<br>
+    required rate: {req_rate:.2f}<br>
     """
     hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     bs_plt = dict(
         type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
-            size=m/8+12,
+            size=m/10+14,
             line_width=1,
             line_color=color_sequence,
             symbol=sleep_symbols[s.astype(int)],
@@ -90,7 +90,7 @@ def render(env: 'MultiCellNetEnv', mode=None):
     hover_text_template = """
     status: {status}<br>
     base station: {bs_id}<br>
-    data rate: {thrp:.2f}<br>
+    data rate: {rate:.2f}<br>
     demand: {demand:.2f}<br>
     deadline: {ddl:.0f}<br>
     """
@@ -166,10 +166,10 @@ def render(env: 'MultiCellNetEnv', mode=None):
         
         # plot power consumption
         if fr:
-            y_pc = fr['data'][-2]['y'] + [info['power_consumption']]
+            y_pc = fr['data'][-2]['y'] + [info['pc']]
             # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
         else:
-            y_pc = [info['power_consumption']]
+            y_pc = [info['pc']]
             # y2_range = [0, info['power_consumption'] + 0.1]
         y_pc = y_pc[-ws:]
         pc_plt = dict(
