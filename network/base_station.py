@@ -17,7 +17,7 @@ class ConnectMode(enum.IntEnum):
 
 class BaseStation:
     total_antennas = config.totalAntennas
-    ant_power = config.antennaPower
+    tx_power = config.txPower
     bandwidth = config.bandWidth
     frequency = config.bsFrequency
     bs_height = config.bsHeight
@@ -170,7 +170,7 @@ class BaseStation:
     
     @property
     def transmit_power(self):
-        return 0 if self.sleep else self.ant_power * self.num_ant
+        return 0 if self.sleep else self.tx_power * self.num_ant
     
     @property
     def sum_rate(self):
@@ -446,9 +446,9 @@ class BaseStation:
 
     @timeit
     def compute_power_consumption(
-        self, eta=0.25, eps=8.2e-3, Ppa_max=4, Psyn=1,
-        Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=18, C={},
-        sm_deltas=config.sleepModeDeltas
+        self, eta=0.25, eps=8.2e-3, Ppa_max=config.maxPAPower,
+        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=8, C={},
+        sleep_deltas=config.sleepModeDeltas
     ):
         """
         Reference: 
@@ -470,14 +470,14 @@ class BaseStation:
             B = self.bandwidth / 1e9
             # assume ET-PA (envelope tracking power amplifier)
             C['PA-fx'] = eps * Ppa_max / ((1 + eps) * eta)
-            C['PA-ld'] = self.ant_power / ((1 + eps) * eta)
+            C['PA-ld'] = self.tx_power / ((1 + eps) * eta)
             C['K3'] = B / (3 * Tc * Lbs)
             C['MK1'] = (2 + 1/Tc) * B / Lbs
             C['MK2'] = 3 * B / Lbs
         Pnl = M * (C['PA-fx'] + Pbs) + Psyn + Pfixed  # no-load part of PC
         Pld = 0  # load-dependent part of PC
         if S:
-            Pnl *= sm_deltas[S]
+            Pnl *= sleep_deltas[S]
         else:
             Pld = M * C['PA-ld']
             if K > 0:

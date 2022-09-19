@@ -45,6 +45,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         w_pc=w_pc,
         w_delay=w_delay,
         seed=0,
+        save_stats=False,
         stats_save_path=stats_save_path,
     ):
         super().__init__()
@@ -71,6 +72,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.w_drop = w_drop
         self.w_pc = w_pc
         self.w_delay = w_delay
+        self.save_stats = save_stats
         self.stats_save_path = stats_save_path
         
         self._seed = seed
@@ -141,7 +143,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_steps = 0
         self._sim_steps = 0
         self._figure = None
-        if EVAL and not hasattr(self, '_steps_info'):
+        if EVAL and self.save_stats:
             self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
@@ -187,10 +189,11 @@ class MultiCellNetEnv(MultiAgentEnv):
         if EVAL:
             notice('')
             infos = self.info_dict()
-            self._steps_info.append(infos)
             for k, v in infos.items():
                 if k.startswith('bs_'): continue
                 notice('%s: %s', k, v)
+            if self.save_stats:
+                self._steps_info.append(infos)
 
         return obs, cent_obs, rewards, done, infos, None
     
@@ -200,9 +203,10 @@ class MultiCellNetEnv(MultiAgentEnv):
         return info
 
     def close(self):
-        if EVAL:
-            pd.DataFrame(self._steps_info).set_index('time').to_csv(self.stats_save_path)
+        if EVAL: 
             self.net.save_other_stats()
+            if self.save_stats:
+                pd.DataFrame(self._steps_info).set_index('time').to_csv(self.stats_save_path)
     
     render = render
     animate = animate
