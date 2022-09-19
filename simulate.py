@@ -14,6 +14,7 @@ from dash.dependencies import ClientsideFunction
 # %autoreload 2
 
 accelerate = 1000
+render_interval = 4
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -22,7 +23,7 @@ parser.add_argument("--perf_save_path", default="results/performance.csv",
                     help="path to save the performance of the simulation")
 parser.add_argument("--log_path",
                     help="path to save the log of the simulation")
-parser.add_argument("--render_interval", type=int, default=4,
+parser.add_argument("--render_interval", type=int, default=render_interval,
                     help="interval of rendering")
 parser.add_argument("--days", type=int, default=7,
                     help="number of days to simulate")

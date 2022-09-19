@@ -230,7 +230,7 @@ class UserEquipment:
             bs_id=self.bs.id if self.bs is not None else -1,
             status=self.status,
             demand=self.demand / 1e3,   # in kb
-            thrp=self.compute_data_rate() / 1e6,  # in mb/s
+            rate=self.compute_data_rate() / 1e6,  # in mb/s
             ddl=self.time_limit * 1e3,  # in ms
             urgent=self.urgent
         )

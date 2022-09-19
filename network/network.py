@@ -306,9 +306,10 @@ class MultiCellNetwork:
         pc = self.power_consumption  # W
         drop_ratios = self.drop_ratios
         delays = self.service_delays * 1e3  # ms
-        actual_sum_rate = sum(ue.data_rate for ue in self.ues.values()) / 1e6  # Mb/s
-        required_sum_rate = sum(ue.required_rate for ue in self.ues.values()) / 1e6
+        actual_rate = sum(ue.data_rate for ue in self.ues.values()) / 1e6  # Mb/s
+        required_rate = sum(ue.required_rate for ue in self.ues.values()) / 1e6
         arrival_rates = div0(self._eval_stats.arrived.values, self._timer) / 1e6
+        arrival_rate = np.sum(arrival_rates)
         # all steps stats
         total_time = self._time
         total_counts = self._total_stats.num.values
@@ -333,7 +334,7 @@ class MultiCellNetwork:
 
     @cache_obs
     def info_dict(self, include_bs=True, _s=__info_dict_src):
-        assert self._stats_updated
+        # assert self._stats_updated
         
         infos = {}
         scope = locals()
