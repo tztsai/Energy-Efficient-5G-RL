@@ -1,9 +1,9 @@
 from pathlib import Path
 
 numApps = 3  # number of categories of Apps with different delay budgets
-fileSize = 2 << 20  # file size in bits
+fileSize = 3 << 20  # file size in bits
 delayBudgets = [.05, .15, .30]  # in seconds
 appNames = ['Delay Stringent', 'Delay Sensitive', 'Delay Tolerant']
 # peakSumRate = 1 << 30  # maximum downlink sum rate in bps
-dpiSampleRates = [1/100, 1/300, 1/300]  # probability of inspecting a traffic session in DPI data
+dpiSampleRates = [1/150, 1/400, 1/400]  # probability of inspecting a traffic session in DPI data
 profilesPath = Path(__file__).parent.parent/'data/cluster_traffic_profiles.csv'

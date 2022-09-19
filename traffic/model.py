@@ -59,7 +59,8 @@ class TrafficModel:
         self.rates = df * self.area / self.file_size  # files / s
         assert self.rates.values.max() * 1e-3 <= 1.
         
-        df = pd.concat([df / 1e6, self.rates], axis=1, keys=['Mb/s/km^2', 'files/s'])
+        self.densities = df / 1e6
+        df = pd.concat([self.densities, self.rates], axis=1, keys=['Mb/s/km^2', 'files/s'])
         total_df = df.groupby(level=0, axis=1).sum()
         for k in df.columns.levels[0]:
             df[k, 'Total'] = total_df[k]
