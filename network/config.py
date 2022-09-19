@@ -8,7 +8,7 @@ numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
 cellRadius = 600  # the radius of a hexagon cell in meters
 txPower = 0.4  # average transmit power per antenna in watts
-maxPAPower = 4  # maximum antenna power in watts
+maxPAPower = 10  # maximum antenna power in watts
 bsFrequency = 5e9  # carrier frequency in Hz
 feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
@@ -52,9 +52,9 @@ public_obs_keys = ['num_antennas', 'responding', 'sleep_mode']
 buffer_record_keys = ['pc', 'arrival_rate']
 private_obs_keys = ['next_sleep_mode', 'wakeup_time',
                     *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in buffer_record_keys],
-                    'num_served', 'num_queued', 'num_idle', 'num_covered',
-                    'thrp_served', 'thrp_covered', 'log_ratio_served', 'log_ratio_covered',
-                    'thrp_req_served', 'thrp_req_queued', 'thrp_req_idle', 'thrp_req_covered']
+                    'num_serving', 'num_queued', 'num_idle', 'num_covered',
+                    'thrp_serving', 'thrp_covered', 'log_ratio_served', 'log_ratio_covered',
+                    'thrp_req_serving', 'thrp_req_queued', 'thrp_req_idle', 'thrp_req_covered']
 mutual_obs_keys = ['dist', 'own_thrp_req', 'own_log_ratio', 'other_thrp_req', 'other_log_ratio']
 other_obs_keys = [f'nb{i}_{k}' for i in range(numBS - 1) for k in public_obs_keys + mutual_obs_keys]
 all_obs_keys = public_obs_keys + private_obs_keys + other_obs_keys

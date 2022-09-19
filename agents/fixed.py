@@ -10,7 +10,7 @@ class AlwaysOnPolicy:
     def __init__(self, action_space, num_agents):
         self.num_agents = num_agents
 
-    def act(self, obs):
+    def act(self, obs, **__):
         return [self.fixed_action for _ in range(self.num_agents)]
         # return np.array([np.random.randint(low, high + 1) for low, high in
         #                  zip(self.act_space.low, self.act_space.high)])
