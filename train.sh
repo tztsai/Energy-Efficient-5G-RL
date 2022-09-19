@@ -2,11 +2,11 @@
 seed_max=1
 log_level="NOTICE"
 
-scenario="C"
+scenario="B"
 accelerate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=$((50400 * 60))  # steps_per_episode * episodes
+num_env_steps=$((50400 * 30))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"
@@ -14,12 +14,12 @@ gamma=0.99
 gain=0.01
 lr=7e-4
 critic_lr=7e-4
-ppo_epoch=15
+ppo_epoch=12
 num_mini_batch=1
 
 w_pc=0.001
 w_drop=5.0
-w_delay=2.5
+w_delay=1.0
 
 log_interval=1
 
