@@ -54,7 +54,7 @@ buffer_record_keys = ['pc', 'arrival_rate']
 private_obs_keys = ['next_sleep_mode', 'wakeup_time',
                     *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in buffer_record_keys],
                     'num_serving', 'num_queued', 'num_idle', 'num_covered',
-                    'thrp_serving', 'thrp_covered', 'log_ratio_served', 'log_ratio_covered',
+                    'thrp_serving', 'thrp_covered', 'log_ratio_serving', 'log_ratio_covered',
                     'thrp_req_serving', 'thrp_req_queued', 'thrp_req_idle', 'thrp_req_covered']
 mutual_obs_keys = ['dist', 'own_thrp_req', 'own_log_ratio', 'other_thrp_req', 'other_log_ratio']
 other_obs_keys = [f'nb{i}_{k}' for i in range(numBS - 1) for k in public_obs_keys + mutual_obs_keys]

@@ -38,8 +38,8 @@ class SleepyPolicy:
             thrp_req_queue = info['thrp_req_queued']
             thrp_req_idle = info['thrp_req_idle']
             arrival_rate = info['arrival_rate-1']
-            thrp_req = info['thrp_req_served']
-            log_ratio = info['log_ratio_served']
+            thrp_req = info['thrp_req_serving']
+            log_ratio = info['log_ratio_serving']
 
             new_sm = sm
             ant_switch = 2
@@ -50,21 +50,21 @@ class SleepyPolicy:
                     pass
                 elif thrp_req_queue + thrp_req_idle:  # wakeup
                     new_sm = 0
-                    ant_switch = 4  # +16
+                    ant_switch = 2  # increase
                     if wakeup_time <= 3e-3:
                         conn_mode = 2
                 elif sm == 1:
                     if self._sleep_timer >= self.pre_sm2_time:
                         new_sm = 2
-                        ant_switch = 0  # -16
+                        ant_switch = 0  # decrease
                 else:
                     if obs_others[:,-2].sum() < arrival_rate * 1.2:
                         new_sm = 1
-                        ant_switch = 4
+                        ant_switch = 2
                     elif sm == 2:
                         if self._sleep_timer >= self.pre_sm3_time:
                             new_sm = 3
-                            ant_switch = 0  # -16
+                            ant_switch = 0
             else:
                 conn_mode = 2
                 self._sleep_timer = 0
@@ -72,8 +72,8 @@ class SleepyPolicy:
                     new_sm = 1
                     ant_switch = 0
                 elif log_ratio < 0:
-                    ant_switch = 3  # +4
+                    ant_switch = 2 
                 elif log_ratio > 1:
-                    ant_switch = 1  # -4
+                    ant_switch = 0 
             return [ant_switch, new_sm, conn_mode]
         return [single_act(ob) for ob in obs]

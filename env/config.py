@@ -16,8 +16,8 @@ numSleepModes = 4
 numConnModes = 3
 
 # reward parameters
-dropAppWeights = [.5, .3, .2]  # normalized to [0, 1]
-delayAppWeights = [1/t/len(delayBudgets) for t in delayBudgets]  # normalized to [0, 1]
-dropRatioWeight = 3.
-delayWeight = 0.1
+dropAppWeights = [10, 4, 1]
+delayAppWeights = [1/t/3 for t in delayBudgets]  # each element normalized to [0, 1]
+dropRatioWeight = 2.
+delayWeight = 0.15
 powerConsumptionWeight = 1e-3  # per watt
