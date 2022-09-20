@@ -18,8 +18,8 @@ ppo_epoch=12
 num_mini_batch=1
 
 w_pc=0.001
-w_drop=2.0
-w_delay=0.2
+w_drop=0.4
+w_delay=0
 
 log_interval=1
 
