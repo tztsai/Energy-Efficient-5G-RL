@@ -2,15 +2,11 @@
 import sys
 import os
 import wandb
-import socket
-# import setproctitle
-import numpy as np
-from pathlib import Path
 import torch
+import socket
+import numpy as np
 from arguments import *
 from env import MultiCellNetEnv
-from argparse import ArgumentParser
-
 from utils import set_log_level, get_run_dir
 from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
@@ -18,19 +14,28 @@ from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
+def get_default_env_config(args, env_args):
+    tmp_env = MultiCellNetEnv(**get_env_kwargs(env_args))
+    tmp_env.print_info()
+    tmp_env.net.traffic_model.print_info()
+    args.__dict__.update(
+        episode_length=tmp_env.episode_len // args.n_rollout_threads,
+        episode_secs=tmp_env.episode_time_len,
+        avg_traffic_density=tmp_env.net.traffic_model.density_mean,
+        traffic_density_std=tmp_env.net.traffic_model.density_std,
+        accelerate=tmp_env.net.accelerate,
+        w_drop=tmp_env.w_drop,
+        w_delay=tmp_env.w_delay,
+        w_pc=tmp_env.w_pc,
+    )
 
 def make_env(args, env_args, for_eval=False):
     n_threads = args.n_rollout_threads
-    if args.episode_length is None:
-        tmp_env = MultiCellNetEnv(**get_env_kwargs(env_args))
-        tmp_env.print_info()
-        tmp_env.net.traffic_model.print_info()
-        args.episode_length = tmp_env.episode_len // n_threads
 
     def get_env_fn(rank):
         def init_env():
             kwargs = get_env_kwargs(env_args)
-            kwargs['start_time'] = rank / n_threads * MultiCellNetEnv.episode_time_len
+            kwargs['start_time'] = rank / n_threads * args.episode_secs
             kwargs['episode_len'] = args.episode_length
             env = MultiCellNetEnv(**kwargs)
             if for_eval:
@@ -73,12 +78,15 @@ def main(args):
         device = torch.device("cpu")
         torch.set_num_threads(args.n_training_threads)
 
+    # get env config
+    get_default_env_config(args, env_args)
+    
     # run dir
     run_dir = get_run_dir(args, env_args)
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
-    # wandb
+    # logging
     if args.use_wandb:
         run = wandb.init(config=args,
                          project=args.env_name,
@@ -95,8 +103,8 @@ def main(args):
         if not run_dir.exists():
             curr_run = 'run1'
         else:
-            exst_run_nums = [int(str(folder.name).split('run')[
-                                 1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
+            exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
+                             run_dir.iterdir() if str(folder.name).startswith('run')]
             if len(exst_run_nums) == 0:
                 curr_run = 'run1'
             else:
@@ -104,9 +112,6 @@ def main(args):
         run_dir = run_dir / curr_run
         if not run_dir.exists():
             os.makedirs(str(run_dir))
-
-    # setproctitle.setproctitle(str(args.algorithm_name) + "-" +
-    #                           str(args.env_name) + "-" + str(args.experiment_name) + "@" + str(args.user_name))
 
     set_log_level(args.log_level)
     
@@ -129,10 +134,6 @@ def main(args):
     }
 
     # run experiments
-    # if args.share_policy:
-    #     from onpolicy.runner.shared.mpe_runner import MPERunner as Runner
-    # else:
-    #     from onpolicy.runner.separated.mpe_runner import MPERunner as Runner
     from runner import MultiCellNetRunner as Runner
 
     runner = Runner(config)
