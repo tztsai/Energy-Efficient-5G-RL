@@ -14,7 +14,8 @@ class ConnectMode(enum.IntEnum):
 
 
 class BaseStation:
-    total_antennas = config.totalAntennas
+    max_antennas = config.maxAntennas
+    min_antennas = config.minAntennas
     tx_power = config.txPower
     bandwidth = config.bandWidth
     frequency = config.bsFrequency
@@ -39,7 +40,7 @@ class BaseStation:
     mutual_obs_dim = 5
     
     public_obs_space = make_box_env(
-        [[0, total_antennas], [0, 1]] +
+        [[0, max_antennas], [0, 1]] +
         [[0, 1]] * num_sleep_modes
     )
     private_obs_space = make_box_env(
@@ -85,7 +86,7 @@ class BaseStation:
         self.covered_ues.clear()
         self.sleep = 0
         self.conn_mode = 1
-        self.num_ant = self.total_antennas
+        self.num_ant = self.max_antennas
         self._power_alloc = None
         self._prev_sleep = 0
         self._next_sleep = 0
@@ -222,8 +223,10 @@ class BaseStation:
         if TRAIN:  # reduce number of antenna switches
             self.consume_energy(energy_cost, 'antenna')
         num_ant_new = self.num_ant + num_switch
-        if num_ant_new <= self.num_ue or num_ant_new > self.total_antennas:
-            return  # invalid action
+        if (num_ant_new < self.min_antennas or
+            num_ant_new > self.max_antennas or
+            num_ant_new <= self.num_ue):
+                return  # invalid action
         if EVAL:
             self._stats['ant_switches'] += abs(num_switch)
         self.num_ant = num_ant_new
