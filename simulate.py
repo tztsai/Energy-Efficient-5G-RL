@@ -13,7 +13,7 @@ from dash.dependencies import ClientsideFunction
 # %reload_ext autoreload
 # %autoreload 2
 
-accelerate = 1000
+accelerate = 6000
 render_interval = 4
 
 parser = get_config()

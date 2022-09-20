@@ -3,8 +3,23 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-df = pd.read_csv('bs.csv', index_col=0)
+df = pd.read_csv('bs_stats.csv', index_col=0)
+print(df.columns)
 df
+
+# %%
+df.describe()
+
+# %%
+stats_df = df[[c for c in df.keys() if c.startswith('avg_')]].copy()
+
+stats_df.describe()
+
+# %%
+stats_df['avg_sum_rate'] /= 1e6
+stats_df['avg_req_rate'] /= 1e6
+stats_df['avg_cell_data_rate'] /= 1e6
+px.scatter(stats_df)
 
 # %%
 px.scatter_3d(df.loc[df.S == 0],

@@ -30,7 +30,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     bs_poses = net_config.bsPositions
     num_agents = len(bs_poses)
     action_interval = config.actionInterval
-    stats_save_path = 'analysis/stats.csv'
+    steps_info_path = 'analysis/steps_info.csv'
     
     def __init__(
         self,
@@ -45,8 +45,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         w_pc=w_pc,
         w_delay=w_delay,
         seed=0,
-        save_stats=False,
-        stats_save_path=stats_save_path,
+        save_steps_info=False,
+        steps_info_path=steps_info_path,
     ):
         super().__init__()
         
@@ -72,8 +72,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.w_drop = w_drop
         self.w_pc = w_pc
         self.w_delay = w_delay
-        self.save_stats = save_stats
-        self.stats_save_path = stats_save_path
+        self.save_steps_info = save_steps_info
+        self.steps_info_path = steps_info_path
         
         self._seed = seed
         self._dt = time_step
@@ -82,10 +82,13 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._total_steps = 0
         
     def print_info(self):
-        notice('Start time: {} s'.format(self.net.start_time))
-        notice('Time step: {} ms'.format(self._dt * 1000))
+        notice('Start time: {}'.format(self.net.world_time_repr))
         notice('Acceleration: {}'.format(self.net.accelerate))
-        notice('Action interval: {} ms'.format(self.action_interval * self._dt * 1000))
+        notice('Time step: {} ms <-> {} s'
+               .format(self._dt * 1000, self._dt * self.net.accelerate))
+        notice('Action interval: {} ms <-> {} min'
+               .format(self.action_interval * self._dt * 1000,
+                       self.action_interval * self._dt * self.net.accelerate / 60))
         notice('Episode length: {}'.format(self.episode_len))
         notice('Episode time length: {} h'.format(self.episode_time_len / 3600))
         notice('Power consumption weight: {}'.format(self.w_pc))
@@ -144,7 +147,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_steps = 0
         self._sim_steps = 0
         self._figure = None
-        if EVAL and self.save_stats:
+        if EVAL and self.save_steps_info:
             self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
@@ -193,7 +196,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             for k, v in infos.items():
                 if k.startswith('bs_'): continue
                 notice('%s: %s', k, v)
-            if self.save_stats:
+            if self.save_steps_info:
                 self._steps_info.append(infos)
 
         return obs, cent_obs, rewards, done, infos, None
@@ -205,9 +208,9 @@ class MultiCellNetEnv(MultiAgentEnv):
 
     def close(self):
         if EVAL: 
-            self.net.save_other_stats()
-            if self.save_stats:
-                pd.DataFrame(self._steps_info).set_index('time').to_csv(self.stats_save_path)
+            self.net.save_stats()
+            if self.save_steps_info:
+                pd.DataFrame(self._steps_info).set_index('time').to_csv(self.steps_info_path)
     
     render = render
     animate = animate

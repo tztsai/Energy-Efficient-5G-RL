@@ -22,6 +22,7 @@ class TrafficType(enum.IntEnum):
 class TrafficModel:
     file_size = config.fileSize  # in bits
     delay_budgets = config.delayBudgets
+    min_data_rates = file_size / np.array(delay_budgets) / 1e6  # Mb/s
     num_apps = config.numApps
     app_names = config.appNames
     period = 60 * 60 * 24 * 7  # a week (in seconds)

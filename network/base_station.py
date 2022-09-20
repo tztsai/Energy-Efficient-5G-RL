@@ -107,7 +107,7 @@ class BaseStation:
                 sleep_switches=np.zeros(self.num_sleep_modes))
             self._total_stats = defaultdict(float)
             self._total_stats.update(id=self.id)
-            self.net.add_stat('bs', self._total_stats)
+            self.net.add_stat('bs_stats', self._total_stats)
             self.update_stats()
 
     def update_stats(self):
@@ -188,15 +188,19 @@ class BaseStation:
         # sum(self._energy_consumed.values()) / self._timer
     
     @property
-    def cell_traffic_rate(self):
-        return self._steps and self._arrival_rate / self._steps / 1e6
-    
-    @property
     def wakeup_time(self):
         if self.sleep == self._next_sleep:
             return 0.
         else:
             return self._wake_delay - self._wake_timer
+        
+    @property
+    def sum_rate(self):
+        return self.calc_sum_rate(self.ues.values(), kind='actual')
+
+    @property
+    def cell_traffic_rate(self):
+        return self._steps and self._arrival_rate / self._steps / 1e6
     
     ### actions ###
     
@@ -595,28 +599,31 @@ class BaseStation:
 
     @cache_obs
     def info_dict(self):
-        ts = self._total_stats['sleep_time']
         infos = dict(
             conn_mode=self.conn_mode,
             sleep_mode=self.sleep,
             next_sleep=self._next_sleep,
             wakeup_time=self.wakeup_time,
-            total_sleep_times=ts,
-            avg_sleep_ratios=div0(ts, ts.sum())
+            **self._stats
         )
-        infos.update(self._stats)
-        steps = max(self._total_stats['steps'], 1)
-        time = max(self._total_stats['time'], 1e-6)
-        for k in self._stats:
-            infos['avg_'+k] = self._total_stats[k] / steps
-        infos['avg_reject_rate'] = div0(self._total_stats['num_rejects'],
-                                    self._total_stats['num_requests'])
-        infos['avg_cell_data_rate'] = self._total_stats['cell_traffic'] / time
-        infos['avg_cell_drop_ratio'] = div0(self._total_stats['cell_dropped_traffic'],
-                                        self._total_stats['cell_traffic'])
-        infos['avg_sleep_switch_fps'] = self._total_stats['sleep_switches'] / time
-        infos['avg_ant_switch_fps'] = self._total_stats['ant_switches'] / time
         return infos
+    
+    def calc_total_stats(self):
+        d = self._total_stats
+        for k in self._stats:
+            d['avg_'+k] = div0(d[k], d['steps'])
+        d['avg_sleep_ratios'] = div0(
+            d['sleep_time'], d['sleep_time'].sum())
+        d['avg_reject_rate'] = div0(
+            d['num_rejects'], d['num_requests'])
+        d['avg_cell_drop_ratio'] = div0(
+            d['cell_dropped_traffic'], d['cell_traffic'])
+        d['avg_cell_data_rate'] = div0(
+            d['cell_traffic'], d['time'])
+        d['avg_sleep_switch_fps'] = div0(
+            d['sleep_switches'], d['time'])
+        d['avg_ant_switch_fps'] = div0(
+            d['ant_switches'], d['time'])
     
     @classmethod
     def annotate_obs(cls, obs, trunc=None, keys=config.all_obs_keys):
