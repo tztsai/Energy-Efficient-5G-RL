@@ -30,8 +30,8 @@ def make_env(args, env_args, for_eval=False):
     def get_env_fn(rank):
         def init_env():
             kwargs = get_env_kwargs(env_args)
-            kwargs.setdefault('start_time',
-                              rank / n_threads * MultiCellNetEnv.episode_time_len)
+            kwargs['start_time'] = rank / n_threads * MultiCellNetEnv.episode_time_len
+            kwargs['episode_len'] = args.episode_length
             env = MultiCellNetEnv(**kwargs)
             if for_eval:
                 env.seed(args.seed * 50000 + rank * 10000)
