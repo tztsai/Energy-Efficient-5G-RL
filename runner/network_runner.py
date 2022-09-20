@@ -47,14 +47,13 @@ class MultiCellNetRunner(Runner):
 
             # log information
             if episode % self.log_interval == 0:
-                env_info = pd.DataFrame(list(infos)).mean()
-                train_infos.update(env_info)
-                step_rew = np.mean(self.buffer.rewards)
-                train_infos.update(
-                    average_step_reward = step_rew,
-                    average_episode_reward = step_rew * self.episode_length
-                )
-                pbar.set_postfix(step_reward=step_rew)
+                rew_info = sum(pd.DataFrame(d['step_rewards']).mean() for d in infos) / len(infos)
+                train_infos.update(rew_info)
+                avg_step_rew = np.mean(self.buffer.rewards)
+                if not np.allclose(avg_step_rew, train_infos['reward']):
+                    print('Warning: avg_step_rew != train_infos[reward]')
+                    breakpoint()
+                pbar.set_postfix(reward=avg_step_rew)
                 self.log_train(train_infos, total_num_steps)
 
             # eval
