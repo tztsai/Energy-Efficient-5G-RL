@@ -199,8 +199,9 @@ class MultiCellNetEnv(MultiAgentEnv):
 
         if done:
             self._episode_count += 1
-            infos['step_rewards'] = self._reward_stats
 
+        infos['step_rewards'] = self._reward_stats
+        
         return obs, cent_obs, rewards, done, infos, None
     
     def info_dict(self):
@@ -210,7 +211,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         return info
 
     def close(self):
-        if EVAL: 
+        if EVAL:
             self.net.save_stats()
             if self.save_steps_info:
                 pd.DataFrame(self._steps_info).set_index('time').to_csv(self.steps_info_path)

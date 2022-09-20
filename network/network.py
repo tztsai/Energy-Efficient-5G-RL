@@ -164,7 +164,8 @@ class MultiCellNetwork:
     @property
     def arrival_rates(self):
         if self._time:
-            if DEBUG: assert self._stats_updated  # should only be called when _timer = step_time
+            if DEBUG and EVAL:
+                assert self._stats_updated  # should only be called when _timer = step_time
             return self._arrival_buf.mean(axis=0) / self._timer
         return np.zeros(numApps)  # only before the first step
 
