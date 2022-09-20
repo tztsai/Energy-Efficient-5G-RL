@@ -142,7 +142,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     def get_cent_obs(self):
         return [self.net.observe_network()]
     
-    def reset(self):
+    def reset(self, render_mode=None):
         self.seed()
         self.net.reset()
         self._episode_steps = 0
@@ -151,11 +151,12 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._reward_stats = []
         if EVAL and self.save_steps_info:
             self.net._other_stats['reward'] = self._reward_stats
-            self._steps_info = [self.info_dict()]   
+            self._steps_info = [self.info_dict()]
+        self.render(render_mode)
         return self.get_obs(), self.get_cent_obs(), None
     
     def step(self, actions=None, substeps=action_interval, 
-             render_interval=None, render_mode=None):
+             render_mode=None, render_interval=1):
         if EVAL:
             notice(f'\nStep {self._sim_steps}:\n')
             info('traffic distribution: %s',
@@ -171,10 +172,10 @@ class MultiCellNetEnv(MultiAgentEnv):
             if EVAL:
                 debug('Substep %d', i + 1)
             self.net.step(self._dt)
-            if render_interval is not None and (i + 1) % render_interval == 0:
+            if i == substeps - 1:  # update stats before rendering
+                self.net.update_stats()
+            if render_mode and (i + 1) % render_interval == 0:
                 self.render(render_mode)
-
-        self.net.update_stats()
 
         steps = substeps / self.action_interval
         self._sim_steps += substeps
@@ -208,8 +209,12 @@ class MultiCellNetEnv(MultiAgentEnv):
     
     def info_dict(self):
         info = self.net.info_dict()
-        if self._sim_steps:
-            info['reward'] = self._reward_stats[-1]['reward']
+        info.update(
+            reward = self._sim_steps and self._reward_stats[-1]['reward'],
+            weighted_pc = self._sim_steps and self._reward_stats[-1]['pc'] * self.w_pc,
+            weighted_drop = self._sim_steps and self._reward_stats[-1]['drop'] * self.w_drop,
+            weighted_delay = self._sim_steps and self._reward_stats[-1]['delay'] * self.w_delay,
+        )
         return info
 
     def close(self):

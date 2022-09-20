@@ -69,6 +69,8 @@ class TrafficModel:
         info_df['peak time'] = df.idxmax(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
         info_df['vale time'] = df.idxmin(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
         self.info_df = info_df.set_index(pd.MultiIndex.from_tuples(info_df.index))
+        self.density_mean, self.density_std = self.info_df.loc[
+            ('Mb/s/km^2', 'Total'), ['mean', 'std']]
         
         return self
     

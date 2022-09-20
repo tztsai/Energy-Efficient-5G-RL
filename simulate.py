@@ -58,7 +58,6 @@ def get_latest_model_dir(args, run_dir):
     if args.model_dir is not None:
         return run_dir / args.model_dir
     p = 'wandb/run*/files/' if args.use_wandb else 'run*/models/'
-    print(run_dir)
     return max(run_dir.glob(p), key=os.path.getmtime)
 
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
@@ -98,17 +97,12 @@ else:
 # %%
 from datetime import datetime
 
-obs, _, _ = env.reset()
-
-if args.use_render:
-    env.render()
-else:
-    render_interval = None
+obs, _, _ = env.reset(args.use_render)
 
 def step_env(obs):
     actions = agent.act(obs, deterministic=False) if env.need_action else None
     obs, _, reward, done, _, _ = env.step(
-        actions, render_interval=render_interval)
+        actions, render_mode=args.use_render, render_interval=render_interval)
     return obs, reward[0], done
 
 T = args.num_env_steps

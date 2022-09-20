@@ -131,7 +131,9 @@ class MultiCellNetwork:
         m, s = divmod(round(self.world_time), 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
-        return f'{calendar.day_abbr[d%7]}, {h:02}:{m:02}:{s:02}'
+        rep = f'{calendar.day_abbr[d%7]}, {h:02}:{m:02}'
+        if s: rep += f':{s:02}'
+        return rep
 
     @property
     def time_slot(self):

@@ -10,12 +10,20 @@ color_sequence = np.array(px.colors.qualitative.Plotly)[:n_agents+1]
 oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
     255 - int(s[i:i+2], 16) for i in range(1, 7, 2)) for s in color_sequence])
 
-penalty_line_color = 'coral'
+delay_penalty_color = 'slateblue'
 drop_penalty_color = 'plum'
-power_line_color = 'slateblue'
+pc_penalty_color = 'coral'
 
 
-def render(env: 'MultiCellNetEnv', mode=None):
+def render(env: 'MultiCellNetEnv', mode='default'):
+    """ Render the environment using Plotly.
+    Render modes:
+    - human: create, store, and show Plotly figure
+    - any other True value: create and store a dict to be used to render as an animation frame
+    - any False value: do nothing
+    """
+    if not mode: return
+    
     net = env.net
     info = env.info_dict()
     
@@ -106,7 +114,7 @@ def render(env: 'MultiCellNetEnv', mode=None):
             type='scatter',
             x=x, y=y, mode='markers', ids=i,
             marker=dict(
-                size=s/1.5e5+2,
+                size=s/3e5+3,
                 line_width=0,
                 # line_color='grey',
                 symbol=symbols,
@@ -119,17 +127,17 @@ def render(env: 'MultiCellNetEnv', mode=None):
     except ValueError:
         ue_plt = dict(type='scatter')
 
-    fr = fig['frames'][-1] if fig['frames'] else None
+    fr = fig['frames'][-1] if fig['frames'] else []
     
     if net._stats_updated:
         # plot data rates
-        ws = 80  # window size
-        t = fr['data'][2]['x'] + [net._time] if fr else [net._time]
+        ws = 60  # window size
+        t = (fr and fr['data'][2]['x']) + [net.world_time_repr.split(', ')[1]]
         t = t[-ws:]
         rate_plts = []
         y_max = 0
         for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
-            new_y = info[key] / 8
+            new_y = info[key]
             if fr:
                 y = fr['data'][i+2]['y'] + [new_y]
             else:
@@ -142,80 +150,94 @@ def render(env: 'MultiCellNetEnv', mode=None):
                 x=t, y=y,
                 xaxis='x2',
                 yaxis='y2',
-                name=key.replace('_', ' ')+' (MB/s)',
+                name=key.replace('_', ' ')+' (Mb/s)',
             ))
         y2_range = [0, y_max]
 
-        # plot penalty
-        pen = -info['reward']
-        if fr:
-            y_pen = fr['data'][-1]['y'] + [pen]
-        else:
-            y_pen = [pen]
-        y_pen = y_pen[-ws:]
-        y3_range = [0, max(y_pen) * 1.05]
-        rw_plt = dict(
-            type='scatter',
-            mode='lines',
-            x=t, y=y_pen,
-            xaxis='x2',
-            yaxis='y3',
-            name='penalty',
-            line_color=penalty_line_color,
-        )
+        # plot penalties
+        dl = info['weighted_delay']
+        dr = info['weighted_drop']
+        pc = info['weighted_pc']
+        y31 = dl
+        y32 = dl + dr
+        y31 = dl + dr + pc
         
-        # plot power consumption
-        if fr:
-            y_pc = fr['data'][-2]['y'] + [info['pc']]
-            # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
-        else:
-            y_pc = [info['pc']]
-            # y2_range = [0, info['power_consumption'] + 0.1]
-        y_pc = y_pc[-ws:]
+        y31 = (fr and fr['data'][-3]['y']) + [dl + dr + pc]
+        y31 = y31[-ws:]
+        y3_range = [0, max(y31) * 1.05]
         pc_plt = dict(
             type='scatter',
             mode='lines',
-            x=t, y=y_pc,
+            x=t, y=y31,
             xaxis='x2',
             yaxis='y3',
             name='power (kW)',
-            line_color=power_line_color,
+            fill='tozeroy',
+            line_color=pc_penalty_color,
         )
         
-        # plot drop penalty
-        # if fr:
-        #     y_pc = fr['data'][-3]['y'] + [info['power_consumption']]
-        #     # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
-        # else:
-        #     y_pc = [info['power_consumption']]
-        #     # y2_range = [0, info['power_consumption'] + 0.1]
-        # y_pc = y_pc[-ws:]
+        y32 = (fr and fr['data'][-2]['y']) + [dl + dr]
+        y32 = y32[-ws:]
         dr_plt = dict(
             type='scatter',
-            x=t[::-1]+t, y=y_pen[::-1]+y_pc,
+            mode='lines',
+            x=t, y=y32,
             xaxis='x2',
             yaxis='y3',
-            name='drop rate (MB/s)',    
-            mode='text',
-            fill='toself',
-            fillcolor=drop_penalty_color,
+            name='drop rate',
+            fill='tozeroy',
+            line_color=drop_penalty_color,
         )
+
+        y33 = (fr and fr['data'][-1]['y']) + [dl]
+        y33 = y33[-ws:]
+        dl_plt = dict(
+            type='scatter',
+            mode='lines',
+            x=t, y=y33,
+            xaxis='x2',
+            yaxis='y3',
+            name='delay',
+            fill='tozeroy',
+            line_color=delay_penalty_color,
+        )
+        
+        # # plot drop penalty
+        # # if fr:
+        # #     y_pc = fr['data'][-3]['y'] + [info['power_consumption']]
+        # #     # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
+        # # else:
+        # #     y_pc = [info['power_consumption']]
+        # #     # y2_range = [0, info['power_consumption'] + 0.1]
+        # # y_pc = y_pc[-ws:]
+        # dr_plt = dict(
+        #     type='scatter',
+        #     x=t[::-1]+t, y=y31[::-1]+y32,
+        #     xaxis='x2',
+        #     yaxis='y3',
+        #     name='drop rate (MB/s)',    
+        #     mode='text',
+        #     fill='toself',
+        #     fillcolor=drop_penalty_color,
+        # )
         
         data = [
             bs_plt, ue_plt, 
-            *rate_plts, dr_plt, pc_plt, rw_plt
+            *rate_plts, pc_plt, dr_plt, dl_plt
         ]
         layout = {
-            'xaxis2': dict( range=[t[0], t[-1]] ),
+            # 'xaxis2': dict( range=[t[0], t[-1]] ),
             'yaxis2': dict( range=y2_range ),
             'yaxis3': dict( range=y3_range ),
             'shapes': cell_shapes
         }
     else:
         data = [bs_plt, ue_plt]
-        layout = {'shapes': cell_shapes}
+        layout = {}
         if fr is not None:
             data.extend(fr['data'][2:])
+            layout.update(fr['layout'])
+        layout['shapes'] = cell_shapes
 
     time = info['time']
     frame = dict(data=data, name=time, layout=layout)
@@ -272,7 +294,8 @@ def make_figure(net):
                        autorange=False, showgrid=False, domain=[0, 0.6]),
             yaxis=dict(range=[0, net.area[1]], tickvals=yticks, 
                        autorange=False, showgrid=False),
-            xaxis2=dict(domain=[0.7, 1], autorange=False),
+            xaxis2=dict(domain=[0.7, 1], #autorange=False,
+                        tickangle=45, nticks=4),
             yaxis2=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
             yaxis3=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
             margin=dict(l=25, r=25, b=25, t=25),
