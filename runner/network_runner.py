@@ -52,8 +52,7 @@ class MultiCellNetRunner(Runner):
                 rew_info.index = ['_'.join(idx) for idx in rew_info.index]
                 train_infos.update(rew_info)
                 avg_step_rew = np.mean(self.buffer.rewards)
-                if not np.allclose(avg_step_rew, train_infos['reward']):
-                    breakpoint()
+                assert np.allclose(avg_step_rew, train_infos['reward_mean'])
                 pbar.set_postfix(reward=avg_step_rew)
                 self.log_train(train_infos, total_num_steps)
 
