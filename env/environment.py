@@ -37,6 +37,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         area_size=net_config.areaSize,
         scenario=config.trafficScenario,
         start_time=config.startTime,
+        episode_len=None,
         time_step=config.timeStep,
         accelerate=config.accelRate,
         action_interval=action_interval,
@@ -59,8 +60,9 @@ class MultiCellNetEnv(MultiAgentEnv):
             dpi_sample_rate=dpi_sample_rate
         )
         
-        self.episode_len = int(self.episode_time_len / accelerate /
-                               time_step / action_interval)
+        if episode_len is None:
+            episode_len = round(self.episode_time_len / accelerate / time_step / action_interval)
+        self.episode_len = episode_len
         self.action_interval = action_interval
         
         self.observation_space = [self.net.bs_obs_space
@@ -199,8 +201,8 @@ class MultiCellNetEnv(MultiAgentEnv):
 
         if done:
             self._episode_count += 1
-
-        infos['step_rewards'] = self._reward_stats
+            infos['step_rewards'] = self._reward_stats
+            notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
         
         return obs, cent_obs, rewards, done, infos, None
     

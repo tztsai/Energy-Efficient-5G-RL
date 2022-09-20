@@ -297,6 +297,8 @@ def get_env_config():
                         help="width of the square area in meters")
     parser.add_argument("-S", "--scenario", type=str, default="B",
                         help="type of traffic to generate")
+    parser.add_argument("-T", "--episode_len", type=int,
+                        help="number of steps per episode")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
     parser.add_argument("-a", "--accelerate", type=int,

@@ -113,7 +113,7 @@ class MultiCellNetRunner(Runner):
                 wandb.log({k: v}, step=total_num_steps)
             else:
                 self.writter.add_scalars(k, {k: v}, total_num_steps)
-                
+
     @torch.no_grad()
     def take_actions(self, obs, reset_rnn=False, _rnn_cache={}):
         n_threads = obs.shape[0]
