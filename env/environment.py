@@ -6,12 +6,12 @@ from .multi_discrete import MultiDiscrete
 # from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 from . import config
-from utils import info, debug, warn, notice
+from utils import *
+from config import *
 from network.network import MultiCellNetwork
 from network.base_station import BaseStation
 from network import config as net_config
 from visualize import render, animate
-from config import *
 
 
 class MultiCellNetEnv(MultiAgentEnv):
@@ -80,7 +80,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_count = 0
         self._episode_steps = 0
         self._total_steps = 0
-        
+
     def print_info(self):
         notice('Start time: {}'.format(self.net.world_time_repr))
         notice('Acceleration: {}'.format(self.net.accelerate))
@@ -105,12 +105,12 @@ class MultiCellNetEnv(MultiAgentEnv):
         if seed is None:
             seed = self._seed
         np.random.seed(seed)
-        
+
     @property
     def need_action(self):
         return self._sim_steps % self.action_interval == 0
     
-    def get_reward(self, obs=None, infos={}):
+    def get_reward(self, obs=None):
         if obs is None:
             pc = self.net.power_consumption
             dr = self.net.drop_ratios
@@ -125,15 +125,14 @@ class MultiCellNetEnv(MultiAgentEnv):
                 assert np.abs(dl - self.net.service_delays).sum() < 1e-5
         dropped = dr @ self.w_drop_cats
         delay = dl @ self.w_delay_cats
-        infos.update(avg_pc=pc, avg_drop=dropped, avg_delay=delay)
-        penalty = self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay
+        reward = -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
+        r_info = dict(drop=dropped, delay=delay, pc=pc, reward=reward)
         if EVAL:
-            self.net.add_stat('reward', dict(
-                n_drop=self.net._eval_stats['num_dropped'].values.copy(),
-                v_drop=dr, drop=dropped,
-                v_delay=dl, delay=delay,
-                pc=pc, penalty=penalty))
-        return -penalty
+            r_info['drop_counts'] = self.net._eval_stats['num_dropped'].values.copy()
+            r_info['drop_ratios'] = dr
+            r_info['ue_delays'] = dl
+        self._reward_stats.append(r_info)
+        return reward
 
     def get_obs_agent(self, agent_id):
         return self.net.observe_bs(agent_id)
@@ -147,7 +146,9 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_steps = 0
         self._sim_steps = 0
         self._figure = None
+        self._reward_stats = []
         if EVAL and self.save_steps_info:
+            self.net._other_stats['reward'] = self._reward_stats
             self._steps_info = [self.info_dict()]   
         return self.get_obs(), self.get_cent_obs(), None
     
@@ -178,17 +179,14 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._total_steps += steps
         self._episode_steps += steps
         
-        infos = {}
         obs = self.get_obs()
         cent_obs = self.get_cent_obs()
-        reward = self.get_reward(obs=cent_obs[0], infos=infos)
+        reward = self.get_reward(obs=cent_obs[0])
 
         rewards = [[reward]]  # shared reward for all agents
 
         done = self._episode_steps >= self.episode_len
-
-        if done:
-            self._episode_count += 1
+        infos = {}
 
         if EVAL:
             notice('')
@@ -199,11 +197,16 @@ class MultiCellNetEnv(MultiAgentEnv):
             if self.save_steps_info:
                 self._steps_info.append(infos)
 
+        if done:
+            self._episode_count += 1
+            infos['step_rewards'] = self._reward_stats
+
         return obs, cent_obs, rewards, done, infos, None
     
     def info_dict(self):
         info = self.net.info_dict()
-        info['reward'] = self.get_reward()
+        if self._sim_steps:
+            info['reward'] = self._reward_stats[-1]['reward']
         return info
 
     def close(self):
