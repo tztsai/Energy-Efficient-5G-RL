@@ -1,5 +1,4 @@
-import numpy as np
-from traffic import TrafficType
+from traffic.config import delayBudgets
 
 # simulation parameters
 timeStep = 1e-3  # size of a simulation step in seconds
@@ -17,8 +16,8 @@ numSleepModes = 4
 numConnModes = 3
 
 # reward parameters
-dropAppWeights = [.5, .3, .2]
-delayAppWeights = [.66, .22, .12]
+dropAppWeights = [.5, .3, .2]  # normalized to [0, 1]
+delayAppWeights = [1/t/len(delayBudgets) for t in delayBudgets]  # normalized to [0, 1]
 dropRatioWeight = 3.
-delayWeight = 2.  # per second
+delayWeight = 0.1
 powerConsumptionWeight = 1e-3  # per watt
