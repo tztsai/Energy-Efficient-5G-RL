@@ -31,7 +31,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     num_agents = len(bs_poses)
     action_interval = config.actionInterval
     steps_info_path = 'analysis/steps_info.csv'
-    
+
     def __init__(
         self,
         area_size=net_config.areaSize,
@@ -202,8 +202,9 @@ class MultiCellNetEnv(MultiAgentEnv):
 
         if done:
             self._episode_count += 1
-            infos['step_rewards'] = self._reward_stats
-            # notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
+            if TRAIN:  # only for training logging
+                infos['step_rewards'] = self._reward_stats
+            info('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
         
         return obs, cent_obs, rewards, done, infos, None
     

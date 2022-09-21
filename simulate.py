@@ -5,14 +5,11 @@ from utils import *
 from agents import *
 from arguments import *
 from env import MultiCellNetEnv
-import numpy as np
-import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output, ctx
-from dash.exceptions import PreventUpdate
-from dash.dependencies import ClientsideFunction
+from visualize.render import dash_app
 # %reload_ext autoreload
 # %autoreload 2
 
+sim_days = 7
 accelerate = 6000
 render_interval = 4
 
@@ -21,11 +18,9 @@ parser.add_argument("-A", '--agent', type=str, default='mappo',
                     help='type of agent used in simulation')
 parser.add_argument("--perf_save_path", default="results/performance.csv",
                     help="path to save the performance of the simulation")
-parser.add_argument("--log_path",
-                    help="path to save the log of the simulation")
 parser.add_argument("--render_interval", type=int, default=render_interval,
                     help="interval of rendering")
-parser.add_argument("--days", type=int, default=7,
+parser.add_argument("--days", type=int, default=sim_days,
                     help="number of days to simulate")
 
 env_parser = get_env_config()
@@ -37,6 +32,7 @@ args, env_args = parser.parse_known_args()
 env_args = env_parser.parse_args(env_args)
 
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
+env_args.steps_info_path = f'analysis/{env_args.scenario}-{args.agent}-steps.csv'
 
 # %%
 set_log_level(args.log_level)
@@ -72,8 +68,8 @@ run_dir = get_run_dir(args, env_args)
 
 if args.log_path is None:
     fn = '{}_{}_{}_acc-{}.log'.format(
-        args.agent, env_args.scenario, 
-        re.sub('(, |:)', '-', env.net.world_time_repr[:-6]),
+        args.agent, env_args.scenario,
+        re.sub('(, |:)', '-', env.net.world_time_repr),
         env.net.accelerate)
     args.log_path = 'logs/' + fn
 
@@ -105,24 +101,24 @@ def step_env(obs):
         actions, render_mode=args.use_render, render_interval=render_interval)
     return obs, reward[0], done
 
-T = args.num_env_steps
-
 def simulate(obs=obs):
     step_rewards = []
-    for i in trange(T, file=sys.stdout):
+    for i in trange(args.num_env_steps, file=sys.stdout):
         obs, reward, done = step_env(obs)
         step_rewards.append(reward)
     rewards = pd.Series(np.squeeze(step_rewards), name='reward')
     info = rewards.describe()
-    print(info)
     info.index = ['reward_' + str(i) for i in info.index]
-    info['agent'] = args.agent
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    info['agent'] = args.agent
     info['scenario'] = env_args.scenario
-    info['total_steps'] = T
+    info['total_steps'] = args.num_env_steps
     info['accelerate'] = env_args.accelerate
+    info['traffic_density'] = env.net.traffic_model.density_mean
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
+    info['w_delay'] = env.w_delay
+    print(info)
     save_path = args.perf_save_path
     info.to_frame().T.set_index('time').to_csv(
         save_path, mode='a', header=not os.path.exists(str(save_path)))
@@ -135,65 +131,6 @@ env.close()
 # %%
 if not args.use_dash: exit()
 
-app = Dash(__name__)
-
-figure = env._figure
-figure['layout'].pop('sliders')
-figure['layout'].pop('updatemenus')
-
-app.layout = html.Div([
-    # html.H4('5G Network Simulation'),
-    dcc.Graph(id="graph", figure=go.Figure(figure)),
-    html.Div([
-        html.Button('Play', id="run-pause", n_clicks=0, className='column'), 
-        html.P(id="step-info", className='column')], className='row'),
-    dcc.Interval(id='clock', interval=300),
-    dcc.Slider(
-        id='slider',
-        min=0, max=T, step=1, value=0,
-        marks={t: f'{t:.2f}' for t in np.linspace(0, T, num=6)},
-    ),
-    # dcc.Store(id='storage', data=env._figure)
-])
-
-# app.clientside_callback(
-#     ClientsideFunction(namespace='clientside', function_name='update'),
-#     Output("graph", "figure"),
-#     Output("step-info", "children"),
-#     Output("run-pause", "value"),
-#     Output("slider", "value"),
-#     Input("slider", "value"),
-#     Input("run-pause", "n_clicks"),
-#     Input("clock", "n_intervals"),
-#     Input("storage", "data")
-# )
-
-@app.callback(
-    Output("graph", "figure"),
-    Output("step-info", "children"),
-    Output("run-pause", "value"),
-    Output("slider", "value"),
-    Input("slider", "value"),
-    Input("run-pause", "n_clicks"),
-    Input("clock", "n_intervals"),
-    Input("graph", "figure")
-)
-def update_plot(time, clicks, ticks, fig):
-    running = clicks % 2
-    if ctx.triggered_id != 'clock':
-        raise PreventUpdate  # avoid loop
-    elif not running:
-        raise PreventUpdate
-    t_max = len(fig['frames']) - 1
-    if running and time < t_max:
-        time += 1
-    if time > t_max:
-        time = t_max
-    frame = fig['frames'][time]
-    fig['data'] = frame['data']
-    deep_update(fig['layout'], frame['layout'])
-    text = "Step: {}  Time: {}".format(time, frame['name'])
-    return fig, text, ('Stop' if running else 'Play'), time
-
 # threading.Thread(target=simulate).start()
+app = dash_app(env, args)
 app.run_server(debug=True)

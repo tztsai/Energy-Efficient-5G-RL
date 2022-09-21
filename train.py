@@ -7,7 +7,7 @@ import socket
 import numpy as np
 from arguments import *
 from env import MultiCellNetEnv
-from utils import set_log_level, get_run_dir
+from utils import *
 from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
 
@@ -17,7 +17,7 @@ def get_env_kwargs(args):
 def get_default_env_config(args, env_args):
     tmp_env = MultiCellNetEnv(**get_env_kwargs(env_args))
     tmp_env.print_info()
-    tmp_env.net.traffic_model.print_info()
+    # tmp_env.net.traffic_model.print_info()
     args.__dict__.update(
         episode_length=tmp_env.episode_len // args.n_rollout_threads,
         episode_secs=tmp_env.episode_time_len,
@@ -114,7 +114,14 @@ def main(args):
             os.makedirs(str(run_dir))
 
     set_log_level(args.log_level)
-    
+
+    if args.sim_log_path is None:
+        fn = '{}_{}_{}.log'.format(
+            env_args.scenario, args.algorithm_name, args.experiment_name)
+        args.sim_log_path = 'logs/' + fn
+
+    set_log_file(args.sim_log_path)
+
     # seed
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)

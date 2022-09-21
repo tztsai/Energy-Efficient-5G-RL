@@ -6,29 +6,34 @@ import pandas as pd
 df
 
 # %%
-drop_df = pd.DataFrame(np.hstack([[np.fromstring(s[1:-1], sep=' ') for s in df.pop(k)] for k in ['v_drop', 'n_drop']]), index=df.index, columns = pd.MultiIndex.from_product([['r', 'n'], range(3)], names=['', 'app']))
-drop_df['v'] = df['drop']
+def parse_np_series(s):
+    l = [np.fromstring(a[1:-1], sep=' ') for a in s]
+    return pd.DataFrame(l, index=s.index)
+
+drop_df = pd.concat([parse_np_series(df.pop(k)) for k in ['drop_ratios', 'drop_counts']], axis=1, keys=['ratio', 'count'])
+drop_df['weighted_percent'] = df['drop']
+drop_df['ratio'].plot()
+drop_df.describe()
 
 # %%
-drop_df = drop_df.sort_values(by='v', ascending=False)
+drop_df = drop_df.sort_values(by='weighted_percent', ascending=False)
 
 drop_df.head(10)
 
 # %%
-drop_df.describe()
-
-# %%
-delay_df = pd.DataFrame(np.vstack([np.fromstring(s[1:-1], sep=' ') for s in df.pop('v_delay')]))
-delay_df[''] = df['delay']
-
+delay_df = parse_np_series(df.pop('ue_delays'))
+delay_df.plot()
+delay_df['weighted'] = df['delay']
 delay_df.describe()
 
 # %%
-df['pc'] /= 1e3
+df['pc'].plot()
 df['pc'].describe()
 
 # %%
-df['penalty'].describe()
+penalty = -df['reward']
+penalty.plot()
+penalty.describe()
 
 # %%
 df.corr()

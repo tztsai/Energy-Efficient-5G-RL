@@ -1,8 +1,12 @@
-import time
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from dash import Dash, dcc, html, Input, Output, ctx
+from dash.exceptions import PreventUpdate
+from dash.dependencies import ClientsideFunction
+from utils import deep_update
 from network import config
+
 
 sleep_symbols = np.array(['hexagram', 'hexagram-open', 'hexagon-open', 'x-open'])
 n_agents = 7
@@ -15,11 +19,12 @@ drop_penalty_color = 'plum'
 pc_penalty_color = 'coral'
 
 
-def render(env: 'MultiCellNetEnv', mode='default'):
+def render(env: 'MultiCellNetEnv', mode='frame'):
     """ Render the environment using Plotly.
     Render modes:
-    - human: create, store, and show Plotly figure
-    - any other True value: create and store a dict to be used to render as an animation frame
+    - show: create, store, and show Plotly figure
+    - dash: update Graph in Dash app
+    - any other True value: create and store a dict to be used to render as a Plotly frame
     - any False value: do nothing
     """
     if not mode: return
@@ -132,7 +137,7 @@ def render(env: 'MultiCellNetEnv', mode='default'):
     if net._stats_updated:
         # plot data rates
         ws = 60  # window size
-        t = (fr and fr['data'][2]['x']) + [net.world_time_repr.split(', ')[1]]
+        t = (fr and fr['data'][2]['x']) + [net.world_time/3600] # [net.world_time_repr.split(', ')[1]]
         t = t[-ws:]
         rate_plts = []
         y_max = 0
@@ -158,11 +163,8 @@ def render(env: 'MultiCellNetEnv', mode='default'):
         dl = info['weighted_delay']
         dr = info['weighted_drop']
         pc = info['weighted_pc']
-        y31 = dl
-        y32 = dl + dr
-        y31 = dl + dr + pc
         
-        y31 = (fr and fr['data'][-3]['y']) + [dl + dr + pc]
+        y31 = (fr and fr['data'][-3]['y']) + [dl + pc + dr]
         y31 = y31[-ws:]
         y3_range = [0, max(y31) * 1.05]
         pc_plt = dict(
@@ -171,12 +173,12 @@ def render(env: 'MultiCellNetEnv', mode='default'):
             x=t, y=y31,
             xaxis='x2',
             yaxis='y3',
-            name='power (kW)',
+            name='drop rate',
             fill='tozeroy',
             line_color=pc_penalty_color,
         )
         
-        y32 = (fr and fr['data'][-2]['y']) + [dl + dr]
+        y32 = (fr and fr['data'][-2]['y']) + [dl + pc]
         y32 = y32[-ws:]
         dr_plt = dict(
             type='scatter',
@@ -184,7 +186,7 @@ def render(env: 'MultiCellNetEnv', mode='default'):
             x=t, y=y32,
             xaxis='x2',
             yaxis='y3',
-            name='drop rate',
+            name='power (kW)',
             fill='tozeroy',
             line_color=drop_penalty_color,
         )
@@ -201,25 +203,6 @@ def render(env: 'MultiCellNetEnv', mode='default'):
             fill='tozeroy',
             line_color=delay_penalty_color,
         )
-        
-        # # plot drop penalty
-        # # if fr:
-        # #     y_pc = fr['data'][-3]['y'] + [info['power_consumption']]
-        # #     # y2_range = [0, max(fr['layout']['yaxis2']['range'][1], info['power_consumption'] + 0.1)]
-        # # else:
-        # #     y_pc = [info['power_consumption']]
-        # #     # y2_range = [0, info['power_consumption'] + 0.1]
-        # # y_pc = y_pc[-ws:]
-        # dr_plt = dict(
-        #     type='scatter',
-        #     x=t[::-1]+t, y=y31[::-1]+y32,
-        #     xaxis='x2',
-        #     yaxis='y3',
-        #     name='drop rate (MB/s)',    
-        #     mode='text',
-        #     fill='toself',
-        #     fillcolor=drop_penalty_color,
-        # )
         
         data = [
             bs_plt, ue_plt, 
@@ -256,7 +239,7 @@ def render(env: 'MultiCellNetEnv', mode='default'):
             method="animate"
         ))
 
-    if mode == 'human':
+    if mode == 'show':
         fig = go.Figure(fig)
         fig.show()
     return fig
@@ -281,10 +264,10 @@ def animate(env: 'MultiCellNetwork'):
     #     yield
 
 
-def make_figure(net):
+def make_figure(net, mode='plotly'):
     xticks = np.linspace(0, net.area[0], 5)
     yticks = np.linspace(0, net.area[1], 5)[1:]
-    return dict(
+    fig = dict(
         data=[],
         frames=[],
         customdata=[],
@@ -296,10 +279,13 @@ def make_figure(net):
                        autorange=False, showgrid=False),
             xaxis2=dict(domain=[0.7, 1], #autorange=False,
                         tickangle=45, nticks=4),
-            yaxis2=dict(domain=[0.55, 1], anchor='x2', fixedrange=True),
-            yaxis3=dict(domain=[0, 0.45], anchor='x2', fixedrange=True),
+            yaxis2=dict(domain=[0.55, 1], anchor='x2'),
+            yaxis3=dict(domain=[0, 0.45], anchor='x2'),
             margin=dict(l=25, r=25, b=25, t=25),
             transition={"duration": 300, "easing": "cubic-in-out"},
+        ))
+    if mode == 'plotly':  # otherwise dash
+        fig['layout'].update(
             updatemenus=[{
                 "buttons": [
                     {
@@ -312,7 +298,7 @@ def make_figure(net):
                         "args2": [[None], {"frame": {"duration": 0, "redraw": False},
                                            "mode": "immediate",
                                            "transition": {"duration": 0}}],
-                        "label": "Play",
+                        "label": "Play",  # press to switch between play and pause
                         "method": "animate"
                     },
                     # {
@@ -348,6 +334,68 @@ def make_figure(net):
                 "x": 0.024,
                 "y": 0,
                 "steps": []
-            }]
-        )
+            }])
+    return fig
+
+
+def dash_app(env, args):
+    app = Dash(type(env).__name__)
+
+    figure = env._figure
+
+    T = args.num_env_steps
+    app.layout = html.Div([
+        # html.H4('5G Network Simulation'),
+        dcc.Graph(id="graph", figure=go.Figure(figure)),
+        html.Div([
+            html.Button('Play', id="run-pause", n_clicks=0, className='column'),
+            html.P(id="step-info", className='column')], className='row'),
+        dcc.Interval(id='clock', interval=300),
+        dcc.Slider(
+            id='slider',
+            min=0, max=T, step=1, value=0,
+            marks={t: f'{t:.2f}' for t in np.linspace(0, T, num=6)},
+        ),
+        # dcc.Store(id='storage', data=env._figure)
+    ])
+
+    # app.clientside_callback(
+    #     ClientsideFunction(namespace='clientside', function_name='update'),
+    #     Output("graph", "figure"),
+    #     Output("step-info", "children"),
+    #     Output("run-pause", "value"),
+    #     Output("slider", "value"),
+    #     Input("slider", "value"),
+    #     Input("run-pause", "n_clicks"),
+    #     Input("clock", "n_intervals"),
+    #     Input("storage", "data")
+    # )
+
+    @app.callback(
+        Output("graph", "figure"),
+        Output("step-info", "children"),
+        Output("run-pause", "value"),
+        Output("slider", "value"),
+        Input("slider", "value"),
+        Input("run-pause", "n_clicks"),
+        Input("clock", "n_intervals"),
+        Input("graph", "figure")
     )
+    def update_plot(time, clicks, ticks, fig):
+        running = clicks % 2
+        if ctx.triggered_id != 'clock':
+            raise PreventUpdate  # avoid loop
+        elif not running:
+            raise PreventUpdate
+        t_max = len(fig['frames']) - 1
+        if running and time < t_max:
+            time += 1
+        if time > t_max:
+            time = t_max
+        frame = fig['frames'][time]
+        fig['data'] = frame['data']
+        deep_update(fig['layout'], frame['layout'])
+        text = "Step: {}  Time: {}".format(time, frame['name'])
+        return fig, text, ('Stop' if running else 'Play'), time
+
+    return app

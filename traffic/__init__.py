@@ -15,9 +15,9 @@ else:
         for cat, rates in model.densities.items():
             days_idx = rates.index.get_level_values(0).unique()
             df = rates.unstack().reindex(days_idx)
-            fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/(s⋅km²)'))
+            fig = px.imshow(df, title=traffic_type.name, labels=dict(x='time of day', y='day of week', color='Mb/s/km²'))
             print(cat)
-            # fig.show()
+            fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)
         print()
     for cat, fig in figs.items():

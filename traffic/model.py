@@ -13,7 +13,7 @@ except ImportError:
 
 
 class TrafficType(enum.IntEnum):
-    UNKNOWN = 0
+    # UNKNOWN = 0
     A = 1
     B = 2
     C = 3
@@ -59,7 +59,7 @@ class TrafficModel:
         assert rem == 0, (self.interval, rem)
         self.rates = df * self.area / self.file_size  # files / s
         assert self.rates.values.max() * 1e-3 <= 1.
-        
+
         self.densities = df / 1e6
         df = pd.concat([self.densities, self.rates], axis=1, keys=['Mb/s/km^2', 'files/s'])
         total_df = df.groupby(level=0, axis=1).sum()
@@ -71,9 +71,9 @@ class TrafficModel:
         self.info_df = info_df.set_index(pd.MultiIndex.from_tuples(info_df.index))
         self.density_mean, self.density_std = self.info_df.loc[
             ('Mb/s/km^2', 'Total'), ['mean', 'std']]
-        
+
         return self
-    
+
     def print_info(self):
         notice('Traffic scenario: %s', self.scenario.name)
         notice('%s\n', self.info_df)
@@ -100,8 +100,8 @@ class TrafficModel:
         return self.time_slots[i]
     
     def get_start_time_of_slot(self, time_slot: str):
-        m = re.match(r'(\w{3,}),?\s*(\d+):(\d+)', time_slot)
-        d, h, m = m[1][:3], int(m[2]), int(m[3])
+        m = re.match(r'(\w{3,}),?\s*(?:(\d+)(?::(\d+))?)?', time_slot)
+        d, h, m = m[1][:3], int(m[2]) if m[2] else 0, int(m[3]) if m[3] else 0
         s = d, f"{h:02d}:{m:02d}"
         return self.interval * self.time_slots.get_loc(s)
     
