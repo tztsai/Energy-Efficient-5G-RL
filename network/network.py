@@ -37,32 +37,22 @@ class MultiCellNetwork:
     def __init__(self, area, bs_poses, traffic_scenario,
                  start_time=0, accelerate=1, dpi_sample_rate=None):
         self.area = area
-        self.traffic_scenario = traffic_scenario
         self.traffic_model = None
+        self.traffic_scenario = traffic_scenario
         self.start_time = self._parse_start_time(start_time)
         self.accelerate = accelerate
         self.bss = {}
         self.ues = {}
-        self._dpi_sample_rate = dpi_sample_rate
         self._bs_poses = None
+        self._make_traffic_model = partial(
+            TrafficModel.from_scenario, area=area, sample_rate=dpi_sample_rate)
         
         self.reset()
 
         for i, pos in enumerate(bs_poses):
             self.create_new_bs(i, pos)
 
-        info('Initialized 5G multi-cell network: area={}, num_bs={}, scenario={}, start_time={}.'
-             .format(self.area, self.num_bs, traffic_scenario, self.start_time))
-
-    def set_traffic_scenario(self, scenario):
-        if scenario == 'RANDOM':
-            scenario = random.choice(TrafficType._member_names_)   
-        self.traffic_model = TrafficModel.from_scenario(
-            scenario, area=self.area, sample_rate=self._dpi_sample_rate)
-        info('Set traffic scenario to %s', self.traffic_model.scenario)
-
     def reset(self):
-        info('Resetting %s', self)
         if EVAL:
             vs = "energy arrived num done num_dropped dropped time service_time".split()
             self._eval_stats = pd.DataFrame(
@@ -71,7 +61,7 @@ class MultiCellNetwork:
             self._other_stats = defaultdict(list)
             self._stats_updated = True
         if self.traffic_model is None or self.traffic_scenario == 'RANDOM':
-            self.set_traffic_scenario(self.traffic_scenario)
+            self.traffic_model = self._make_traffic_model(self.traffic_scenario)
         for bs in self.bss.values():
             bs.reset()
         self.ues.clear()
@@ -81,6 +71,7 @@ class MultiCellNetwork:
         self._buf_idx = 0
         self._arrival_buf = np.zeros((self.buffer_ws, numApps))
         self._stats = np.zeros((numApps, 3))
+        notice('Reset %s', self)
 
     def reset_stats(self):
         for bs in self.bss.values():
@@ -376,10 +367,9 @@ class MultiCellNetwork:
             pd.DataFrame(v).to_csv(f'{self.stats_save_path}/{k}.csv', index=False)
 
     def __repr__(self) -> str:
-        return 'Network'
         return '{}({})'.format(
             type(self).__name__,
             kwds_str(area=self.area, num_bs=self.num_bs,
                      scenario=self.traffic_model.scenario.name,
-                     start_time=' '.join(self.traffic_model.get_time_slot(self.start_time)))
+                     time=self.net.world_time_repr)
         )
