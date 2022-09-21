@@ -5,7 +5,7 @@ from .env_utils import *
 from .user_equipment import UserEquipment
 from .base_station import BaseStation
 from .channel import compute_channel_gain
-from traffic import TrafficModel
+from traffic import TrafficModel, TrafficType
 from traffic.config import numApps, delayBudgets
 from visualize.obs import anim_rolling
 from config import *
@@ -37,21 +37,29 @@ class MultiCellNetwork:
     def __init__(self, area, bs_poses, traffic_scenario,
                  start_time=0, accelerate=1, dpi_sample_rate=None):
         self.area = area
-        self.traffic_model = TrafficModel.from_scenario(
-            traffic_scenario, area=area, sample_rate=dpi_sample_rate)
+        self.traffic_scenario = traffic_scenario
+        self.traffic_model = None
         self.start_time = self._parse_start_time(start_time)
         self.accelerate = accelerate
         self.bss = {}
         self.ues = {}
+        self._dpi_sample_rate = dpi_sample_rate
         self._bs_poses = None
         
         self.reset()
-        
+
         for i, pos in enumerate(bs_poses):
             self.create_new_bs(i, pos)
 
-        print('Initialized 5G multi-cell network: area={}, num_bs={}, scenario={}, start_time={}.'
-              .format(self.area, self.num_bs, traffic_scenario, self.start_time))
+        info('Initialized 5G multi-cell network: area={}, num_bs={}, scenario={}, start_time={}.'
+             .format(self.area, self.num_bs, traffic_scenario, self.start_time))
+
+    def set_traffic_scenario(self, scenario):
+        if scenario == 'RANDOM':
+            scenario = random.choice(TrafficType._member_names_)   
+        self.traffic_model = TrafficModel.from_scenario(
+            scenario, area=self.area, sample_rate=self._dpi_sample_rate)
+        info('Set traffic scenario to %s', self.traffic_model.scenario)
 
     def reset(self):
         info('Resetting %s', self)
@@ -62,6 +70,8 @@ class MultiCellNetwork:
             self._total_stats = defaultdict(float)
             self._other_stats = defaultdict(list)
             self._stats_updated = True
+        if self.traffic_model is None or self.traffic_scenario == 'RANDOM':
+            self.set_traffic_scenario(self.traffic_scenario)
         for bs in self.bss.values():
             bs.reset()
         self.ues.clear()
@@ -294,7 +304,7 @@ class MultiCellNetwork:
         ], dtype=np.float32)
 
     @cache_obs
-    def info_dict(self, include_bs=True):
+    def info_dict(self, include_bs=False):
         # assert self._stats_updated
         
         infos = dict(
@@ -318,8 +328,8 @@ class MultiCellNetwork:
     def calc_total_stats(self):
         for bs in self.bss.values():
             bs.calc_total_stats()
-            
-        _vars = set(vars())
+
+        _vars = set(list(vars()) + ['_vars'])
         
         total_time = self._time
         total_counts = self._total_stats['num']
@@ -357,7 +367,7 @@ class MultiCellNetwork:
 
     def add_stat(self, key, val):
         self._other_stats[key].append(val)
-    
+
     def save_stats(self):
         self.calc_total_stats()
         pd.Series(self._total_stats).to_csv(

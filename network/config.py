@@ -24,7 +24,7 @@ wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.05  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0.04, 0.01, 0.01, 0.01]  # energy consumption of switching sleep mode in Joules
 disconnectEnergy = 0.02  # energy consumption of a disconnection (before UE is done) in Joules
-bufferShape = (50, 2)  # shape of the buffer used to record past observations 
+bufferShape = (150, 2)  # shape of the buffer used to record past observations 
 bufferChunkSize = 5  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
 

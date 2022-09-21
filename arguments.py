@@ -271,7 +271,10 @@ def get_config():
     parser.add_argument("--save_interval", type=int, default=1, help="time duration between contiunous twice models saving.")
 
     # log parameters
-    parser.add_argument("--log_interval", type=int, default=1, help="time duration between continuous twice log printing.")
+    parser.add_argument("--log_interval", type=int, default=1,
+                        help="time duration between continuous twice log printing.")
+    parser.add_argument("--sim_log_path",
+                        help="path to save the log of the simulation")
 
     # eval parameters
     parser.add_argument("--use_eval", action='store_true', default=False, help="by default, do not start evaluation. If set`, start evaluation alongside with training.")
@@ -295,7 +298,7 @@ def get_env_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--area_size", type=float,
                         help="width of the square area in meters")
-    parser.add_argument("-S", "--scenario", type=str, default="B",
+    parser.add_argument("-S", "--scenario", type=str,
                         help="type of traffic to generate")
     parser.add_argument("-T", "--episode_len", type=int,
                         help="number of steps per episode")
@@ -305,7 +308,7 @@ def get_env_config():
                         help="acceleration rate of the simulation")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
-    parser.add_argument("--save_steps_info", action='store_true',
+    parser.add_argument("-s", "--save_steps_info", action='store_true',
                         help="save detailed steps info of the simulation")
     parser.add_argument("--steps_info_path",
                         help="path to save steps info of the simulation")

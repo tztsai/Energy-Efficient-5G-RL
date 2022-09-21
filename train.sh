@@ -2,11 +2,11 @@
 seed_max=1
 log_level="NOTICE"
 
-scenario="A"
+scenario="RANDOM"
 accelerate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=$((50400 * 60))  # steps_per_episode * episodes
+num_env_steps=$((50400 * 100))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"

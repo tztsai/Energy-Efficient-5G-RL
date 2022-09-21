@@ -5,6 +5,7 @@ import re
 import sys
 import time
 import enum
+import random
 import atexit
 import logging
 import argparse
@@ -62,6 +63,10 @@ def onehot_vec(n, k):
     v = np.zeros(n, dtype=np.float32)
     v[k] = 1
     return v
+
+def parse_np_series(s):
+    l = [np.fromstring(a[1:-1], sep=' ') for a in s]
+    return pd.DataFrame(l, index=s.index)
 
 # def onehot_keys(name, n):
 #     return ['{}_{}'.format(name, i) for i in range(n)]
