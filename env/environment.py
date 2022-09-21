@@ -10,6 +10,7 @@ from utils import *
 from config import *
 from network.network import MultiCellNetwork
 from network.base_station import BaseStation
+from traffic import TrafficModel
 from network import config as net_config
 from visualize import render, animate
 
@@ -82,6 +83,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._episode_count = 0
         self._episode_steps = 0
         self._total_steps = 0
+        
+        self.seed()
 
     def print_info(self):
         notice('Start time: {}'.format(self.net.world_time_repr))
@@ -107,6 +110,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         if seed is None:
             seed = self._seed
         np.random.seed(seed)
+        TrafficModel.seed(seed)
 
     @property
     def need_action(self):
@@ -143,7 +147,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         return [self.net.observe_network()]
     
     def reset(self, render_mode=None):
-        self.seed()
+        # self.seed()
         self.net.reset()
         self._episode_steps = 0
         self._sim_steps = 0
@@ -204,7 +208,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._episode_count += 1
             if TRAIN:  # only for training logging
                 infos['step_rewards'] = self._reward_stats
-            info('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
+            notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
         
         return obs, cent_obs, rewards, done, infos, None
     

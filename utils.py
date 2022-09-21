@@ -17,7 +17,7 @@ from typing import *
 from config import DEBUG
 from pathlib import Path
 from copy import deepcopy
-from functools import wraps
+from functools import wraps, partial
 from tqdm import tqdm, trange
 from collections import deque
 # import matplotlib.pyplot as plt

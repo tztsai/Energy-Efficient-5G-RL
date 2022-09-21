@@ -2,10 +2,10 @@ from utils import *
 from . import config
 from .env_utils import *
 from .user_equipment import UserEquipment, UEStatus
-from visualize.obs import anim_rolling
 from traffic.config import numApps
 from config import *
-
+from visualize.obs import anim_rolling
+    
 
 class ConnectMode(enum.IntEnum):
     Disconnect = -1

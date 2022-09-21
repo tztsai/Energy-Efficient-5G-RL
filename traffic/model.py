@@ -28,6 +28,7 @@ class TrafficModel:
     period = 60 * 60 * 24 * 7  # a week (in seconds)
     sample_rates = config.dpiSampleRates
     profiles_path = config.profilesPath
+    _rng = np.random.default_rng()
 
     def __init__(self, area=None, period=period, scenario=None, sample_rate=None):
         self.area = 1 if area is None else area[0] * area[1] / 1e6  # km^2
@@ -42,15 +43,22 @@ class TrafficModel:
             self.sample_rate = sample_rate
 
     @classmethod
-    def from_scenario(cls, scenario, **kwargs):
+    def from_scenario(cls, scenario='RANDOM', **kwargs):
         if type(scenario) is str:
-            scenario = TrafficType[scenario.upper()]
+            s = scenario.upper()
+            if s == 'RANDOM':
+                s = cls._rng.choice(TrafficType._member_names_)
+            scenario = TrafficType[s]
         else:
             scenario = TrafficType(scenario)
         profiles_df = pd.read_csv(cls.profiles_path, index_col=[0, 1, 2])
         profile = profiles_df.loc[int(scenario)]
         return cls(scenario=scenario, **kwargs).fit(profile)
-
+    
+    @classmethod
+    def seed(cls, seed):
+        cls._rng = np.random.default_rng(seed)
+        
     def fit(self, data_rate_df):
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
