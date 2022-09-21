@@ -6,7 +6,7 @@ scenario="A"
 accelerate=600
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=$((50400 * 40))  # steps_per_episode * episodes
+num_env_steps=$((50400 * 60))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"
@@ -18,8 +18,8 @@ ppo_epoch=12
 num_mini_batch=1
 
 w_pc=0.001
-w_drop=0.4
-w_delay=0
+w_drop=0.5
+w_delay=0.1
 
 log_interval=1
 
