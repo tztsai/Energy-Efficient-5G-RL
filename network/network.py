@@ -71,7 +71,7 @@ class MultiCellNetwork:
         self._buf_idx = 0
         self._arrival_buf = np.zeros((self.buffer_ws, numApps))
         self._stats = np.zeros((numApps, 3))
-        notice('Reset %s', self)
+        notice('Reset %s', repr(self))
 
     def reset_stats(self):
         for bs in self.bss.values():
@@ -371,5 +371,5 @@ class MultiCellNetwork:
             type(self).__name__,
             kwds_str(area=self.area, num_bs=self.num_bs,
                      scenario=self.traffic_model.scenario.name,
-                     time=self.net.world_time_repr)
+                     time=self.world_time_repr)
         )
