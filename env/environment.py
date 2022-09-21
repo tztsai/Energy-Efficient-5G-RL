@@ -203,7 +203,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         if done:
             self._episode_count += 1
             infos['step_rewards'] = self._reward_stats
-            notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
+            # notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
         
         return obs, cent_obs, rewards, done, infos, None
     
