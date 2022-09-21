@@ -46,7 +46,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         w_drop=w_drop,
         w_pc=w_pc,
         w_delay=w_delay,
-        seed=0,
+        seed=None,
         save_steps_info=False,
         steps_info_path=steps_info_path,
     ):
