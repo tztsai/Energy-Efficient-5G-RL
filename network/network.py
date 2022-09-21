@@ -19,7 +19,7 @@ class MultiCellNetwork:
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
 
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3 + 3))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3))
     bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
@@ -173,13 +173,13 @@ class MultiCellNetwork:
         """ Power consumption of all BSs in the network in kW. """
         return self._timer and self._energy_consumed / self._timer
     
-    @property
-    def arrival_rates(self):
-        if self._time:
-            if DEBUG and EVAL:
-                assert self._stats_updated  # should only be called when _timer = step_time
-            return self._arrival_buf.mean(axis=0) / self._timer
-        return np.zeros(numApps)  # only before the first step
+    # @property
+    # def arrival_rates(self):
+    #     if self._time:
+    #         if DEBUG and EVAL:
+    #             assert self._stats_updated  # should only be called when _timer = step_time
+    #         return self._arrival_buf.mean(axis=0) / self._timer
+    #     return np.zeros(numApps)  # only before the first step
 
     # @property
     # def drop_ratios(self):
@@ -298,7 +298,7 @@ class MultiCellNetwork:
             [self.power_consumption],   # power consumption (1)
             self.drop_ratios,            # dropped rates in different delay cats (3)
             self.service_delays,        # avg delay in different delay cats (3)
-            self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
+            # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             [thrp, thrp_req, log_ratio],# throughput (3)
             bs_obs                      # bs observations
         ], dtype=np.float32)

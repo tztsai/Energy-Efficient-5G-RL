@@ -3,7 +3,7 @@ seed_max=1
 log_level="NOTICE"
 
 scenario="RANDOM"
-accelerate=600
+accelerate=600  # 1 step = 0.02 * 600 = 12 s
 n_training_threads=4
 n_rollout_threads=42
 num_env_steps=$((50400 * 100))  # steps_per_episode * episodes

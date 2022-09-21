@@ -66,14 +66,14 @@ action_space = env.action_space[0]
 
 run_dir = get_run_dir(args, env_args)
 
-if args.log_path is None:
+if args.sim_log_path is None:
     fn = '{}_{}_{}_acc-{}.log'.format(
         args.agent, env_args.scenario,
         re.sub('(, |:)', '-', env.net.world_time_repr),
         env.net.accelerate)
-    args.log_path = 'logs/' + fn
+    args.sim_log_path = 'logs/' + fn
 
-set_log_file(args.log_path)
+set_log_file(args.sim_log_path)
 
 # match args.agent.lower():
 if args.agent == 'mappo':
