@@ -145,7 +145,7 @@ for cell_id, bins in tqdm(flows_df.items(), total=len(flows_df.columns)):
             l = cluster_profiles[(cluster, cat, *t)]
             a = bins[idx]
             l.extend(a[a > 0])
-            
+
 print(pd.Series([len(l) for l in cluster_profiles.values()]).describe())
 
 # %%
@@ -153,8 +153,11 @@ def aggregate(nums):
     lb, ub = np.percentile(nums, [35, 85], method='weibull')
     return np.mean([x for x in nums if lb <= x <= ub])
     
-for key, vals in cluster_profiles.items():
-    cluster_profiles[key] = aggregate(vals)
+for key, vals in list(cluster_profiles.items()):
+    if not vals:
+        cluster_profiles.pop(key)
+    else:
+        cluster_profiles[key] = aggregate(vals)
 
 # %%
 profiles_df = pd.Series(cluster_profiles,
@@ -162,10 +165,11 @@ profiles_df = pd.Series(cluster_profiles,
 profiles_df = (profiles_df.unstack(level=1)
                .reindex(profiles_index.droplevel(1)
                         .drop_duplicates()))
-profiles_df
+profiles_df = profiles_df.loc[profiles_df.index.levels[0][
+    ~profiles_df.isna().groupby('cluster').any().any(axis=1)]]
 
 # %%
-profiles_df.to_csv('cluster_traffic_profiles.csv')
+profiles_df.to_csv('cluster_traffic_profiles_1.csv')
 
 # %%
 # import plotly.express as px
