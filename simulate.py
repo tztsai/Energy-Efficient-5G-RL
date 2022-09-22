@@ -5,7 +5,7 @@ from utils import *
 from agents import *
 from arguments import *
 from env import MultiCellNetEnv
-from visualize.render import dash_app
+from visualize.render import create_dash_app
 # %reload_ext autoreload
 # %autoreload 2
 
@@ -132,5 +132,5 @@ env.close()
 if not args.use_dash: exit()
 
 # threading.Thread(target=simulate).start()
-app = dash_app(env, args)
+app = create_dash_app(env, args)
 app.run_server(debug=True)

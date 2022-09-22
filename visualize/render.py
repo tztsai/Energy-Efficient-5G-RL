@@ -338,12 +338,12 @@ def make_figure(net, mode='plotly'):
     return fig
 
 
-def dash_app(env, args):
+def create_dash_app(env, args):
     app = Dash(type(env).__name__)
 
     figure = env._figure
+    slider_ticks = np.linspace(0, args.num_env_steps, num=6)
 
-    T = args.num_env_steps
     app.layout = html.Div([
         # html.H4('5G Network Simulation'),
         dcc.Graph(id="graph", figure=go.Figure(figure)),
@@ -353,8 +353,8 @@ def dash_app(env, args):
         dcc.Interval(id='clock', interval=300),
         dcc.Slider(
             id='slider',
-            min=0, max=T, step=1, value=0,
-            marks={t: f'{t:.2f}' for t in np.linspace(0, T, num=6)},
+            min=slider_ticks[0], max=slider_ticks[-1], step=1, value=0,
+            marks={t: f'{t:.2f}' for t in slider_ticks},
         ),
         # dcc.Store(id='storage', data=env._figure)
     ])

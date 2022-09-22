@@ -18,6 +18,7 @@ class TrafficType(enum.IntEnum):
     B = 2
     C = 3
     # D = 4
+    # E = 5
 
 class TrafficModel:
     file_size = config.fileSize  # in bits

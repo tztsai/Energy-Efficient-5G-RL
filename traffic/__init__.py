@@ -10,7 +10,7 @@ else:
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
-        model = TrafficModel.from_scenario(traffic_type)
+        model = TrafficModel.from_scenario(traffic_type, sample_rate=1/300)
         model.print_info()
         for cat, rates in model.densities.items():
             days_idx = rates.index.get_level_values(0).unique()
@@ -23,3 +23,5 @@ else:
     for cat, fig in figs.items():
         fig.update_layout(height=600, width=600, title_text=cat)
         # fig.show()
+
+# %%
