@@ -27,19 +27,14 @@ def cache_obs(method):
     t = None
     cache = {}
     @wraps(method)
-    def wrapper(self, other=None):
+    def wrapper(self, *args):
         nonlocal t
-        if other is None:
-            args = self,
-        else:
-            args = self, other
+        key = (self, *args)
         if self._time != t:
             cache.clear()
             t = self._time
-        elif args in cache:
-            return cache[args]
-        cache[args] = ret = method(*args)
-        if len(args) == 2:  # cache for the other
-            cache[args[1], args[0]] = ret[1], ret[0]
+        elif key in cache:
+            return cache[key]
+        ret = cache[key] = method(self, *args)
         return ret
     return wrapper

@@ -10,7 +10,7 @@ from visualize.render import create_dash_app
 # %autoreload 2
 
 sim_days = 7
-accelerate = 6000
+accelerate = 36000
 render_interval = 4
 
 parser = get_config()
@@ -31,6 +31,7 @@ env_parser.set_defaults(accelerate=accelerate)
 args, env_args = parser.parse_known_args()
 env_args = env_parser.parse_args(env_args)
 
+if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
 env_args.steps_info_path = f'analysis/{env_args.scenario}-{args.agent}-steps.csv'
 

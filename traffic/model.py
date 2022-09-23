@@ -84,8 +84,8 @@ class TrafficModel:
         return self
 
     def print_info(self):
-        notice('Traffic scenario: %s', self.scenario.name)
-        notice('%s\n', self.info_df)
+        notice('Traffic scenario: %s' % self.scenario.name)
+        notice('%s\n' % self.info_df)
         
     @property
     def time_slots(self):

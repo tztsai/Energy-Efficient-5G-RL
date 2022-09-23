@@ -19,17 +19,15 @@ class MultiCellNetwork:
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
 
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 3 + 3 + 3))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 2))
     bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
-        duplicate_box_env(BaseStation.self_obs_space, config.numBS),
-        duplicate_box_env(BaseStation.mutual_obs_space,
-                          config.numBS * (config.numBS - 1) // 2))
+        duplicate_box_env(bs_obs_space, config.numBS))
 
-    global_obs_ndims = box_env_ndims(global_obs_space)
-    bs_obs_ndims = box_env_ndims(bs_obs_space)
-    net_obs_ndims = box_env_ndims(net_obs_space)
+    global_obs_dim = box_env_ndims(global_obs_space)
+    bs_obs_dim = box_env_ndims(bs_obs_space)
+    net_obs_dim = box_env_ndims(net_obs_space)
 
     buffer_ws = 16  # window size for computing recent arrival rates
     stats_save_path = 'analysis/'
@@ -277,20 +275,21 @@ class MultiCellNetwork:
 
     @cache_obs
     def observe_network(self):
-        bs_obs = []
-        for i in range(self.num_bs):
-            bs_obs.append(self.bss[i].observe_self())
-        for i in range(self.num_bs):
-            for j in range(i):
-                bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
+        bs_obs = [self.observe_bs(i) for i in range(self.num_bs)]
+        # for i in range(self.num_bs):
+        #     bs_obs.append(self.bss[i].get_observation())
+        # for i in range(self.num_bs):
+        #     for j in range(i):
+        #         bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
         bs_obs = np.concatenate(bs_obs, dtype=np.float32)
-        thrp, thrp_req, log_ratio = BaseStation.calc_sum_rate(self.ues.values())
+        thrp = sum(ue.data_rate for ue in self.ues.values()) / 1e6
+        thrp_req = sum(ue.required_rate for ue in self.ues.values()) / 1e6
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.drop_ratios,            # dropped rates in different delay cats (3)
+            self.drop_ratios,           # dropped rates in different delay cats (3)
             self.service_delays,        # avg delay in different delay cats (3)
             # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
-            [thrp, thrp_req, log_ratio],# throughput (3)
+            [thrp, thrp_req],           # throughput (2)
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
@@ -352,7 +351,7 @@ class MultiCellNetwork:
                 *[f'arrival_rate_cat{i}' for i in range(3)],
                 'sum_rate', 'sum_rate_req', 'rate_log_ratio',
                 *[f'bs{i}_obs{j}' for i in range(config.numBS) 
-                  for j in range(cls.bs_obs_ndims)]]
+                  for j in range(cls.bs_obs_dim)]]
         assert len(keys) == len(obs)
         return dict(zip(keys, obs))
 

@@ -24,8 +24,8 @@ wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.05  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0.04, 0.01, 0.01, 0.01]  # energy consumption of switching sleep mode in Joules
 disconnectEnergy = 0.02  # energy consumption of a disconnection (before UE is done) in Joules
-bufferShape = (250, 2)  # shape of the buffer used to record past observations 
-bufferChunkSize = 5  # chunk size to apply average pooling
+bufferShape = (250, 1)  # shape of the buffer used to record past observations 
+bufferChunkSize = 50  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
 
 # channel model params
@@ -49,13 +49,13 @@ bsPositions = np.vstack([
     areaSize[None, :] / 2])
 
 # obs names
-public_obs_keys = ['num_antennas', 'responding', 'sleep_mode']
-buffer_record_keys = ['pc', 'arrival_rate']
+public_obs_keys = ['pc', 'num_antennas', 'responding', 'sleep_mode']
+hist_stats_keys = ['arrival_rate']
+ue_groups = ['covered', 'serving', 'queued', 'idle']
+ue_stats_keys = ['num', 'sum_rate', 'sum_rate_req', 'max_rate_req', 'sum_tx_power', 'min_time_lim']
 private_obs_keys = ['next_sleep_mode', 'wakeup_time',
-                    *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in buffer_record_keys],
-                    'num_serving', 'num_queued', 'num_idle', 'num_covered',
-                    'thrp_serving', 'thrp_covered', 'log_ratio_serving', 'log_ratio_covered',
-                    'thrp_req_serving', 'thrp_req_queued', 'thrp_req_idle', 'thrp_req_covered']
-mutual_obs_keys = ['dist', 'own_thrp_req', 'own_log_ratio', 'other_thrp_req', 'other_log_ratio']
+                    *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in hist_stats_keys],
+                    *[f'{u}_{k}' for u in ue_groups for k in ue_stats_keys]]
+mutual_obs_keys = ['dist', *ue_stats_keys]
 other_obs_keys = [f'nb{i}_{k}' for i in range(numBS - 1) for k in public_obs_keys + mutual_obs_keys]
 all_obs_keys = public_obs_keys + private_obs_keys + other_obs_keys

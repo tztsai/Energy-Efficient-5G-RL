@@ -35,20 +35,20 @@ class BaseStation:
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
     include_action_pc = TRAIN
-    bs_stats_dim = buffer_num_chunks * buffer_shape[1]
-    ue_stats_dim = 12
-    mutual_obs_dim = 5
+    ue_stats_dim = 6
+    all_ue_stats_dim = 4 * ue_stats_dim
+    hist_stats_dim = buffer_num_chunks * buffer_shape[1]
+    mutual_obs_dim = 1 + ue_stats_dim
     
     public_obs_space = make_box_env(
-        [[0, max_antennas], [0, 1]] +
+        [[0, np.inf], [0, max_antennas], [0, 1]] +
         [[0, 1]] * num_sleep_modes
     )
     private_obs_space = make_box_env(
-        # [[0, 6], [0, 59], [0, 60]] +    # time
-        [[0, 1]] * num_sleep_modes +    # next sleep mode
-        [[0, 99]] +                     # wakeup time
-        [[0, np.inf]] * bs_stats_dim +  # bs stats
-        [[0, np.inf]] * ue_stats_dim    # ue stats
+        [[0, 1]] * num_sleep_modes +        # next sleep mode
+        [[0, max(wakeup_delays)]] +         # wakeup time
+        [[0, np.inf]] * hist_stats_dim +    # history stats
+        [[0, np.inf]] * all_ue_stats_dim    # ue stats
     )
     mutual_obs_space = make_box_env([[0, np.inf]] * mutual_obs_dim)
     self_obs_space = concat_box_envs(public_obs_space, private_obs_space)
@@ -57,11 +57,11 @@ class BaseStation:
         self_obs_space, duplicate_box_env(
             other_obs_space, config.numBS - 1))
     
-    public_obs_ndims = box_env_ndims(public_obs_space)
-    private_obs_ndims = box_env_ndims(private_obs_space)
-    self_obs_ndims = box_env_ndims(self_obs_space)
-    other_obs_ndims = box_env_ndims(other_obs_space)
-    total_obs_ndims = box_env_ndims(total_obs_space)
+    public_obs_dim = box_env_ndims(public_obs_space)
+    private_obs_dim = box_env_ndims(private_obs_space)
+    self_obs_dim = box_env_ndims(self_obs_space)
+    other_obs_dim = box_env_ndims(other_obs_space)
+    total_obs_dim = box_env_ndims(total_obs_space)
     
     action_dims = (num_ant_switch_opts, num_sleep_modes, num_conn_modes)
 
@@ -112,11 +112,11 @@ class BaseStation:
             self.update_stats()
 
     def update_stats(self):
-        record = [self.power_consumption, self.cell_traffic_rate]
+        record = [self.cell_traffic_rate]
         self.insert_buffer(record)
         if EVAL:
             s = self._stats
-            s['pc'] = record[0]
+            s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
             s['n_ants'] = self.num_ant
             ue_stats = np.zeros((numApps, 6))
@@ -232,7 +232,8 @@ class BaseStation:
         self.num_ant = num_ant_new
         for ue in self.net.ues.values():
             ue.update_data_rate()
-        debug(f'BS {self.id}: switched to {self.num_ant} antennas')
+        if DEBUG:
+            debug(f'BS {self.id}: switched to {self.num_ant} antennas')
         self.update_power_allocation()
 
     def switch_sleep_mode(self, mode):
@@ -254,7 +255,7 @@ class BaseStation:
             self._prev_sleep = self.sleep
             self.sleep = mode
         elif mode < self.sleep:
-            self._wake_delay = self.wakeup_delays[self.sleep]
+            self._wake_delay = self.wakeup_delays[self.sleep] - self.wakeup_delays[mode]
 
     def switch_connection_mode(self, mode):
         """
@@ -514,8 +515,7 @@ class BaseStation:
         obs = [self.observe_self()]
         for bs in self.net.bss.values():
             if bs is self: continue
-            obs.append(bs.observe_self()[:self.public_obs_ndims])
-            obs.append(self.observe_other(bs)[0])
+            obs.append(self.observe_other(bs))
         return np.concatenate(obs, dtype=np.float32)
 
     @timeit
@@ -527,55 +527,40 @@ class BaseStation:
             ### public information ###
             # self.pos
             # [self.band_width, self.transmit_power],
-            [self.num_ant, self.responding],
+            [self.operation_pc, self.num_ant, self.responding],
             onehot_vec(self.num_sleep_modes, self.sleep),
             ### private information ###
             # [day % 7 + 1, hour, sec],
             onehot_vec(self.num_sleep_modes, self._next_sleep),
             [self.wakeup_time],
-            self.get_bs_stats(),
-            self.get_ue_stats()
+            self.get_history_stats(),
+            self.get_all_ue_stats()
         ], dtype=np.float32)
 
     @timeit
     @cache_obs
     def observe_other(self, bs):
-        shared_ues = self.covered_ues & bs.covered_ues
-        owned_ues = set(ue for ue in shared_ues if ue.bs is self)
-        others_ues = set(ue for ue in shared_ues if ue.bs is bs)
-        _, owned_thrp_req, owned_log_ratio = self.calc_sum_rate(owned_ues)
-        _, others_thrp_req, others_log_ratio = self.calc_sum_rate(others_ues)
-        obs = np.array([
-            self.neighbor_dist(bs.id),
-            # len(shared_ues), len(owned_ues), len(others_ues),
-            owned_thrp_req, owned_log_ratio, 
-            others_thrp_req, others_log_ratio
+        others_ues = [ue for ue in self.covered_ues if ue.bs is bs]
+        obs = np.concatenate([
+            bs.observe_self()[:self.public_obs_dim],
+            [self.neighbor_dist(bs.id)],
+            self.get_ue_stats(others_ues)
         ], dtype=np.float32)
-        other_obs = obs[[0, 3, 4, 1, 2]]
-        return obs, other_obs
+        return obs
     
-    @staticmethod
-    def calc_sum_rate(ues, kind=None):
-        if kind is None or kind == 'actual':
-            real_thrp = sum(ue.data_rate for ue in ues) / 1e6
-            if kind: return real_thrp
-        if kind is None or kind == 'required':
-            required_thrp = sum(ue.required_rate for ue in ues) / 1e6
-            if kind: return required_thrp
-        if required_thrp > 0:
-            required_thrp *= 1e-6
-            if real_thrp == 0:
-                return real_thrp, required_thrp, -5.
-            real_thrp *= 1e-6
-            ratio = np.clip(real_thrp / required_thrp, 1e-4, 1e4)
-            return real_thrp, required_thrp, np.log10(ratio)
-        else:
-            real_thrp *= 1e-6
-            return real_thrp, 0, 0
+    # @staticmethod
+    # def calc_sum_rate(ues, kind=None):
+    #     if kind is None or kind == 'actual':
+    #         real_thrp = sum(ue.data_rate for ue in ues) / 1e6
+    #         if kind: return real_thrp
+    #     if kind is None or kind == 'required':
+    #         required_thrp = sum(ue.required_rate for ue in ues) / 1e6
+    #         if kind: return required_thrp
+    #     return real_thrp, required_thrp
 
     # @anim_rolling
-    # @cache_obs
-    def get_bs_stats(self):
+    @cache_obs
+    def get_history_stats(self):
         idx = [(self._buf_idx + i * self.buffer_chunk_size) % len(self._buffer)
                for i in range(self.buffer_num_chunks + 1)]
         chunks = np.array([self._buffer[i:j] if i < j else
@@ -583,17 +568,30 @@ class BaseStation:
                            for i, j in zip(idx[:-1], idx[1:])], dtype=np.float32)
         return chunks.mean(axis=1).reshape(-1)
 
-    def get_ue_stats(self):
-        thrp, thrp_req, log_ratio = self.calc_sum_rate(self.ues.values())
-        thrp_req_queued = self.calc_sum_rate(self.queue, kind='required')
-        idle_ues = self.covered_idle_ues
-        thrp_req_idle = self.calc_sum_rate(idle_ues, kind='required')
-        thrp_cell, thrp_req_cell, log_ratio_cell = self.calc_sum_rate(self.covered_ues)
-        return [
-            len(self.ues), len(self.queue), len(idle_ues), len(self.covered_ues),
-            thrp, thrp_cell, log_ratio, log_ratio_cell,
-            thrp_req, thrp_req_queued, thrp_req_idle, thrp_req_cell
-        ]
+    def get_all_ue_stats(self):
+        serving_ues = []
+        queued_ues = []
+        idle_ues = []
+        for ue in self.ues.values():
+            if ue.bs is None:
+                idle_ues.append(ue)
+            elif ue.bs is self:
+                if ue.active:
+                    serving_ues.append(ue)
+                else:
+                    queued_ues.append(ue)
+        return np.concatenate([self.get_ue_stats(ues) for ues in
+                               [self.ues.values(), serving_ues, queued_ues, idle_ues]],
+                              dtype=np.float32)
+
+    def get_ue_stats(self, ues):
+        if not ues:
+            return np.zeros(self.ue_stats_dim, dtype=np.float32)
+        stats = np.array([
+            [ue.data_rate / 1e6, ue.required_rate / 1e6, ue.tx_power, ue.time_limit]
+            for ue in ues]).T
+        return [len(ues), stats[0].sum(), stats[1].sum(), stats[1].max(), 
+                stats[2].sum(), stats[3].min()]
 
     def update_timer(self, dt):
         self._steps += 1
