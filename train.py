@@ -11,6 +11,9 @@ from utils import *
 from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
 
+if DEBUG:
+    loadDebugger()
+    
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 

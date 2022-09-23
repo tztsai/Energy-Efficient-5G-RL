@@ -123,7 +123,6 @@ class TrafficModel:
 
 
 def conv_smoothen(df: pd.DataFrame, weights=(0.25, 0.5, 0.25), inplace=True):
-    print(df.values.shape)
     pad = (len(weights) - 1) // 2
     a = np.pad(list(df.values), ((pad, pad), (0, 0)), mode='edge')
     a = np.apply_along_axis(np.convolve, 0, a, weights, mode='valid')

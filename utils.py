@@ -23,6 +23,9 @@ from collections import deque
 # import matplotlib.pyplot as plt
 from collections import OrderedDict, defaultdict
 
+try: from my_utils.debug import loadDebugger
+except: pass
+
 np.set_printoptions(precision=3)
 
 logger = logging.getLogger('main')
@@ -95,7 +98,7 @@ def div0(x, y, eps=1e-10):
 
 def get_run_dir(args, env_args):
     return (Path(os.path.dirname(os.path.abspath(__file__))) / "results"
-            / args.env_name / getattr(args, 'group_name', env_args.scenario)
+            / args.env_name / (args.group_name or env_args.scenario)
             / args.algorithm_name / args.experiment_name)
 
 # def pd2np(func):
