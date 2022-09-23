@@ -140,16 +140,16 @@ if __name__ == '__main__':
     figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
     for i, traffic_type in enumerate(TrafficType):
         print(traffic_type)
-        model = TrafficModel.from_scenario(traffic_type, sample_rate=1/300)
+        model = TrafficModel.from_scenario(traffic_type)
         model.print_info()
         for cat, rates in model.densities.items():
             days_idx = rates.index.get_level_values(0).unique()
             df = rates.unstack().reindex(days_idx)
-            fig = px.imshow(df, title=f"Scenario {traffic_type.name} - {cat}", color_continuous_scale='turbo',
+            fig = px.imshow(df, title=f"Scenario {traffic_type.name} - {cat}", #color_continuous_scale='turbo',
                             labels=dict(x='time of day', y='day of week', color='Mb/s/km²'))
             fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)
-            fig.update_layout(height=500, width=1000)
+            fig.update_layout(height=360, width=800)
             fig.write_image(f"{traffic_type.name}_{cat}.png", scale=2)
         print()
     for cat, fig in figs.items():
