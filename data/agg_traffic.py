@@ -7,7 +7,7 @@ from itertools import product as cartesian_product
 
 # %%
 sql_url = 'sqlite:///cell_traffic.sql'
-pred_path = 'prediction.csv'
+pred_path = 'prediction1.csv'
 
 # %%
 preds = pd.read_csv(pred_path, index_col=0).cluster
@@ -169,7 +169,7 @@ profiles_df = profiles_df.loc[profiles_df.index.levels[0][
     ~profiles_df.isna().groupby('cluster').any().any(axis=1)]]
 
 # %%
-profiles_df.to_csv('cluster_traffic_profiles_1.csv')
+profiles_df.to_csv('cluster_traffic_profiles_2.csv')
 
 # %%
 # import plotly.express as px
