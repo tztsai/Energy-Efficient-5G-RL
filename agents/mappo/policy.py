@@ -26,8 +26,8 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        info(str(self.actor))
-        info(str(self.critic))
+        notice(str(self.actor))
+        notice(str(self.critic))
         
         self._actor_rnn_state = None
         
@@ -95,12 +95,12 @@ class MappoPolicy:
         return values, action_log_probs, dist_entropy
 
     def save(self, save_dir, suffix=""):
-        info("Saving models to {}".format(save_dir))
+        notice("Saving models to {}".format(save_dir))
         torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % suffix))
         torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % suffix))
 
     def restore(self, model_dir, suffix=""):
-        info("Restoring models from {}".format(model_dir))
+        notice("Restoring models from {}".format(model_dir))
         model_dir = Path(model_dir)
         actor_file = next(model_dir.glob(f'actor*{suffix}.pt'))
         critic_file = next(model_dir.glob(f'critic*{suffix}.pt'))
