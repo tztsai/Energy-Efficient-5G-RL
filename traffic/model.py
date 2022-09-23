@@ -1,3 +1,4 @@
+# %%
 import re
 import enum
 import numpy as np
@@ -60,12 +61,14 @@ class TrafficModel:
     def seed(cls, seed):
         cls._rng = np.random.default_rng(seed)
         
-    def fit(self, data_rate_df):
+    def fit(self, data_rate_df, smoothen=True):
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
         df = data_rate_df[self.app_names] / self.sample_rate
+        smoothen and conv_smoothen(df)
         self.interval, rem = divmod(self.period, len(df))
         assert rem == 0, (self.interval, rem)
+        
         self.rates = df * self.area / self.file_size  # files / s
         assert self.rates.values.max() * 1e-3 <= 1.
 
@@ -117,3 +120,40 @@ class TrafficModel:
     def get_arrival_rates(self, time, dt):
         i = self._get_time_loc(time)
         return self.rates.values[i] * dt  # (n_apps)
+
+
+def conv_smoothen(df: pd.DataFrame, weights=(0.25, 0.5, 0.25), inplace=True):
+    print(df.values.shape)
+    pad = (len(weights) - 1) // 2
+    a = np.pad(list(df.values), ((pad, pad), (0, 0)), mode='edge')
+    a = np.apply_along_axis(np.convolve, 0, a, weights, mode='valid')
+    if not inplace: df = df.copy()
+    df[:] = a
+    return df
+
+
+if __name__ == '__main__':
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    from collections import defaultdict
+
+    figs = defaultdict(lambda: make_subplots(rows=len(TrafficType), cols=1, shared_xaxes=True))
+    for i, traffic_type in enumerate(TrafficType):
+        print(traffic_type)
+        model = TrafficModel.from_scenario(traffic_type, sample_rate=1/300)
+        model.print_info()
+        for cat, rates in model.densities.items():
+            days_idx = rates.index.get_level_values(0).unique()
+            df = rates.unstack().reindex(days_idx)
+            fig = px.imshow(df, title=f"Scenario {traffic_type.name} - {cat}", color_continuous_scale='turbo',
+                            labels=dict(x='time of day', y='day of week', color='Mb/s/km²'))
+            fig.show()
+            figs[cat].add_trace(fig.data[0], row=i+1, col=1)
+            fig.update_layout(height=500, width=1000)
+            fig.write_image(f"{traffic_type.name}_{cat}.png", scale=2)
+        print()
+    for cat, fig in figs.items():
+        fig.update_layout(height=600, width=600, title_text=cat)
+        # fig.show()
+
+# %%
