@@ -5,8 +5,9 @@ from env.config import timeStep, actionInterval
 
 class AdaptivePolicy:
     pre_sm2_time = 0.01
-    mutual_obs_start = BS.public_obs_ndims + BS.private_obs_ndims
-    neighbor_obs_dims = BS.public_obs_ndims + BS.mutual_obs_dim
+    pre_sm3_time = 0.05
+    mutual_obs_start = BS.public_obs_dim + BS.private_obs_dim
+    neighbor_obs_dims = BS.public_obs_dim + BS.mutual_obs_dim
     act_interval = timeStep * actionInterval
     wakeup_threshold = 0.
 

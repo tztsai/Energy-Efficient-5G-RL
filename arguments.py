@@ -1,5 +1,5 @@
 import argparse
-from config import DEBUG
+from config import DEBUG, EVAL
 
 
 def get_config():
@@ -161,9 +161,12 @@ def get_config():
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str,
                         default='mappo', choices=["rmappo", "mappo"])
+    parser.add_argument("-G", "--group_name", type=str,
+                        help="the group name of the training (we use training scenario)")
     parser.add_argument("-L", '--log_level', type=str, default='DEBUG' if DEBUG else 'NOTICE',
                         help='level of logging')
-    parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
+    parser.add_argument("-E", "--experiment_name", type=str, default="check", 
+                        help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=1, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
     parser.add_argument("--cuda_deterministic",
@@ -291,21 +294,23 @@ def get_config():
     # pretrained parameters
     parser.add_argument("--model_dir", type=str, default=None, help="by default None. set the path to pretrained model.")
 
+    if EVAL:
+        parser.set_defaults(group_name="RANDOM")
     return parser
 
 
 def get_env_config():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--area_size", type=float,
-                        help="width of the square area in meters")
     parser.add_argument("-S", "--scenario", type=str,
-                        help="type of traffic to generate")
+                        help="the traffic scenario of the simulation")
     parser.add_argument("-T", "--episode_len", type=int,
                         help="number of steps per episode")
     parser.add_argument("--start_time", type=str,
                         help="start time of the simulation")
     parser.add_argument("-a", "--accelerate", type=int,
                         help="acceleration rate of the simulation")
+    parser.add_argument("--area_size", type=float,
+                        help="width of the square area in meters")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
     parser.add_argument("-s", "--save_steps_info", action='store_true',

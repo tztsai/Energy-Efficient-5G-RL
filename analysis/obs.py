@@ -42,8 +42,8 @@ mean_stats, std_stats = [pd.DataFrame(Net.annotate_obs(pd.read_csv(f).values.T))
                          for f in glob.glob('*(*, 4*)_*.csv')]
 
 
-mean_stats = mean_stats.iloc[0,:Net.global_obs_ndims]
-std_stats = std_stats.iloc[0,:Net.global_obs_ndims]
+mean_stats = mean_stats.iloc[0,:Net.global_obs_dim]
+std_stats = std_stats.iloc[0,:Net.global_obs_dim]
 
 # %%
 mean_stats.plot()
