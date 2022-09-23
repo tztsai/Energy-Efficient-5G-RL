@@ -82,6 +82,15 @@ def main(args):
         device = torch.device("cpu")
         torch.set_num_threads(args.n_training_threads)
 
+    set_log_level(args.log_level)
+
+    if args.sim_log_path is None:
+        fn = '{}_{}_{}.log'.format(
+            env_args.scenario, args.algorithm_name, args.experiment_name)
+        args.sim_log_path = 'logs/' + fn
+
+    set_log_file(args.sim_log_path)
+    
     # get env config
     get_default_env_config(args, env_args)
     
@@ -116,15 +125,6 @@ def main(args):
         run_dir = run_dir / curr_run
         if not run_dir.exists():
             os.makedirs(str(run_dir))
-
-    set_log_level(args.log_level)
-
-    if args.sim_log_path is None:
-        fn = '{}_{}_{}.log'.format(
-            env_args.scenario, args.algorithm_name, args.experiment_name)
-        args.sim_log_path = 'logs/' + fn
-
-    set_log_file(args.sim_log_path)
 
     # seed
     torch.manual_seed(args.seed)
