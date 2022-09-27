@@ -2,7 +2,7 @@
 from utils import *
 from . import config
 from .env_utils import *
-from .user_equipment import UserEquipment
+from .user_equipment import UserEquipment, TestProbe
 from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel, TrafficType
@@ -18,6 +18,7 @@ class MultiCellNetwork:
     inter_bs_dist = config.interBSDist
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
+    default_scenario = 'RANDOM'
 
     global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 2))
     bs_obs_space = BaseStation.total_obs_space
@@ -32,8 +33,13 @@ class MultiCellNetwork:
     buffer_ws = 16  # window size for computing recent arrival rates
     stats_save_path = 'analysis/'
 
-    def __init__(self, area, bs_poses, traffic_scenario,
-                 start_time=0, accelerate=1, dpi_sample_rate=None):
+    def __init__(self,
+                 traffic_scenario=default_scenario,
+                 area=default_area,
+                 bs_poses=default_bs_poses, 
+                 start_time=0,
+                 accelerate=1,
+                 dpi_sample_rate=None):
         self.area = area
         self.traffic_model = None
         self.traffic_scenario = traffic_scenario
@@ -42,6 +48,7 @@ class MultiCellNetwork:
         self.bss = {}
         self.ues = {}
         self._bs_poses = None
+        self._csi_cache = {}
         self._make_traffic_model = partial(
             TrafficModel.from_scenario, area=area, sample_rate=dpi_sample_rate)
         
@@ -140,7 +147,7 @@ class MultiCellNetwork:
     
     # @property
     # def ue_counts(self):
-    #     return np.bincount(np.array([ue.app_type for ue in self.ues.values()]),
+    #     return np.bincount(np.array([ue.service for ue in self.ues.values()]),
     #                        minlength=self.traffic_model.num_apps)
 
     @property
@@ -203,24 +210,26 @@ class MultiCellNetwork:
         self.add_base_station(bs)
         return bs
 
-    def add_user(self, ue: UserEquipment):
+    def add_user(self, ue: UserEquipment=None, **kwargs):
+        if ue is None:
+            ue = UserEquipment(**kwargs)
         if DEBUG:
             assert ue.id not in self.ues, "UE %s already in the network" % ue.id
             # debug(f'{ue.id} added to the network')
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
-        self._arrival_buf[self._buf_idx, ue.app_type] += ue.demand
+        self._arrival_buf[self._buf_idx, ue.service] += ue.demand
 
     def remove_user(self, ue_id):
         ue = self.ues.pop(ue_id)
         dropped = max(0., ue.demand)
-        self._stats[ue.app_type] += [1, dropped, ue.delay]
+        self._stats[ue.service] += [1, dropped, ue.delay]
         if DEBUG:
             if dropped:
                 info('UE %s dropped' % ue_id)
         if EVAL:
-            s, a = self._eval_stats, ue.app_type
+            s, a = self._eval_stats, ue.service
             if dropped:
                 s.at[a, 'dropped'] += dropped
                 s.at[a, 'num_dropped'] += 1
@@ -231,17 +240,17 @@ class MultiCellNetwork:
         #     record = [1, drop_ratio, ue.delay, ue.t_served]
         # else:
         #     record = [1, drop_ratio, ue.delay]
-        # self._served_buf.iloc[ue.app_type] += record
-        # self._buffer2[self._buf_idx, ue.app_type] += record
+        # self._served_buf.iloc[ue.service] += record
+        # self._buffer2[self._buf_idx, ue.service] += record
         # if ue.dropped:
-        #     self._dropped[ue.app_type] += ue.demand / 1e6
-        # self._delays[ue.app_type] += [ue.delay, 1]
+        #     self._dropped[ue.service] += ue.demand / 1e6
+        # self._delays[ue.service] += [ue.delay, 1]
         # if EVAL:
         #     if ue.done:
-        #         self._total_done[ue.app_type] += [1, ue.served/1e6, ue.served_time, ue.delay]
+        #         self._total_done[ue.service] += [1, ue.served/1e6, ue.served_time, ue.delay]
         #     else:
         #         if ue.demand <= 0: breakpoint()
-        #         self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.served_time, ue.delay]
+        #         self._total_dropped[ue.service] += [1, ue.demand/1e6, ue.served_time, ue.delay]
 
     @timeit
     def scan_connections(self):
@@ -257,12 +266,19 @@ class MultiCellNetwork:
     @timeit
     def generate_new_ues(self, dt, **kwargs):
         new_traffic = self.traffic_model.emit_traffic(self.world_time, dt)
-        for app, (demand, delay) in enumerate(new_traffic):
+        for service, (demand, delay) in enumerate(new_traffic):
             if not demand: continue
             if 'pos' not in kwargs:
                 kwargs['pos'] = np.append(np.random.rand(2) * self.area, UserEquipment.height)
-            ue = UserEquipment(app_type=app, demand=demand, delay_budget=delay, **kwargs)
-            self.add_user(ue)
+            self.add_user(service=service, demand=demand, delay_budget=delay, **kwargs)
+            
+    def test_network_channel(self):
+        state = tuple((bs.num_ant, bs.num_ue, bs.responding, bs.sleep > 0)
+                      for bs in self.bss.values())
+        cache = self._csi_cache
+        if state not in cache:
+            cache[state] = TestProbe(self).test_sinr()
+        return cache[state]
 
     def consume_energy(self, energy):
         self._energy_consumed += energy

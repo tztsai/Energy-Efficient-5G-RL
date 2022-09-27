@@ -25,7 +25,7 @@ parser.add_argument("--days", type=int, default=sim_days,
 
 env_parser = get_env_config()
 
-parser.set_defaults(log_level='NOTICE')
+parser.set_defaults(log_level='NOTICE', group_name='RANDOM')
 env_parser.set_defaults(accelerate=accelerate)
 
 args, env_args = parser.parse_known_args()

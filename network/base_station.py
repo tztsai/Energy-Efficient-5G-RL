@@ -20,7 +20,7 @@ class BaseStation:
     bandwidth = config.bandWidth
     frequency = config.bsFrequency
     bs_height = config.bsHeight
-    cell_radius = config.cellRadius
+    # cell_radius = config.cellRadius
     num_conn_modes = len(ConnectMode)
     num_sleep_modes = len(config.sleepModeDeltas)
     num_ant_switch_opts = len(config.antennaSwitchOpts)
@@ -67,7 +67,7 @@ class BaseStation:
 
     def __init__(
         self, id, pos, net, 
-        ant_power=None, total_antennas=None,
+        ant_power=None, max_antennas=None,
         frequency=None, bandwidth=None,
     ):
         pos = np.asarray(pos)
@@ -118,11 +118,11 @@ class BaseStation:
             s = self._stats
             s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
-            s['n_ants'] = self.num_ant
+            s['num_ants'] = self.num_ant
             ue_stats = np.zeros((numApps, 6))
             for ue in self.ues.values():
-                ue_stats[ue.app_type] += [1, ue.signal_power, ue.interference,
-                                          ue.sinr, ue.data_rate, ue.required_rate]
+                ue_stats[ue.service] += [1, ue._S, ue._I, ue._SINR,
+                                         ue.data_rate, ue.required_rate]
             s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
             # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
             s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
@@ -153,7 +153,14 @@ class BaseStation:
     
     @property
     def num_ue(self):
+        if EVAL:
+            return getattr(self, '_num_ue', len(self.ues))
         return len(self.ues)
+    
+    @num_ue.setter
+    def num_ue(self, value):
+        assert EVAL
+        self._num_ue = max(0, value)
     
     @property
     def ues_full(self):
@@ -197,7 +204,7 @@ class BaseStation:
         
     @property
     def sum_rate(self):
-        return self.calc_sum_rate(self.ues.values(), kind='actual')
+        return sum(ue.data_rate for ue in self.ues.values()) / 1e6
 
     @property
     def cell_traffic_rate(self):
@@ -377,7 +384,7 @@ class BaseStation:
             r = np.array([ue.required_rate for ue in self.ues.values()]) / 1e7
             w = self.power_alloc_base ** np.minimum(r, 50.)
             # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
-            # w = np.array([self.power_alloc_weights[ue.app_type]
+            # w = np.array([self.power_alloc_weights[ue.service]
             #               for ue in self.ues.values()])
             ps = self.transmit_power * w / w.sum()
         else:
@@ -480,11 +487,9 @@ class BaseStation:
         Pld = 0  # load-dependent part of PC
         if S:
             Pnl *= sleep_deltas[S]
-        else:
-            Pld = M * C['PA-ld']
-            if K > 0:
-                R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-                Pld += Pcd*R + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+        elif K > 0:
+            R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
+            Pld = Pcd*R + C['K3']*K**3 + M * (C['PA-ld'] + C['MK1']*K + C['MK2']*K**2)
         P = Pld + Pnl
         if EVAL:
             rec = dict(bs=self.id, M=M, K=K, R=R, S=S, Pnl=Pnl, Pld=Pld, P=P)
@@ -598,9 +603,9 @@ class BaseStation:
         self._time += dt
         self._timer += dt
 
-    @cache_obs
     def info_dict(self):
         infos = dict(
+            n_ants=self.num_ant,
             conn_mode=self.conn_mode,
             sleep_mode=self.sleep,
             next_sleep=self._next_sleep,

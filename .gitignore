@@ -18,6 +18,7 @@
 /results/*.txt
 /results/**/*.png
 /results/**/*.jpg
-/analysis/*.csv
+/analysis/*
+!/analysis/*.py
 /wandb/
 /config.py

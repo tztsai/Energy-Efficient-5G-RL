@@ -6,14 +6,15 @@ renderMode = 'none'
 # base station params
 numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
-cellRadius = 600  # the radius of a hexagon cell in meters
+# cellRadius = 750  # the radius of a hexagon cell in meters
 txPower = 0.4  # average transmit power per antenna in watts
 maxPAPower = 8  # maximum antenna power in watts
 bsFrequency = 5e9  # carrier frequency in Hz
 feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
+signalThreshold = 2e-13  # signal threshold in watts
 maxAntennas = 64  # max number of antennas
-minAntennas = 24  # min number of antennas
+minAntennas = 16  # min number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
 bsHeight = 30  # height of a BS in meters
 # powerAllocWeights = [95, 4, 1]  # weights of the power allocation
@@ -38,6 +39,7 @@ ueHeight = 1.5  # height of a UE in meters
 # default network configuration
 areaSize = np.array([2.5, 2.5]) * interBSDist
 bsPositions = np.vstack([
+    [areaSize / 2],
     np.array(
         [[areaSize[0]/2 + interBSDist * np.cos(a + np.pi/6),
           areaSize[1]/2 + interBSDist * np.sin(a + np.pi/6)]
@@ -46,7 +48,7 @@ bsPositions = np.vstack([
     #     [[AREA[0]/2 + R * 3 * np.cos(a),
     #       AREA[1]/2 + R * 3 * np.sin(a)]
     #      for a in np.linspace(0, 2*np.pi, 13)[:-1]]),
-    areaSize[None, :] / 2])
+])
 
 # obs names
 public_obs_keys = ['pc', 'num_antennas', 'responding', 'sleep_mode']
