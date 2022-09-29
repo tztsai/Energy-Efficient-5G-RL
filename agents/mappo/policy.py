@@ -30,7 +30,14 @@ class MappoPolicy:
         notice(str(self.critic))
         
         self._actor_rnn_state = None
-        
+
+        if args.count_flops:
+            from pthflops import count_ops
+            self._count_flops = count_ops
+            self._flops = 0
+        else:
+            self._count_flops = None
+
         if model_dir is not None:
             self.restore(model_dir)
 
@@ -139,8 +146,11 @@ class MappoPolicy:
                 actor_rnn_state = self._actor_rnn_state
         if masks is None:
             masks = np.ones((1, 1), dtype=np.float32)
-        actions, _, actor_rnn_state = self.actor(obs, actor_rnn_state, masks, 
-                                                 available_actions, deterministic)
+        actions, _, actor_rnn_state = self.actor(
+            obs, actor_rnn_state, masks, available_actions, deterministic)
+        if self._count_flops:
+            self.actor.act._deterministic = True
+            self._flops += self._count_flops(self.actor, obs)
         self._actor_rnn_state = actor_rnn_state
         return actions.cpu().numpy()
 

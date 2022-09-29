@@ -607,9 +607,10 @@ class BaseStation:
         infos = dict(
             n_ants=self.num_ant,
             conn_mode=self.conn_mode,
+            responding=self.responding,
             sleep_mode=self.sleep,
             next_sleep=self._next_sleep,
-            wakeup_time=self.wakeup_time,
+            wakeup_time=int(self.wakeup_time * 1000),
             **self._stats
         )
         return infos

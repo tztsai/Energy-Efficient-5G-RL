@@ -14,6 +14,7 @@ class ACTLayer(nn.Module):
         super(ACTLayer, self).__init__()
         self.mixed_action = False
         self.multi_discrete = False
+        self._deterministic = False
 
         if action_space.__class__.__name__ == "Discrete":
             action_dim = action_space.n
@@ -66,9 +67,14 @@ class ACTLayer(nn.Module):
             actions = []
             action_log_probs = []
             for action_out in self.action_outs:
-                action_logit = action_out(x)
-                action = action_logit.mode() if deterministic else action_logit.sample()
-                action_log_prob = action_logit.log_probs(action)
+                if self._deterministic:
+                    action_logit = action_out.linear(x)
+                    action = torch.argmax(action_logit, dim=-1, keepdim=True)
+                    action_log_prob = torch.zeros_like(action_logit)
+                else:
+                    action_logit = action_out(x)
+                    action = action_logit.sample()
+                    action_log_prob = action_logit.log_probs(action)
                 actions.append(action)
                 action_log_probs.append(action_log_prob)
 

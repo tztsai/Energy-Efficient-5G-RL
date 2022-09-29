@@ -40,8 +40,7 @@ def render(env: 'MultiCellNetEnv', mode='frame'):
     if last_fr:
         frame['layout'] = last_fr['layout'].copy()
     
-    render_csi(net, frame, last_fr)
-    render_cells(net, frame)
+    # render_csi(net, frame, last_fr)
     render_bss(net, frame)
     render_ues(net, frame)
     render_data_rates(net, info, frame, last_fr)
@@ -84,54 +83,59 @@ def animate(env: 'MultiCellNetwork'):
     #                 setattr(fig_tr, attr, val)
     #     yield
 
+bs_info_template = """<br>
+id: {id}<br>
+pc: {pc:.2f} W<br>
+antennas: {n_ants}<br>
+sleep mode: {sleep_mode}<br>
+wakeup time: {wakeup_time} ms<br>
+accept conn: {responding}<br>
+ues in service: {active_ues}<br>
+ues in queue: {queued_ues}<br>
+ues in coverage: {covered_ues}<br>
+actual rate: {sum_rate:.1f} Mb/s<br>
+required rate: {req_rate:.1f} Mb/s<br>
+""".strip()
 def render_bss(net, frame):
-    hover_template = """
-    id: {id}<br>
-    antennas: {n_ants}<br>
-    sleep mode: {sleep_mode}<br>
-    wake up: {wakeup_time}<br>
-    conn mode: {conn_mode}<br>
-    power consumption: {pc:.2f}<br>
-    ues in service: {active_ues}<br>
-    ues in queue: {queued_ues}<br>
-    ues in coverage: {covered_ues}<br>
-    sum rate: {sum_rate:.2f}<br>
-    required rate: {req_rate:.2f}<br>
-    """
     i, x, y, m, s, r = np.array([[
         bs.id, bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep,
         bs.responding] for bs in net.bss.values()]).T
-    hover_texts = [hover_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
+    hover_texts = [bs_info_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
     frame['data'].append(dict(
         type='scatter',
-        x=x, y=y, mode='markers', ids=i,
+        x=x, y=y, mode='markers+text', ids=i,
         marker=dict(
             size=m/8+12,
             line_width=1,
             line_color=color_sequence,
             symbol=sleep_symbols[s.astype(int)],
             color=color_sequence,
-            opacity=(r > 0) * 0.7 + 0.3
+            opacity=(r > 0) * 0.6 + 0.4
         ),
+        text=list(range(net.num_bs)),
+        # textposition="middle center",
+        # textfont=dict(color='white'),
         hovertext=hover_texts,
+        hoverlabel=dict(font_size=10),
         hoverinfo='text',
         showlegend=False,
     ))
 
+
+ue_info_template = """<br>
+status: {status}<br>
+base station: {bs_id}<br>
+data rate: {rate:.2f} Mb/s<br>
+demand: {demand:.2f} kb<br>
+time limit: {ddl:.0f} ms<br>
+""".strip()
 def render_ues(net, frame):
-    hover_template = """
-    status: {status}<br>
-    base station: {bs_id}<br>
-    data rate: {rate:.2f}<br>
-    demand: {demand:.2f}<br>
-    deadline: {ddl:.0f}<br>
-    """
     if net.num_ue == 0:
         return frame['data'].append({})
     i, x, y, b, s, r, u = np.array(
         [[ue.id, ue.pos[0], ue.pos[1], ue.bs.id if ue.bs else -1, ue.demand,
           ue.data_rate, ue.urgent] for ue in net.ues.values()]).T
-    hover_texts = [hover_template.format(**ue.info_dict()) for ue in net.ues.values()]
+    hover_texts = [ue_info_template.format(**ue.info_dict()) for ue in net.ues.values()]
     symbols = ['circle' + ('-x' if u else '') + ('' if r else '-open') for r, u in zip(r, u)]
     frame['data'].append(dict(
         type='scatter',
@@ -145,6 +149,7 @@ def render_ues(net, frame):
             # opacity=np.clip((r+1)/2, 0, 1)
         ),
         hovertext=hover_texts,
+        hoverlabel=dict(font_size=10),
         hoverinfo='text',
         showlegend=False))
 
@@ -171,9 +176,8 @@ def render_csi(net, frame, last_frame=[], vs=['S', 'I', 'SINR']):
     for var in vs:
         if net._stats_updated:
             df = csi_df[var].unstack().T
-            df.fillna(np.nanmin(df.values), inplace=True)
             im = px.imshow(df, labels=dict(color='dB', x='', y=''),
-                           width=600, aspect='equal')
+                           width=600, aspect='equal', origin='lower')
             im.update_xaxes(showgrid=False)
             im.update_yaxes(showgrid=False)
             im.update_layout(margin=dict(l=30, r=55, t=65, b=40))
@@ -183,9 +187,12 @@ def render_csi(net, frame, last_frame=[], vs=['S', 'I', 'SINR']):
             layouts[var] = im.layout
         elif last_frame:
             trace = next(t for t in last_frame['data'] if t['name'] == var)
-            frame['layout']['coloraxis'] = last_frame['layout']['coloraxis']
+            # frame['layout']['coloraxis'] = last_frame['layout']['coloraxis']
         frame['data'].append(trace)
+        if var == 'SINR':
+            frame['layout']['coloraxis'] = im.layout['coloraxis']
     frame['_layouts'] = layouts
+
     # frame['layout']['updatemenus'] = [{
     #     'buttons': [{'args': [{'visible': [True] * len(frame['data'])}],
     #                  'label': 'All',
@@ -298,7 +305,7 @@ def make_figure(net, size=(1000, 600),
             transition={"duration": 300, "easing": "cubic-in-out"},
         ))
     if add_subplots:
-        fig['layout']['xaxis2']['domain'] = [0, 0.6]
+        fig['layout']['xaxis']['domain'] = [0, 0.6]
         fig['layout'].update(
             xaxis2=dict(domain=[0.7, 1],  # autorange=False,
                         tickangle=45, nticks=4),

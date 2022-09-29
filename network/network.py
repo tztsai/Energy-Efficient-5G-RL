@@ -20,7 +20,7 @@ class MultiCellNetwork:
     default_bs_poses = config.bsPositions
     default_scenario = 'RANDOM'
 
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 2))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 4))
     bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
@@ -41,9 +41,7 @@ class MultiCellNetwork:
                  accelerate=1,
                  dpi_sample_rate=None):
         self.area = area
-        self.traffic_model = None
         self.traffic_scenario = traffic_scenario
-        self.start_time = self._parse_start_time(start_time)
         self.accelerate = accelerate
         self.bss = {}
         self.ues = {}
@@ -51,6 +49,12 @@ class MultiCellNetwork:
         self._csi_cache = {}
         self._make_traffic_model = partial(
             TrafficModel.from_scenario, area=area, sample_rate=dpi_sample_rate)
+
+        if traffic_scenario in TrafficType._member_names_:
+            self.traffic_model = self._make_traffic_model(traffic_scenario)
+        else:
+            self.traffic_model = None
+        self.start_time = self._parse_start_time(start_time)
         
         self.reset()
 
@@ -298,14 +302,17 @@ class MultiCellNetwork:
         #     for j in range(i):
         #         bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
         bs_obs = np.concatenate(bs_obs, dtype=np.float32)
-        thrp = sum(ue.data_rate for ue in self.ues.values()) / 1e6
-        thrp_req = sum(ue.required_rate for ue in self.ues.values()) / 1e6
+        thrp = 0.
+        req_thrps = np.zeros(3)
+        for ue in self.ues.values():
+            req_thrps[ue.status] += ue.required_rate
+            thrp += ue.data_rate
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
             self.drop_ratios,           # dropped rates in different delay cats (3)
             self.service_delays,        # avg delay in different delay cats (3)
             # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
-            [thrp, thrp_req],           # throughput (2)
+            [*req_thrps, thrp],         # required (idle, queued, active) and actual sum rates (4)
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
