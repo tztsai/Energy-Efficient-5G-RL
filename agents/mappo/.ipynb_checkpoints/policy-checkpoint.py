@@ -3,6 +3,7 @@ import numpy as np
 import os.path as osp
 from utils import *
 from .nn.actor_critic import Actor, Critic
+from config import *
 
 
 class MappoPolicy:
@@ -26,11 +27,18 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        info(str(self.actor))
-        info(str(self.critic))
+        notice(str(self.actor))
+        notice(str(self.critic))
         
         self._actor_rnn_state = None
-        
+
+        if EVAL and args.count_flops:
+            from pthflops import count_ops
+            self._count_flops = count_ops
+            self._flops = 0
+        else:
+            self._count_flops = None
+
         if model_dir is not None:
             self.restore(model_dir)
 
@@ -94,15 +102,18 @@ class MappoPolicy:
         values, _ = self.critic(cent_obs, critic_rnn_states, masks)
         return values, action_log_probs, dist_entropy
 
-    def save(self, save_dir):
-        print("Saving models to {}".format(save_dir))
-        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor.pt"))
-        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic.pt"))
+    def save(self, save_dir, suffix=""):
+        notice("Saving models to {}".format(save_dir))
+        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % suffix))
+        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % suffix))
 
-    def restore(self, model_dir):
-        print("Restoring models from {}".format(model_dir))
-        self.actor.load_state_dict(torch.load(osp.join(model_dir, "actor.pt")))
-        self.critic.load_state_dict(torch.load(osp.join(model_dir, 'critic.pt')))
+    def restore(self, model_dir, suffix=""):
+        notice("Restoring models from {}".format(model_dir))
+        model_dir = Path(model_dir)
+        actor_file = next(model_dir.glob(f'actor*{suffix}.pt'))
+        critic_file = next(model_dir.glob(f'critic*{suffix}.pt'))
+        self.actor.load_state_dict(torch.load(str(actor_file)))
+        self.critic.load_state_dict(torch.load(str(critic_file)))
 
     def prep_training(self):
         self.actor.train()
@@ -136,8 +147,11 @@ class MappoPolicy:
                 actor_rnn_state = self._actor_rnn_state
         if masks is None:
             masks = np.ones((1, 1), dtype=np.float32)
-        actions, _, actor_rnn_state = self.actor(obs, actor_rnn_state, masks, 
-                                                 available_actions, deterministic)
+        actions, _, actor_rnn_state = self.actor(
+            obs, actor_rnn_state, masks, available_actions, deterministic)
+        if self._count_flops:
+            self.actor.act._deterministic = True
+            self._flops += self._count_flops(self.actor, obs)
         self._actor_rnn_state = actor_rnn_state
         return actions.cpu().numpy()
 
