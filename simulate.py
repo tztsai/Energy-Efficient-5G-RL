@@ -11,7 +11,7 @@ from visualize.render import create_dash_app
 
 sim_days = 7
 accelerate = 36000
-render_interval = 4
+render_interval = 20 # 4
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -22,6 +22,10 @@ parser.add_argument("--render_interval", type=int, default=render_interval,
                     help="interval of rendering")
 parser.add_argument("--days", type=int, default=sim_days,
                     help="number of days to simulate")
+parser.add_argument("--count-flops", action="store_true",
+                    help="count flops of the model")
+parser.add_argument("--stochastic", action="store_true",
+                    help="whether to use stochastic policy")
 
 env_parser = get_env_config()
 
@@ -94,12 +98,13 @@ else:
 # %%
 from datetime import datetime
 
-obs, _, _ = env.reset(args.use_render)
+render_mode = args.use_render and ('dash' if args.use_dash else 'frame')
+obs, _, _ = env.reset(render_mode)
 
 def step_env(obs):
-    actions = agent.act(obs, deterministic=False) if env.need_action else None
+    actions = agent.act(obs, deterministic=not args.stochastic)
     obs, _, reward, done, _, _ = env.step(
-        actions, render_mode=args.use_render, render_interval=render_interval)
+        actions, render_mode=render_mode, render_interval=render_interval)
     return obs, reward[0], done
 
 def simulate(obs=obs):
@@ -108,18 +113,22 @@ def simulate(obs=obs):
         obs, reward, done = step_env(obs)
         step_rewards.append(reward)
     rewards = pd.Series(np.squeeze(step_rewards), name='reward')
+    
     info = rewards.describe()
     info.index = ['reward_' + str(i) for i in info.index]
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     info['agent'] = args.agent
-    info['scenario'] = env_args.scenario
     info['total_steps'] = args.num_env_steps
     info['accelerate'] = env_args.accelerate
+    info['scenario'] = env.net.traffic_scenario
     info['traffic_density'] = env.net.traffic_model.density_mean
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
     info['w_delay'] = env.w_delay
+    if args.count_flops and args.agent == 'mappo':
+        info['n_flops'] = agent._flops
     print(info)
+    
     save_path = args.perf_save_path
     info.to_frame().T.set_index('time').to_csv(
         save_path, mode='a', header=not os.path.exists(str(save_path)))

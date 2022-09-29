@@ -303,7 +303,7 @@ def get_env_config():
                         help="the traffic scenario of the simulation")
     parser.add_argument("-T", "--episode_len", type=int,
                         help="number of steps per episode")
-    parser.add_argument("--start_time", type=str,
+    parser.add_argument("-T0", "--start_time", type=str,
                         help="start time of the simulation")
     parser.add_argument("-a", "--accelerate", type=int,
                         help="acceleration rate of the simulation")

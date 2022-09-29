@@ -111,10 +111,6 @@ class MultiCellNetEnv(MultiAgentEnv):
             seed = self._seed
         np.random.seed(seed)
         TrafficModel.seed(seed)
-
-    @property
-    def need_action(self):
-        return self._sim_steps % self.action_interval == 0
     
     def get_reward(self, obs=None):
         if obs is None:

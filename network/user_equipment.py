@@ -73,10 +73,10 @@ class UserEquipment:
         q = []
         for i, bs in self.net.bss.items():
             M, K, p = bs.num_ant, bs.num_ue, bs.tx_power
-            p = gains[i] * M * p
+            p = gains[i] * M * (M - K) * p
             if p > self.signal_thresh:
                 bs.add_to_cell(self)
-                q.append((p * (M / (K + 1) - 1), i))
+                q.append((p / (K + 1), i))
         self._cover_cells = [it[1] for it in sorted(q, reverse=True)]
         return gains
 
@@ -231,8 +231,8 @@ class UserEquipment:
     @timeit
     def info_dict(self):
         return dict(
-            bs_id=self.bs.id if self.bs is not None else -1,
-            status=self.status,
+            bs_id=self.bs.id if self.bs else '-',
+            status=self.status.name,
             demand=self.demand / 1e3,   # in kb
             rate=self.compute_data_rate() / 1e6,  # in mb/s
             ddl=self.time_limit * 1e3,  # in ms
@@ -251,7 +251,7 @@ class UserEquipment:
 class TestProbe(UserEquipment):
     record_stats = False
     
-    def __init__(self, net, grid_size=5):
+    def __init__(self, net, grid_size=25):
         super().__init__(None, None, 0, 999)
         self.net = net
         self.x = np.linspace(0, net.area[0], round(net.area[0] / grid_size) + 1)
