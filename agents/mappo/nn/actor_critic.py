@@ -55,12 +55,14 @@ class Actor(nn.Module):
         :return rnn_states: (torch.Tensor) updated RNN hidden states.
         """
         obs = check(obs).to(**self.tpdv)
+        if rnn_states is not None:
+            rnn_states = check(rnn_states).to(**self.tpdv)
+        if masks is not None:
+            masks = check(masks).to(**self.tpdv)
 
         actor_features = self.base(obs)
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            rnn_states = check(rnn_states).to(**self.tpdv)
-            masks = check(masks).to(**self.tpdv)
             actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
         if available_actions is not None:
             available_actions = check(available_actions).to(**self.tpdv)
