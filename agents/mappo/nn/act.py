@@ -67,7 +67,7 @@ class ACTLayer(nn.Module):
             actions = []
             action_log_probs = []
             for action_out in self.action_outs:
-                if self._deterministic:
+                if deterministic:
                     action_logit = action_out.linear(x)
                     action = torch.argmax(action_logit, dim=-1, keepdim=True)
                     action_log_prob = torch.zeros_like(action_logit)

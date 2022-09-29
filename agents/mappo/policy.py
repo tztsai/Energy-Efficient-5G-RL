@@ -3,6 +3,7 @@ import numpy as np
 import os.path as osp
 from utils import *
 from .nn.actor_critic import Actor, Critic
+from config import *
 
 
 class MappoPolicy:
@@ -31,7 +32,7 @@ class MappoPolicy:
         
         self._actor_rnn_state = None
 
-        if args.count_flops:
+        if EVAL and args.count_flops:
             from pthflops import count_ops
             self._count_flops = count_ops
             self._flops = 0

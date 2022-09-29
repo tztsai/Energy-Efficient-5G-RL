@@ -40,7 +40,7 @@ class Actor(nn.Module):
         self.to(device)
 
     def forward(self, obs, rnn_states=None, masks=None,
-                available_actions=None, deterministic=True):
+                available_actions=None, deterministic=False):
         """
         Compute actions from the given inputs.
         :param obs: (np.ndarray / torch.Tensor) observation inputs into network.
