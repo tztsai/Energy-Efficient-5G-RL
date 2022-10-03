@@ -25,7 +25,7 @@ class UserEquipment:
         self.net = None
         self.service = service
         self.status = UEStatus.IDLE
-        self.demand = self.file_size = demand
+        self.demand = self.total_demand = demand
         self.delay_budget = delay_budget
         self.delay = 0.
         self.t_served = 0.
@@ -209,7 +209,8 @@ class UserEquipment:
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
-        if self.demand <= 0:
+        if self.demand <= 0.:
+            self.demand = 0.
             self.status = UEStatus.DONE
         else:
             self.status = UEStatus.DROPPED

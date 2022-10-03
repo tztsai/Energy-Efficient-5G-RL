@@ -334,7 +334,7 @@ class BaseStation:
     def remove_from_cell(self, ue):
         self.covered_ues.remove(ue)
         if EVAL:
-            self._total_stats['cell_traffic'] += ue.file_size
+            self._total_stats['cell_traffic'] += ue.total_demand
             self._total_stats['cell_dropped_traffic'] += max(0, ue.demand)
 
     # def takeover_all(self):

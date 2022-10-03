@@ -38,7 +38,7 @@ for f in features:
     im = new_df.pivot('y', 'x', f)
     z = im.values.reshape(-1)
     fig = px.imshow(im, range_color=np.percentile(z, [2, 96]), title=titles[f], labels=dict(x='x (m)', y='y (m)', color='dB'))
-    fig.write_image(f'../results/plots/grid_{f}.png', scale=2)
+    # fig.write_image(f'../results/plots/grid_{f}.png', scale=2)
     fig.show()
     # fig = px.density_contour(new_df, x='x', y='y', z=f)
 # im = sinr_df.sinr.values.reshape(nx, ny)

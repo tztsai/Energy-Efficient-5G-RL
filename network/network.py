@@ -64,6 +64,7 @@ class MultiCellNetwork:
     def reset(self):
         if EVAL:
             vs = "energy arrived num done num_dropped dropped time service_time".split()
+            self._arrival_buf = np.zeros((self.buffer_ws, numApps))
             self._eval_stats = pd.DataFrame(
                 np.zeros((numApps, len(vs))), columns=vs)
             self._total_stats = defaultdict(float)
@@ -78,7 +79,6 @@ class MultiCellNetwork:
         self._timer = 0
         self._energy_consumed = 0
         self._buf_idx = 0
-        self._arrival_buf = np.zeros((self.buffer_ws, numApps))
         self._stats = np.zeros((numApps, 3))
         notice('Reset %s', repr(self))
 
@@ -87,9 +87,9 @@ class MultiCellNetwork:
             bs.reset_stats()
         self._timer = 0
         self._energy_consumed = 0
-        self._arrival_buf[self._buf_idx] = 0
         self._stats[:] = 0
         if EVAL:
+            self._arrival_buf[self._buf_idx] = 0
             self._eval_stats[:] = 0
             self._stats_updated = False
 
@@ -102,8 +102,8 @@ class MultiCellNetwork:
             self._eval_stats['energy'] += self._energy_consumed
             for k, v in self._eval_stats.items():
                 self._total_stats[k] += v.values
+            self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
             self._stats_updated = True
-        self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
 
     @timeit
     def step(self, dt):
@@ -149,11 +149,6 @@ class MultiCellNetwork:
     def time_slot(self):
         return self.traffic_model.get_time_slot(self.world_time)
     
-    # @property
-    # def ue_counts(self):
-    #     return np.bincount(np.array([ue.service for ue in self.ues.values()]),
-    #                        minlength=self.traffic_model.num_apps)
-
     @property
     def num_bs(self):
         return len(self.bss)
@@ -173,18 +168,13 @@ class MultiCellNetwork:
         """ Power consumption of all BSs in the network in kW. """
         return self._timer and self._energy_consumed / self._timer
     
-    # @property
-    # def arrival_rates(self):
-    #     if self._time:
-    #         if DEBUG and EVAL:
-    #             assert self._stats_updated  # should only be called when _timer = step_time
-    #         return self._arrival_buf.mean(axis=0) / self._timer
-    #     return np.zeros(numApps)  # only before the first step
-
-    # @property
-    # def drop_ratios(self):
-    #     """ Drop ratios for each app category in the network. """
-    #     return div0(self._stats[:, 1], self._arrival_buf.mean(axis=0))
+    @property
+    def arrival_rates(self):
+        if self._time:
+            if DEBUG and EVAL:
+                assert self._stats_updated  # should only be called when _timer = step_time
+            return self._arrival_buf.mean(axis=0) / self._timer
+        return np.zeros(numApps)  # only before the first step
     
     @property
     def drop_ratios(self):
@@ -195,6 +185,11 @@ class MultiCellNetwork:
     def service_delays(self):
         """ Average service delays per UE for each app category in the current step. """
         return div0(self._stats[:, -1], self._stats[:, 0])
+    
+    # @property
+    # def avg_rate_ratios(self):
+    #     """ r_avg/r_req for finished UEs and dropped UEs. """
+    #     return div0(self._stats[:, 1], self._stats[:, 0])
 
     def get_bs(self, id):
         return self.bss[id]
@@ -223,14 +218,16 @@ class MultiCellNetwork:
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
-        self._arrival_buf[self._buf_idx, ue.service] += ue.demand
+        if EVAL:
+            self._arrival_buf[self._buf_idx, ue.service] += ue.demand
 
     def remove_user(self, ue_id):
         ue = self.ues.pop(ue_id)
-        dropped = max(0., ue.demand)
+        dropped = ue.demand
         self._stats[ue.service] += [1, dropped, ue.delay]
         if DEBUG:
             if dropped:
+                assert dropped > 0.
                 info('UE %s dropped' % ue_id)
         if EVAL:
             s, a = self._eval_stats, ue.service
@@ -238,23 +235,15 @@ class MultiCellNetwork:
                 s.at[a, 'dropped'] += dropped
                 s.at[a, 'num_dropped'] += 1
             s.at[a, 'num'] += 1
-            s.at[a, 'done'] += ue.file_size - dropped
+            s.at[a, 'done'] += ue.total_demand - dropped
             s.at[a, 'time'] += ue.delay
             s.at[a, 'service_time'] += ue.t_served
-        #     record = [1, drop_ratio, ue.delay, ue.t_served]
+        # is_dropped = int(ue.demand > 0)
+        # if is_dropped:
+        #     r = ue.demand / ue.total_demand  # avg data rate / req data rate
         # else:
-        #     record = [1, drop_ratio, ue.delay]
-        # self._served_buf.iloc[ue.service] += record
-        # self._buffer2[self._buf_idx, ue.service] += record
-        # if ue.dropped:
-        #     self._dropped[ue.service] += ue.demand / 1e6
-        # self._delays[ue.service] += [ue.delay, 1]
-        # if EVAL:
-        #     if ue.done:
-        #         self._total_done[ue.service] += [1, ue.served/1e6, ue.served_time, ue.delay]
-        #     else:
-        #         if ue.demand <= 0: breakpoint()
-        #         self._total_dropped[ue.service] += [1, ue.demand/1e6, ue.served_time, ue.delay]
+        #     r = ue.delay_budget / ue.delay
+        # self._stats[is_dropped] += [1, r]
 
     @timeit
     def scan_connections(self):
@@ -309,8 +298,9 @@ class MultiCellNetwork:
             thrp += ue.data_rate
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.drop_ratios,           # dropped rates in different delay cats (3)
+            self.drop_ratios,           # drop rates in different delay cats (3)
             self.service_delays,        # avg delay in different delay cats (3)
+            # self.avg_rate_ratios,       # avg rate ratios (2)
             # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             [*req_thrps, thrp],         # required (idle, queued, active) and actual sum rates (4)
             bs_obs                      # bs observations
