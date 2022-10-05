@@ -22,6 +22,11 @@ px.scatter_3d(df.loc[df.S == 0],
 
 # %%
 # px.scatter_3d(df, x='S', y='M', z='Pnl')
-px.scatter_3d(df, x='S', y='M', z='P', color='P')
+fig = px.scatter_3d(df[df.K <= 20], x='S', y='M', z='P', color='K',
+                    labels=dict(P='P (W)'))
+fig.update_layout(scene=dict(xaxis=dict(dtick=1)))
+fig.update_traces(marker=dict(size=5))
+fig.write_html('pc.html')
+fig
 
 # %%

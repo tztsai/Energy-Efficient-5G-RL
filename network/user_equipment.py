@@ -151,7 +151,7 @@ class UserEquipment:
                 g = self.channel_gain,
                 S = self._S,
                 I = self._I,
-                SINR = SINR,
+                SINR = SINR
             )
             for i, bs in self.net.bss.items():
                 rec[f'P_{i}'] = bs.transmit_power
