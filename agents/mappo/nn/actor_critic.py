@@ -145,7 +145,7 @@ class Critic(nn.Module):
 
         self.to(device)
 
-    def forward(self, cent_obs, rnn_states, masks):
+    def forward(self, cent_obs, rnn_states=None, masks=None):
         """
         Compute actions from the given inputs.
         :param cent_obs: (np.ndarray / torch.Tensor) observation inputs into network.
@@ -156,8 +156,10 @@ class Critic(nn.Module):
         :return rnn_states: (torch.Tensor) updated RNN hidden states.
         """
         cent_obs = check(cent_obs).to(**self.tpdv)
-        rnn_states = check(rnn_states).to(**self.tpdv)
-        masks = check(masks).to(**self.tpdv)
+        if rnn_states is not None:
+            rnn_states = check(rnn_states).to(**self.tpdv)
+        if masks is not None:
+            masks = check(masks).to(**self.tpdv)
 
         critic_features = self.base(cent_obs)
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
