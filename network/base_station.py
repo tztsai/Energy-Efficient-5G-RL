@@ -577,7 +577,7 @@ class BaseStation:
         serving_ues = []
         queued_ues = []
         idle_ues = []
-        for ue in self.ues.values():
+        for ue in self.covered_ues:
             if ue.bs is None:
                 idle_ues.append(ue)
             elif ue.bs is self:
@@ -586,7 +586,7 @@ class BaseStation:
                 else:
                     queued_ues.append(ue)
         return np.concatenate([self.get_ue_stats(ues) for ues in
-                               [self.ues.values(), serving_ues, queued_ues, idle_ues]],
+                               [self.covered_ues, serving_ues, queued_ues, idle_ues]],
                               dtype=np.float32)
 
     def get_ue_stats(self, ues):
@@ -647,7 +647,7 @@ class BaseStation:
             assert len(keys) == len(obs)
         else:
             keys = keys[:trunc]
-        return dict(zip(keys, obs))
+        return pd.Series(obs, index=keys)
 
     def __repr__(self):
         return 'BS(%d)' % self.id

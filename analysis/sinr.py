@@ -7,8 +7,14 @@ df = pd.read_csv('sinr.csv')
 df
 
 # %%
+df['R'] = 20e6 * np.log2(1 + df.SINR)
+df['p_rc'] = df.p * df.g
+
 for k in ['g', 'S', 'I', 'SINR']:
     df[k] = 10 * np.log10(df[k] + 1e-6)
+
+# %%
+px.scatter_3d(df, x='I', y='S', z='R', color='SINR')
 
 # %%
 nx, ny = 81, 81
