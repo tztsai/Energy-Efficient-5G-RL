@@ -22,18 +22,22 @@ parser.add_argument("--render_interval", type=int, default=render_interval,
                     help="interval of rendering")
 parser.add_argument("--days", type=int, default=sim_days,
                     help="number of days to simulate")
-parser.add_argument("--count-flops", action="store_true",
-                    help="count flops of the model")
+# parser.add_argument("--count-flops", action="store_true",
+#                     help="count flops of the model")
 parser.add_argument("--stochastic", action="store_true",
                     help="whether to use stochastic policy")
 
 env_parser = get_env_config()
-
+    
 parser.set_defaults(log_level='NOTICE', group_name='RANDOM')
 env_parser.set_defaults(accelerate=accelerate)
 
-args, env_args = parser.parse_known_args()
-env_args = env_parser.parse_args(env_args)
+try:
+    args, env_args = parser.parse_known_args()
+    env_args = env_parser.parse_args(env_args)
+except:
+    args = parser.parse_args([])
+    env_args = env_parser.parse_args([])
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
@@ -99,19 +103,20 @@ else:
 from datetime import datetime
 
 render_mode = args.use_render and ('dash' if args.use_dash else 'frame')
-obs, _, _ = env.reset(render_mode)
 
-def step_env(obs):
-    actions = agent.act(obs, deterministic=not args.stochastic)
-    obs, _, reward, done, _, _ = env.step(
-        actions, render_mode=render_mode, render_interval=render_interval)
-    return obs, reward[0], done
+obs, cent_obs, _ = env.reset(render_mode)
 
+# from hiddenlayer import build_graph
+# build_graph(agent.actor, torch.tensor(obs))
+
+# %%
 def simulate(obs=obs):
     step_rewards = []
     for i in trange(args.num_env_steps, file=sys.stdout):
-        obs, reward, done = step_env(obs)
-        step_rewards.append(reward)
+        actions = agent.act(obs, deterministic=not args.stochastic)
+        obs, _, rewards, done, _, _ = env.step(
+            actions, render_mode=render_mode, render_interval=render_interval)
+        step_rewards.append(np.mean(rewards))
     rewards = pd.Series(np.squeeze(step_rewards), name='reward')
     
     info = rewards.describe()
@@ -125,7 +130,7 @@ def simulate(obs=obs):
     info['w_pc'] = env.w_pc
     info['w_drop'] = env.w_drop
     info['w_delay'] = env.w_delay
-    if args.count_flops and args.agent == 'mappo':
+    if args.agent == 'mappo' and getattr(args, 'count_flops', False):
         info['n_flops'] = agent._flops
     print(info)
     

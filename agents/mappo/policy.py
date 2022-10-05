@@ -32,7 +32,7 @@ class MappoPolicy:
         
         self._actor_rnn_state = None
 
-        if EVAL and args.count_flops:
+        if EVAL and getattr(args, 'count_flops', False):
             from pthflops import count_ops
             self._count_flops = count_ops
             self._flops = 0
@@ -100,6 +100,7 @@ class MappoPolicy:
             obs, actor_rnn_states, action, masks, available_actions, active_masks)
 
         values, _ = self.critic(cent_obs, critic_rnn_states, masks)
+        
         return values, action_log_probs, dist_entropy
 
     def save(self, save_dir, suffix=""):
