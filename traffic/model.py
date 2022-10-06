@@ -101,7 +101,7 @@ class TrafficModel:
         Returns:
         A list of length n_apps, each element is either (traffic-demand, delay-budget) or False.
         """
-        return [(self.file_size, delay) if np.random.rand() < p else (None, None)
+        return [(self.file_size, delay) if self._rng.random() < p else (None, None)
                 for p, delay in zip(self.get_arrival_rates(time, dt), self.delay_budgets)]
 
     def _get_time_loc(self, time):

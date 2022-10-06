@@ -18,7 +18,7 @@ class MappoPolicy:
     """
 
     def __init__(self, args, obs_space, cent_obs_space, act_space,
-                 device=torch.device("cpu"), model_dir=None):
+                 device=torch.device("cpu"), model_dir=None, model_version=""):
         self.obs_space = obs_space
         self.cent_obs_space = cent_obs_space
         self.act_space = act_space
@@ -27,8 +27,8 @@ class MappoPolicy:
         self.actor = Actor(args, obs_space, act_space, device)
         self.critic = Critic(args, cent_obs_space, device)
 
-        notice(str(self.actor))
-        notice(str(self.critic))
+        info(str(self.actor))
+        info(str(self.critic))
         
         self._actor_rnn_state = None
 
@@ -40,7 +40,7 @@ class MappoPolicy:
             self._count_flops = None
 
         if model_dir is not None:
-            self.restore(model_dir)
+            self.restore(model_dir, model_version)
 
     def get_actions(self, cent_obs, obs, actor_rnn_states, critic_rnn_states, masks, 
                     available_actions=None, deterministic=False):
@@ -103,16 +103,16 @@ class MappoPolicy:
         
         return values, action_log_probs, dist_entropy
 
-    def save(self, save_dir, suffix=""):
+    def save(self, save_dir, version=""):
         notice("Saving models to {}".format(save_dir))
-        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % suffix))
-        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % suffix))
+        torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % version))
+        torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % version))
 
-    def restore(self, model_dir, suffix=""):
-        notice("Restoring models from {}".format(model_dir))
+    def restore(self, model_dir, version=""):
         model_dir = Path(model_dir)
-        actor_file = next(model_dir.glob(f'actor*{suffix}.pt'))
-        critic_file = next(model_dir.glob(f'critic*{suffix}.pt'))
+        actor_file = next(model_dir.glob(f'actor*{version}.pt'))
+        critic_file = next(model_dir.glob(f'critic*{version}.pt'))
+        notice("Restoring models from {}".format(model_dir))
         self.actor.load_state_dict(torch.load(str(actor_file)))
         self.critic.load_state_dict(torch.load(str(critic_file)))
 
