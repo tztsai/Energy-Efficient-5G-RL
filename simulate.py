@@ -41,7 +41,7 @@ except:
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
-env_args.steps_info_path = f'analysis/{env_args.scenario}-{args.agent}-steps.csv'
+env_args.stats_dir = f'analysis/sim-{args.agent}'
 
 # %%
 set_log_level(args.log_level)
@@ -76,10 +76,11 @@ action_space = env.action_space[0]
 run_dir = get_run_dir(args, env_args)
 
 if args.sim_log_path is None:
-    fn = '{}_{}_{}_acc-{}.log'.format(
-        args.agent, env_args.scenario,
-        re.sub('(, |:)', '-', env.net.world_time_repr),
-        env.net.accelerate)
+    # fn = '{}_{}_{}_acc-{}.log'.format(
+    #     args.agent, env_args.scenario,
+    #     re.sub('(, |:)', '-', env.net.world_time_repr),
+    #     env.net.accelerate)
+    fn = 'simulation.log'
     args.sim_log_path = 'logs/' + fn
 
 set_log_file(args.sim_log_path)
@@ -128,8 +129,8 @@ def simulate(obs=obs):
     info['scenario'] = env.net.traffic_scenario
     info['traffic_density'] = env.net.traffic_model.density_mean
     info['w_pc'] = env.w_pc
-    info['w_drop'] = env.w_drop
-    info['w_delay'] = env.w_delay
+    info['w_qos'] = env.w_qos
+    info['w_xqos'] = env.w_xqos
     if args.agent == 'mappo' and getattr(args, 'count_flops', False):
         info['n_flops'] = agent._flops
     print(info)

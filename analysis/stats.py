@@ -1,11 +1,14 @@
 # %%
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from collections import defaultdict
+from pathlib import Path
+import plotly.express as px
 
-df = pd.read_csv('stats.csv', index_col=0)
-app_df = dict()
+folder = Path('sim-fixed') / 'B'
+
+df = pd.read_csv(folder/'bs_stats.csv', index_col=0)
+vec_df = dict()
 bs_df = defaultdict(dict)
 
 for c in list(df.columns):
@@ -14,7 +17,7 @@ for c in list(df.columns):
         _, b, k = c.split('_', 2)
         bs_df[int(b)][k] = df.pop(c)
     elif type(v) == str and v.startswith('['):
-        app_df[c] = pd.DataFrame(
+        vec_df[c] = pd.DataFrame(
             np.vstack([np.fromstring(x[1:-1], sep=' ')
                        for x in df.pop(c)]), index=df.index)
 df
@@ -33,8 +36,8 @@ bs_df = {b: pd.DataFrame(v) for b, v in bs_df.items()}
 bs_df[0]
 
 # %%
-app_df = pd.concat(app_df.values(), keys=app_df.keys())
-app_df
+vec_df = pd.concat(vec_df.values(), keys=vec_df.keys())
+vec_df
 
 # %%
 px.scatter_3d(df.loc[df.S == 0],

@@ -311,10 +311,11 @@ def get_env_config():
                         help="width of the square area in meters")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
-    parser.add_argument("-s", "--save_steps_info", action='store_true',
+    parser.add_argument("-s", "--save_trajectory", action='store_true',
                         help="save detailed steps info of the simulation")
-    parser.add_argument("--steps_info_path",
+    parser.add_argument("--stats_dir",
                         help="path to save steps info of the simulation")
+    parser.add_argument("--include_bs_info", action='store_true')
     parser.add_argument("--w_pc", type=float,
                         help="weight of power consumption in reward")
     parser.add_argument("--w_qos", type=float,

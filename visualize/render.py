@@ -14,8 +14,8 @@ oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
     255 - int(s[i:i+2], 16) for i in range(1, 7, 2)) for s in color_sequence])
 
 delay_penalty_color = 'slateblue'
-drop_penalty_color = 'plum'
-pc_penalty_color = 'coral'
+drop_penalty_color = 'coral'
+pc_penalty_color = 'plum'
 
 
 def render(env: 'MultiCellNetEnv', mode='frame'):
@@ -90,11 +90,11 @@ antennas: {n_ants}<br>
 sleep mode: {sleep_mode}<br>
 wakeup time: {wakeup_time} ms<br>
 accept conn: {responding}<br>
-ues in service: {active_ues}<br>
+ues in service: {serving_ues}<br>
 ues in queue: {queued_ues}<br>
 ues in coverage: {covered_ues}<br>
-actual rate: {sum_rate:.1f} Mb/s<br>
-required rate: {req_rate:.1f} Mb/s<br>
+sum rate: {sum_rate:.1f} Mb/s<br>
+sum rate req: {req_sum_rate:.1f} Mb/s<br>
 """.strip()
 def render_bss(net, frame):
     i, x, y, m, s, r = np.array([[
@@ -244,12 +244,13 @@ def render_penalties(net, info, frame, last_frame=[], ws=60):
         frame['data'].extend(last_frame['data'][i0:i0+3])
         return
     
-    dl = info['weighted_delay']
-    dr = info['weighted_drop']
-    pc = info['weighted_pc']
+    # dl = info['weighted_delay']
+    # dr = info['weighted_drop']
+    qos = info['qos_reward']
+    pc = info['pc_penalty']
 
     t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
-    y31 = (last_frame and last_frame['data'][i0]['y'])[1-ws:] + [dl + pc + dr]
+    y31 = (last_frame and last_frame['data'][i0]['y'])[1-ws:] + [pc] # [dl + pc + dr]
     y3_range = [0, max(y31) * 1.05]
     frame['data'].append(dict(
         type='scatter',
@@ -257,35 +258,35 @@ def render_penalties(net, info, frame, last_frame=[], ws=60):
         x=t, y=y31,
         xaxis='x2',
         yaxis='y3',
-        name='drop rate',
+        name='power (kW)', #'drop rate',
         fill='tozeroy',
-        line_color=pc_penalty_color,
+        line_color=pc_penalty_color
     ))
     frame['layout']['yaxis3'] = dict(range=y3_range)
 
-    y32 = (last_frame and last_frame['data'][i0+1]['y'])[1-ws:] + [dl + pc]
+    y32 = (last_frame and last_frame['data'][i0+1]['y'])[1-ws:] + [pc - qos] #[dl + pc]
     frame['data'].append(dict(
         type='scatter',
         mode='lines',
         x=t, y=y32,
         xaxis='x2',
         yaxis='y3',
-        name='power (kW)',
+        name='penalty',
         fill='tozeroy',
-        line_color=drop_penalty_color,
+        line_color=drop_penalty_color
     ))
 
-    y33 = (last_frame and last_frame['data'][i0+2]['y'])[1-ws:] + [dl]
-    frame['data'].append(dict(
-        type='scatter',
-        mode='lines',
-        x=t, y=y33,
-        xaxis='x2',
-        yaxis='y3',
-        name='delay',
-        fill='tozeroy',
-        line_color=delay_penalty_color,
-    ))
+    # y33 = (last_frame and last_frame['data'][i0+2]['y'])[1-ws:] + [dl]
+    # frame['data'].append(dict(
+    #     type='scatter',
+    #     mode='lines',
+    #     x=t, y=y33,
+    #     xaxis='x2',
+    #     yaxis='y3',
+    #     name='delay',
+    #     fill='tozeroy',
+    #     line_color=delay_penalty_color,
+    # ))
 
 def make_figure(net, size=(1000, 600), 
                 add_anim_btn=False, add_subplots=True):

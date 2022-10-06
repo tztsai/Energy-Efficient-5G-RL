@@ -5,15 +5,15 @@ import numpy as np
 import pandas as pd
 
 scenario = 'A'
-files = glob.glob(f'{scenario}-*-steps.csv')
+files = glob.glob(f'sim-*/{scenario}.csv')
 frames = [pd.read_csv(f, index_col=0) for f in files]
-agents = [f.split('-')[1] for f in files]
+agents = [f.split('-')[1].split('\\')[0] for f in files]
 df = pd.concat(frames, keys=agents, names=['agent'])
 df = df[~df.index.duplicated(keep='last')]
 df
 
 # %%
-key_pat = re.compile('(weighted_.*|actual_rate|reward)$')
+key_pat = re.compile('(actual_rate|reward|pc_penalty|qos_reward)$')
 vars_df = df[list(filter(key_pat.match, df.columns))].copy()
 vars_df
 
