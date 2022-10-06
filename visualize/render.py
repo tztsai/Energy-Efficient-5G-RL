@@ -40,7 +40,7 @@ def render(env: 'MultiCellNetEnv', mode='frame'):
     if last_fr:
         frame['layout'] = last_fr['layout'].copy()
     
-    # render_csi(net, frame, last_fr)
+    render_csi(net, frame, last_fr, kpis=['SINR'])
     render_bss(net, frame)
     render_ues(net, frame)
     render_data_rates(net, info, frame, last_fr)
@@ -169,11 +169,11 @@ def render_cells(net, frame):
         for x, y, _ in [bs.pos]
         for r in [bs.cell_radius])
 
-def render_csi(net, frame, last_frame=[], vs=['S', 'I', 'SINR']):
+def render_csi(net, frame, last_frame=None, kpis=['S', 'I', 'SINR']):
     if net._stats_updated:
         csi_df = net.test_network_channel()
     layouts = dict()
-    for var in vs:
+    for var in kpis:
         if net._stats_updated:
             df = csi_df[var].unstack().T
             im = px.imshow(df, labels=dict(color='dB', x='', y=''),
@@ -185,13 +185,12 @@ def render_csi(net, frame, last_frame=[], vs=['S', 'I', 'SINR']):
             trace['name'] = var
             trace['visible'] = var == 'SINR'
             layouts[var] = im.layout
+            if var == 'SINR':
+                frame['layout']['coloraxis'] = im.layout['coloraxis']
         elif last_frame:
             trace = next(t for t in last_frame['data'] if t['name'] == var)
-            # frame['layout']['coloraxis'] = last_frame['layout']['coloraxis']
         frame['data'].append(trace)
-        if var == 'SINR':
-            frame['layout']['coloraxis'] = im.layout['coloraxis']
-    frame['_layouts'] = layouts
+    # frame['_layouts'] = layouts
 
     # frame['layout']['updatemenus'] = [{
     #     'buttons': [{'args': [{'visible': [True] * len(frame['data'])}],
@@ -220,7 +219,7 @@ def render_data_rates(net, info, frame, last_frame=[]):
         frame['data'].extend(last_frame['data'][i0:i0+3])
         return
     
-    ws = 60  # window size
+    ws = 300  # window size
     t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
     y_max = 0
     for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):

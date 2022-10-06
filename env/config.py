@@ -21,5 +21,5 @@ numConnModes = 3
 # dropRatioWeight = 0.5  # penalty for average drop ratio = 1%
 # delayWeight = 0.1  # penalty for average delay = delay budget
 qosWeight = 10  # QoS reward weight
-extraQosWeight = 5e-3  # QoS reward weight for done UEs
+extraQosWeight = 0.002  # QoS reward weight for done UEs
 pcWeight = 1e-3  # PC (unit: W) penalty weight

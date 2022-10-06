@@ -252,7 +252,7 @@ class UserEquipment:
 class TestProbe(UserEquipment):
     record_stats = False
     
-    def __init__(self, net, grid_size=25):
+    def __init__(self, net, grid_size=20):
         super().__init__(None, None, 0, 999)
         self.net = net
         self.x = np.linspace(0, net.area[0], round(net.area[0] / grid_size) + 1)
