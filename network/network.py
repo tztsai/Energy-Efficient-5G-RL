@@ -12,7 +12,7 @@ from config import *
 
 
 class MultiCellNetwork:
-    bss: OrderedDict[int, BaseStation]
+    # bss: OrderedDict[int, BaseStation]
     ues: Dict[int, UserEquipment]
     
     inter_bs_dist = config.interBSDist
