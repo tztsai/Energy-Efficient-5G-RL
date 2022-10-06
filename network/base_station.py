@@ -455,7 +455,7 @@ class BaseStation:
     @timeit
     def compute_power_consumption(
         self, eta=0.25, eps=8.2e-3, Ppa_max=config.maxPAPower,
-        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=18, C={},
+        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=24, C={},
         sleep_deltas=config.sleepModeDeltas
     ):
         """
