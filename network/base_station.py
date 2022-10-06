@@ -120,20 +120,17 @@ class BaseStation:
             s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
             s['num_ants'] = self.num_ant
-            ue_stats = np.zeros((numApps, 6))
+            ue_stats = np.zeros(5)
+            K = len(self.ues)
             for ue in self.ues.values():
-                ue_stats[ue.service] += [1, ue._S, ue._I, ue._SINR,
-                                         ue.data_rate, ue.required_rate]
-            s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
-            # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
-            s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
-            s['sum_rates'] = div0(ue_stats[:, 4] / 1e6, ue_stats[:, 0])
-            s['req_rates'] = div0(ue_stats[:, 5] / 1e6, ue_stats[:, 0])
-            s['sum_rate'] = s['sum_rates'].sum()
-            s['req_rate'] = s['req_rates'].sum()
-            s['active_ues'] = len(self.ues)
+                ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
+            s['signal'] = div0(ue_stats[0], K)
+            s['interf'] = div0(ue_stats[1], K)
+            s['sinr'] = div0(ue_stats[2], K)
+            s['sum_rate'] = ue_stats[3] / 1e6
+            s['req_sum_rate'] = ue_stats[4] / 1e6
+            s['serving_ues'] = len(self.ues)
             s['queued_ues'] = len(self.queue)
-            s['idle_ues'] = len(self.covered_idle_ues)
             s['covered_ues'] = len(self.covered_ues)
             
             self._total_stats['steps'] += 1

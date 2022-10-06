@@ -33,7 +33,6 @@ class MultiCellNetEnv(MultiAgentEnv):
     bs_poses = net_config.bsPositions
     num_agents = len(bs_poses)
     action_interval = config.actionInterval
-    steps_info_path = 'analysis/steps_info.csv'
 
     def __init__(
         self,
@@ -51,8 +50,9 @@ class MultiCellNetEnv(MultiAgentEnv):
         # w_drop=w_drop,
         # w_delay=w_delay,
         seed=None,
-        save_steps_info=False,
-        steps_info_path=steps_info_path,
+        save_trajectory=False,
+        include_bs_info=False,
+        stats_dir=None,
     ):
         super().__init__()
         
@@ -81,8 +81,9 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.w_xqos = w_xqos
         # self.w_drop = w_drop
         # self.w_delay = w_delay
-        self.save_steps_info = save_steps_info
-        self.steps_info_path = steps_info_path
+        self.stats_dir = stats_dir
+        self.save_trajectory = save_trajectory
+        self.include_bs_info = include_bs_info
         
         self._seed = seed
         self._dt = time_step
@@ -159,9 +160,9 @@ class MultiCellNetEnv(MultiAgentEnv):
         self._sim_steps = 0
         self._figure = None
         self._reward_stats = []
-        if EVAL and self.save_steps_info:
+        if EVAL and self.save_trajectory:
             self.net._other_stats['reward'] = self._reward_stats
-            self._steps_info = [self.info_dict()]
+            self._trajectory = [self.info_dict()]
         self.render(render_mode)
         return self.get_obs(), self.get_cent_obs(), None
     
@@ -207,8 +208,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             for k, v in infos.items():
                 if k.startswith('bs_'): continue
                 notice('%s: %s', k, v)
-            if self.save_steps_info:
-                self._steps_info.append(infos)
+            if self.save_trajectory:
+                self._trajectory.append(infos)
 
         if done:
             self._episode_count += 1
@@ -219,7 +220,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         return obs, cent_obs, rewards, done, infos, None
     
     def info_dict(self):
-        info = self.net.info_dict()
+        info = self.net.info_dict(include_bs=self.include_bs_info)
         info.update(
             reward = self._sim_steps and self._reward_stats[-1]['reward'],
             pc_penalty = self._sim_steps and self._reward_stats[-1]['pc'] * self.w_pc,
@@ -229,9 +230,12 @@ class MultiCellNetEnv(MultiAgentEnv):
 
     def close(self):
         if EVAL:
-            self.net.save_stats()
-            if self.save_steps_info:
-                pd.DataFrame(self._steps_info).set_index('time').to_csv(self.steps_info_path)
+            stats_dir = os.path.join(self.stats_dir, self.net.traffic_model.scenario.name)
+            os.makedirs(stats_dir, exist_ok=True)
+            self.net.save_stats(stats_dir)
+            if self.save_trajectory:
+                path = os.path.join(stats_dir, 'trajectory.csv')
+                pd.DataFrame(self._trajectory).set_index('time').to_csv(path)
     
     render = render
     animate = animate

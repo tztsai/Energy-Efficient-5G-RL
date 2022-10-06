@@ -12,7 +12,7 @@ from config import *
 
 
 class MultiCellNetwork:
-    bss: OrderedDict[int, BaseStation]
+    bss: Dict[int, BaseStation]
     ues: Dict[int, UserEquipment]
     
     inter_bs_dist = config.interBSDist
@@ -34,7 +34,6 @@ class MultiCellNetwork:
     net_obs_dim = box_env_ndims(net_obs_space)
 
     buffer_ws = 16  # window size for computing recent arrival rates
-    stats_save_path = 'analysis/'
 
     def __init__(self,
                  traffic_scenario=default_scenario,
@@ -66,7 +65,7 @@ class MultiCellNetwork:
 
     def reset(self):
         if EVAL:
-            vs = "energy arrived num done num_dropped dropped time service_time".split()
+            vs = "energy arrived num done num_dropped dropped time service_time interference".split()
             self._arrival_buf = np.zeros((self.buffer_ws, numApps))
             self._eval_stats = pd.DataFrame(
                 np.zeros((numApps, len(vs))), columns=vs)
@@ -310,9 +309,9 @@ class MultiCellNetwork:
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
-    @cache_obs
     def info_dict(self, include_bs=False):
         # assert self._stats_updated
+        ue_counts = np.bincount([ue.status for ue in self.ues.values()], minlength=3)
         
         infos = dict(
             time=self.world_time_repr,
@@ -322,7 +321,9 @@ class MultiCellNetwork:
             actual_rate=sum(ue.data_rate for ue in self.ues.values()) / 1e6,  # Mb/s
             required_rate=sum(ue.required_rate for ue in self.ues.values()) / 1e6,
             arrival_rates=div0(self._eval_stats.arrived.values, self._timer) / 1e6,
-            arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6
+            arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6,
+            idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
+            interference=sum(ue._I for ue in self.ues.values()) / (self.num_ue + 1e-3),
         )
         
         if include_bs:
@@ -336,7 +337,7 @@ class MultiCellNetwork:
         for bs in self.bss.values():
             bs.calc_total_stats()
 
-        _vars = set(list(vars()) + ['_vars'])
+        _junk = set([*vars(), '_junk'])
         
         total_time = self._time
         total_counts = self._total_stats['num']
@@ -358,7 +359,7 @@ class MultiCellNetwork:
         avg_service_time_ratios = div0(self._total_stats['service_time'],
                                        self._total_stats['time'])
         
-        self._total_stats.update(it for it in vars().items() if it[0] not in _vars)
+        self._total_stats.update(it for it in vars().items() if it[0] not in _junk)
     
     @classmethod
     def annotate_obs(cls, obs):
@@ -375,12 +376,12 @@ class MultiCellNetwork:
     def add_stat(self, key, val):
         self._other_stats[key].append(val)
 
-    def save_stats(self):
+    def save_stats(self, save_dir):
         self.calc_total_stats()
         pd.Series(self._total_stats).to_csv(
-            f'{self.stats_save_path}/network_stats.csv', header=False)
+            f'{save_dir}/net_stats.csv', header=False)
         for k, v in self._other_stats.items():
-            pd.DataFrame(v).to_csv(f'{self.stats_save_path}/{k}.csv', index=False)
+            pd.DataFrame(v).to_csv(f'{save_dir}/{k}.csv', index=False)
 
     def __repr__(self) -> str:
         return '{}({})'.format(
