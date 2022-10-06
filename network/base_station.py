@@ -100,7 +100,8 @@ class BaseStation:
         self._energy_consumed = 0
         # self._energy_consumed = defaultdict(float)
         self._sleep_time = np.zeros(self.num_sleep_modes)
-        self._buffer = np.full(self.buffer_shape, np.nan, dtype=np.float32)
+        self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
+        # self._buffer = np.full(self.buffer_shape, np.nan, dtype=np.float32)
         self._buffer_has_nan = True
         self._buf_idx = 0
         if EVAL:

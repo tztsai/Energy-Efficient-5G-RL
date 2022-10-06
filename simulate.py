@@ -10,8 +10,9 @@ from visualize.render import create_dash_app
 # %autoreload 2
 
 sim_days = 7
+warmup_steps = 250
 accelerate = 36000
-render_interval = 20 # 4
+render_interval = 5 # 4
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -105,7 +106,7 @@ from datetime import datetime
 
 render_mode = args.use_render and ('dash' if args.use_dash else 'frame')
 
-obs, cent_obs, _ = env.reset(render_mode)
+obs, cent_obs, _ = env.reset()
 
 # from hiddenlayer import build_graph
 # build_graph(agent.actor, torch.tensor(obs))
@@ -113,6 +114,13 @@ obs, cent_obs, _ = env.reset(render_mode)
 # %%
 def simulate(obs=obs):
     step_rewards = []
+    
+    # warm up
+    print('Warming up...')
+    for _ in range(warmup_steps):
+        env.step()
+        
+    obs, _, _ = env.reset(render_mode)
     for i in trange(args.num_env_steps, file=sys.stdout):
         actions = agent.act(obs, deterministic=not args.stochastic)
         obs, _, rewards, done, _, _ = env.step(

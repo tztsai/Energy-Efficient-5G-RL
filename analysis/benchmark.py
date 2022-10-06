@@ -4,8 +4,8 @@ import glob
 import numpy as np
 import pandas as pd
 
-scenario = 'A'
-files = glob.glob(f'sim-*/{scenario}.csv')
+scenario = 'B'
+files = glob.glob(f'sim-*/{scenario}/trajectory.csv')
 frames = [pd.read_csv(f, index_col=0) for f in files]
 agents = [f.split('-')[1].split('\\')[0] for f in files]
 df = pd.concat(frames, keys=agents, names=['agent'])

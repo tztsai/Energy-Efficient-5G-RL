@@ -5,7 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 import plotly.express as px
 
-folder = Path('sim-fixed') / 'B'
+folder = Path('sim-mappo') / 'B'
 
 df = pd.read_csv(folder/'bs_stats.csv', index_col=0)
 vec_df = dict()

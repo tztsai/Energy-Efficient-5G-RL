@@ -323,7 +323,7 @@ class MultiCellNetwork:
             arrival_rates=div0(self._eval_stats.arrived.values, self._timer) / 1e6,
             arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6,
             idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
-            interference=sum(ue._I for ue in self.ues.values()) / (self.num_ue + 1e-3),
+            interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
         )
         
         if include_bs:
