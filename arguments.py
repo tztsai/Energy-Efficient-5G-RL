@@ -315,10 +315,14 @@ def get_env_config():
                         help="save detailed steps info of the simulation")
     parser.add_argument("--steps_info_path",
                         help="path to save steps info of the simulation")
-    parser.add_argument("--w_drop", type=float,
-                        help="weight of dropped rate in reward")
     parser.add_argument("--w_pc", type=float,
                         help="weight of power consumption in reward")
-    parser.add_argument("--w_delay", type=float,
-                        help="weight of avg delay per UE in reward")
+    parser.add_argument("--w_qos", type=float,
+                        help="weight of QoS in reward")
+    parser.add_argument("--w_xqos", type=float,
+                        help="weight of extra QoS in QoS reward"),
+    # parser.add_argument("--w_drop", type=float,
+    #                     help="weight of dropped rate in reward")
+    # parser.add_argument("--w_delay", type=float,
+    #                     help="weight of avg delay per UE in reward")
     return parser

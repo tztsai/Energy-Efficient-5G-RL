@@ -12,7 +12,7 @@ from config import *
 
 
 class MultiCellNetwork:
-    bss: Dict[int, BaseStation]
+    bss: OrderedDict[int, BaseStation]
     ues: Dict[int, UserEquipment]
     
     inter_bs_dist = config.interBSDist
@@ -20,8 +20,11 @@ class MultiCellNetwork:
     default_bs_poses = config.bsPositions
     default_scenario = 'RANDOM'
 
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 4))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 4 + 4))
     bs_obs_space = BaseStation.total_obs_space
+    #  pruned_bs_space = concat_box_envs(
+    #     BaseStation.self_obs_space,
+    #     duplicate_box_env(BaseStation.mutual_obs_space, config.numBS - 1))
     net_obs_space = concat_box_envs(
         global_obs_space,
         duplicate_box_env(bs_obs_space, config.numBS))
@@ -43,7 +46,7 @@ class MultiCellNetwork:
         self.area = area
         self.traffic_scenario = traffic_scenario
         self.accelerate = accelerate
-        self.bss = {}
+        self.bss = OrderedDict()
         self.ues = {}
         self._bs_poses = None
         self._csi_cache = {}
@@ -79,7 +82,8 @@ class MultiCellNetwork:
         self._timer = 0
         self._energy_consumed = 0
         self._buf_idx = 0
-        self._stats = np.zeros((numApps, 3))
+        # self._stats = np.zeros((numApps, 3))
+        self.quitted_stats = np.zeros((2, 2))
         notice('Reset %s', repr(self))
 
     def reset_stats(self):
@@ -87,7 +91,7 @@ class MultiCellNetwork:
             bs.reset_stats()
         self._timer = 0
         self._energy_consumed = 0
-        self._stats[:] = 0
+        self.quitted_stats[:] = 0
         if EVAL:
             self._arrival_buf[self._buf_idx] = 0
             self._eval_stats[:] = 0
@@ -179,17 +183,17 @@ class MultiCellNetwork:
     @property
     def drop_ratios(self):
         """ Ratios of dropped traffic for each app category in the current step. """
-        return div0(self._stats[:, 1], self._stats[:, 0] * self.traffic_model.file_size)
+        return div0(self.quitted_stats[:, 1], self.quitted_stats[:, 0] * self.traffic_model.file_size)
 
     @property
     def service_delays(self):
         """ Average service delays per UE for each app category in the current step. """
-        return div0(self._stats[:, -1], self._stats[:, 0])
+        return div0(self.quitted_stats[:, -1], self.quitted_stats[:, 0])
     
-    # @property
-    # def avg_rate_ratios(self):
-    #     """ r_avg/r_req for finished UEs and dropped UEs. """
-    #     return div0(self._stats[:, 1], self._stats[:, 0])
+    @property
+    def avg_rate_ratios(self):
+        """ r_avg/r_req for finished UEs and dropped UEs. """
+        return (self.quitted_stats[:, 1] + 1e-6) / (self.quitted_stats[:, 0] + 1e-6)
 
     def get_bs(self, id):
         return self.bss[id]
@@ -224,7 +228,13 @@ class MultiCellNetwork:
     def remove_user(self, ue_id):
         ue = self.ues.pop(ue_id)
         dropped = ue.demand
-        self._stats[ue.service] += [1, dropped, ue.delay]
+        # self._stats[ue.service] += [1, dropped, ue.delay]
+        is_dropped = int(dropped > 0)
+        if is_dropped:
+            s = dropped / ue.total_demand  # drop ratio
+        else:
+            s = ue.delay / ue.delay_budget  # delay ratio
+        self.quitted_stats[is_dropped] += [1, s]
         if DEBUG:
             if dropped:
                 assert dropped > 0.
@@ -238,12 +248,6 @@ class MultiCellNetwork:
             s.at[a, 'done'] += ue.total_demand - dropped
             s.at[a, 'time'] += ue.delay
             s.at[a, 'service_time'] += ue.t_served
-        # is_dropped = int(ue.demand > 0)
-        # if is_dropped:
-        #     r = ue.demand / ue.total_demand  # avg data rate / req data rate
-        # else:
-        #     r = ue.delay_budget / ue.delay
-        # self._stats[is_dropped] += [1, r]
 
     @timeit
     def scan_connections(self):
@@ -297,10 +301,10 @@ class MultiCellNetwork:
             req_thrps[ue.status] += ue.required_rate
             thrp += ue.data_rate
         return np.concatenate([
-            [self.power_consumption],   # power consumption (1)
-            self.drop_ratios,           # drop rates in different delay cats (3)
-            self.service_delays,        # avg delay in different delay cats (3)
-            # self.avg_rate_ratios,       # avg rate ratios (2)
+            [self.power_consumption],       # power consumption (1)
+            self.quitted_stats.reshape(-1), # stats of quitted UEs last step (4)
+            # self.drop_ratios,           # drop rates in different delay cats (3)
+            # self.service_delays,        # avg delay in different delay cats (3)
             # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
             [*req_thrps, thrp],         # required (idle, queued, active) and actual sum rates (4)
             bs_obs                      # bs observations

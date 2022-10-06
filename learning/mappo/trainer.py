@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import wandb
 import torch.nn as nn
 from utils import trange, notice
 from .utils.util import *
@@ -23,6 +24,11 @@ class MappoTrainer:
         self.device = device
         self.tpdv = dict(dtype=torch.float32, device=device)
         self.policy = policy
+        
+        self.use_wandb = args.use_wandb
+        if args.use_wandb:
+            wandb.watch(self.policy.actor)
+            wandb.watch(self.policy.critic)
 
         self.clip_param = args.clip_param
         self.ppo_epoch = args.ppo_epoch
