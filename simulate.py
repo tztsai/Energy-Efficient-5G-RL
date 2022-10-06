@@ -11,7 +11,7 @@ from visualize.render import create_dash_app
 
 sim_days = 7
 warmup_steps = 250
-accelerate = 36000
+accelerate = 12000
 render_interval = 5 # 4
 
 parser = get_config()
@@ -59,11 +59,12 @@ np.random.seed(args.seed)
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_latest_model_dir(args, run_dir):
+def get_model_dir(args, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
-    p = 'wandb/run*/files/' if args.use_wandb else 'run*/models/'
+    p = 'wandb/run-%s*/files/' if args.use_wandb else 'run%s*/models/'
+    p = p % version
     return max(run_dir.glob(p), key=os.path.getmtime)
 
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
@@ -84,13 +85,14 @@ if args.sim_log_path is None:
     fn = 'simulation.log'
     args.sim_log_path = 'logs/' + fn
 
-set_log_file(args.sim_log_path)
-
 # match args.agent.lower():
 if args.agent == 'mappo':
-    model_dir = args.model_dir or get_latest_model_dir(args, run_dir)
-    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, model_dir=model_dir)
-elif args.agent == 'fixed':
+    model_dir = args.model_dir or get_model_dir(args, run_dir)
+    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
+                        model_dir=model_dir, model_version=args.model_version)
+    if args.model_version:
+        env.stats_dir += '-%s' % args.model_version
+elif args.agent == 'always_on':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
 elif args.agent == 'random':
     agent = RandomPolicy(action_space, env.num_agents)
@@ -101,25 +103,23 @@ elif args.agent == 'sleepy':
 else:
     raise ValueError('invalid agent type')
 
+set_log_file(args.sim_log_path)
+
 # %%
 from datetime import datetime
 
 render_mode = args.use_render and ('dash' if args.use_dash else 'frame')
 
-obs, cent_obs, _ = env.reset()
-
 # from hiddenlayer import build_graph
 # build_graph(agent.actor, torch.tensor(obs))
 
 # %%
-def simulate(obs=obs):
+def simulate():
     step_rewards = []
-    
     # warm up
-    print('Warming up...')
-    for _ in range(warmup_steps):
-        env.step()
-        
+    # print('Warming up...')
+    # for _ in range(warmup_steps):
+    #     env.step()
     obs, _, _ = env.reset(render_mode)
     for i in trange(args.num_env_steps, file=sys.stdout):
         actions = agent.act(obs, deterministic=not args.stochastic)

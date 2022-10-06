@@ -267,7 +267,7 @@ class MultiCellNetwork:
             if 'pos' not in kwargs:
                 kwargs['pos'] = np.append(np.random.rand(2) * self.area, UserEquipment.height)
             self.add_user(service=service, demand=demand, delay_budget=delay, **kwargs)
-            
+
     def test_network_channel(self):
         state = tuple((bs.num_ant, bs.num_ue, bs.responding, bs.sleep > 0)
                       for bs in self.bss.values())
@@ -324,6 +324,7 @@ class MultiCellNetwork:
             arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6,
             idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
             interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
+            avg_antennas=sum(bs.num_ant for bs in self.bss.values()) / self.num_bs,
         )
         
         if include_bs:
