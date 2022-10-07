@@ -4,55 +4,60 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 import plotly.express as px
+import plotly.graph_objects as go
+import sys
+sys.path.append('..')
+from network.config import bsPositions
 
-folder = Path('sim-mappo') / 'B'
+folder = Path('sim_stats/adaptive') / 'B'
 
-df = pd.read_csv(folder/'bs_stats.csv', index_col=0)
-vec_df = dict()
-bs_df = defaultdict(dict)
+bs_stats = pd.read_csv(folder/'bs_stats.csv', index_col=0)
+ue_stats = pd.read_csv(folder/'net_stats.csv', index_col=0, header=None)[1]
+sleep_stats = dict()
 
-for c in list(df.columns):
-    v = df[c].iloc[0]
-    if c.startswith('bs_'):
-        _, b, k = c.split('_', 2)
-        bs_df[int(b)][k] = df.pop(c)
-    elif type(v) == str and v.startswith('['):
-        vec_df[c] = pd.DataFrame(
+def parse_np_series(s, **kwds):
+    return pd.DataFrame(
             np.vstack([np.fromstring(x[1:-1], sep=' ')
-                       for x in df.pop(c)]), index=df.index)
-df
-
-# %%
-bs_stats = defaultdict(dict)
-for b, v in bs_df.items():
-    for k in list(v):
-        if k.startswith('avg_') or k.startswith('total_'):
-            bs_stats[b][k] = v.pop(k).iloc[-1]
-bs_stats = pd.DataFrame(bs_stats).T
+                       if type(x) is str and x[0] == '[' else x
+                       for x in s]), **kwds)
+    
+for c in list(bs_stats.columns):
+    v = bs_stats[c].iloc[0]
+    if type(v) == str and v.startswith('['):
+        sleep_stats[c] = parse_np_series(bs_stats.pop(c), index=bs_stats.index)
 bs_stats
 
 # %%
-bs_df = {b: pd.DataFrame(v) for b, v in bs_df.items()}
-bs_df[0]
+bs_idx = [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 1]
+x, y = bsPositions[bs_idx].T
+kpis = [k for k in bs_stats.columns if k.startswith('avg_')]
+kpis = ['avg_sum_rate', 'avg_serving_ues', 'avg_num_ants',
+        'avg_signal', 'avg_interf', 'avg_sinr', 'avg_pc']
+
+camera = dict(
+    up=dict(x=0, y=0, z=1),
+    center=dict(x=20, y=0, z=0),
+    eye=dict(x=1.5, y=1.5, z=1.5)
+)
+
+for kpi in kpis:
+    f = bs_stats.loc[bs_idx, kpi].to_frame()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(x=x, y=y, z=f[kpi], mode='markers+lines', marker_color=f.index))
+    fig.update_scenes(xaxis_title='x', yaxis_title='y', zaxis_title=kpi)
+    fig.update_layout(scene_camera=camera,
+                      margin=dict(l=0, r=0, b=0, t=0))
+    # fig.write_image(folder/f'bs_{kpi}.png')
+    fig.show()
 
 # %%
-vec_df = pd.concat(vec_df.values(), keys=vec_df.keys())
-vec_df
+sleep_stats = pd.concat(sleep_stats, axis=1)
+sleep_stats
 
 # %%
-px.scatter_3d(df.loc[df.S == 0],
-              x='M', y='K', z='Pld')
-# df.plot(kind='scatter', x='M', y='P')
-# df.plot(kind='scatter', x='K', y='Pld')
-# df.plot(kind='scatter', x='R', y='Pld')
-# df.plot(kind='scatter', x='S', y='Pnl')
-
-# %%
-px.scatter_3d(df.loc[df.S == 0],
-              x='M', y='R', z='Pld')
-
-# %%
-# px.scatter_3d(df, x='S', y='M', z='Pnl')
-px.scatter(df, x='S', y='Pnl')
+scalars = {c: ue_stats.pop(c) for c, a in ue_stats.iteritems()
+           if type(a) is not str or a[0] != '['}
+ue_stats = parse_np_series(ue_stats.values, index=ue_stats.index)
+ue_stats
 
 # %%

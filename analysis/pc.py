@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-df = pd.read_csv('sim-random/B/pc.csv', index_col=0)
+df = pd.read_csv('sim_stats/random/B/pc.csv', index_col=0)
 df
 
 # %%
