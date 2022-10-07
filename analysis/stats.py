@@ -9,7 +9,7 @@ import sys
 sys.path.append('..')
 from network.config import bsPositions
 
-folder = Path('sim_stats/adaptive') / 'B'
+folder = Path('sim_stats/mappo') / 'B'
 
 bs_stats = pd.read_csv(folder/'bs_stats.csv', index_col=0)
 ue_stats = pd.read_csv(folder/'net_stats.csv', index_col=0, header=None)[1]
@@ -36,16 +36,17 @@ kpis = ['avg_sum_rate', 'avg_serving_ues', 'avg_num_ants',
 
 camera = dict(
     up=dict(x=0, y=0, z=1),
-    center=dict(x=20, y=0, z=0),
-    eye=dict(x=1.5, y=1.5, z=1.5)
+    center=dict(x=0, y=0, z=0),
+    eye=dict(x=1.5, y=1.5, z=1.25)
 )
 
-for kpi in kpis:
+for kpi in kpis[:]:
     f = bs_stats.loc[bs_idx, kpi].to_frame()
     fig = go.Figure()
     fig.add_trace(go.Scatter3d(x=x, y=y, z=f[kpi], mode='markers+lines', marker_color=f.index))
     fig.update_scenes(xaxis_title='x', yaxis_title='y', zaxis_title=kpi)
     fig.update_layout(scene_camera=camera,
+                      width=400, height=400,
                       margin=dict(l=0, r=0, b=0, t=0))
     # fig.write_image(folder/f'bs_{kpi}.png')
     fig.show()
