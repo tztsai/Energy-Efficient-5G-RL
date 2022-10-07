@@ -10,9 +10,8 @@ from visualize.render import create_dash_app
 # %autoreload 2
 
 sim_days = 7
-warmup_steps = 250
-accelerate = 18000
-render_interval = 5 # 4
+accelerate = 36000
+render_interval = 4
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',

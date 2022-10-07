@@ -204,7 +204,7 @@ class BaseStation:
         
     @property
     def cell_traffic_rate(self):
-        return self._steps and self._arrival_rate / self._steps / 1e9
+        return self._steps and self._arrival_rate / self._steps / 1e6
     
     ### actions ###
     
@@ -631,17 +631,16 @@ class BaseStation:
             d['ant_switches'], d['time'])
     
     @classmethod
-    def annotate_obs(cls, obs, trunc=None, squeeze=True, keys=config.all_obs_keys):
+    def annotate_obs(cls, obs, trunc=None, keys=config.all_obs_keys):
         def squeeze_onehot(obs, i, j):
             if i >= len(obs): return obs
             return np.concatenate([
                 obs[:i],
                 np.argmax(obs[i:j], axis=0, keepdims=True), 
                 obs[j:]])
-        if squeeze:
-            for i, key in enumerate(keys):
-                if key.endswith('sleep_mode'):
-                    obs = squeeze_onehot(obs, i, i+cls.num_sleep_modes)
+        for i, key in enumerate(keys):
+            if key.endswith('sleep_mode'):
+                obs = squeeze_onehot(obs, i, i+cls.num_sleep_modes)
         if trunc is None:
             assert len(keys) == len(obs)
         else:

@@ -22,9 +22,6 @@ class MultiCellNetwork:
 
     global_obs_space = make_box_env([[0, np.inf]] * (1 + 4 + numApps + 4))
     bs_obs_space = BaseStation.total_obs_space
-    #  pruned_bs_space = concat_box_envs(
-    #     BaseStation.self_obs_space,
-    #     duplicate_box_env(BaseStation.mutual_obs_space, config.numBS - 1))
     net_obs_space = concat_box_envs(
         global_obs_space,
         duplicate_box_env(bs_obs_space, config.numBS))
@@ -99,6 +96,7 @@ class MultiCellNetwork:
             self._total_stats['arrived'] += self._arrival_buf[self._buf_idx]
             self._total_stats['energy'] += self._energy_consumed
             self._stats_updated = True
+        self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
 
     @timeit
     def step(self, dt):

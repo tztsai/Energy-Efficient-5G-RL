@@ -35,10 +35,11 @@ class SleepyPolicy:
             sm = info['sleep_mode']
             next_sm = info['next_sleep_mode']
             wakeup_time = info['wakeup_time']
-            thrp_req_queue = info['queued_sum_rate_req']
-            thrp_req_idle = info['idle_sum_rate_req']
+            thrp_req_queue = info['thrp_req_queued']
+            thrp_req_idle = info['thrp_req_idle']
             arrival_rate = info['arrival_rate-1']
-            thrp_req = info['serving_sum_rate_req']
+            thrp_req = info['thrp_req_serving']
+            log_ratio = info['log_ratio_serving']
 
             new_sm = sm
             ant_switch = 2
@@ -56,23 +57,23 @@ class SleepyPolicy:
                     if self._sleep_timer >= self.pre_sm2_time:
                         new_sm = 2
                         ant_switch = 0  # decrease
-                # else:
-                #     if obs_others[:,-2].sum() < arrival_rate * 1.2:
-                #         new_sm = 1
-                #         ant_switch = 2
-                #     elif sm == 2:
-                #         if self._sleep_timer >= self.pre_sm3_time:
-                #             new_sm = 3
-                #             ant_switch = 0
+                else:
+                    if obs_others[:,-2].sum() < arrival_rate * 1.2:
+                        new_sm = 1
+                        ant_switch = 2
+                    elif sm == 2:
+                        if self._sleep_timer >= self.pre_sm3_time:
+                            new_sm = 3
+                            ant_switch = 0
             else:
                 conn_mode = 2
                 self._sleep_timer = 0
                 if thrp_req == 0:
                     new_sm = 1
                     ant_switch = 0
-                # elif log_ratio < 0:
-                #     ant_switch = 2 
-                # elif log_ratio > 1:
-                #     ant_switch = 0 
+                elif log_ratio < 0:
+                    ant_switch = 2 
+                elif log_ratio > 1:
+                    ant_switch = 0 
             return [ant_switch, new_sm, conn_mode]
         return [single_act(ob) for ob in obs]
