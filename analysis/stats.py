@@ -28,6 +28,9 @@ for c in list(bs_stats.columns):
 bs_stats
 
 # %%
+ue_stats
+
+# %%
 bs_idx = [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 1]
 x, y = bsPositions[bs_idx].T
 kpis = [k for k in bs_stats.columns if k.startswith('avg_')]
@@ -55,10 +58,10 @@ for kpi in kpis[:]:
 sleep_stats = pd.concat(sleep_stats, axis=1)
 sleep_stats
 
-# %%
-scalars = {c: ue_stats.pop(c) for c, a in ue_stats.iteritems()
-           if type(a) is not str or a[0] != '['}
-ue_stats = parse_np_series(ue_stats.values, index=ue_stats.index)
-ue_stats
+# # %%
+# scalars = {c: ue_stats.pop(c) for c, a in ue_stats.iteritems()
+#            if type(a) is not str or a[0] != '['}
+# ue_stats = parse_np_series(ue_stats.values, index=ue_stats.index)
+# ue_stats
 
-# %%
+# # %%
