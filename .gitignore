@@ -10,6 +10,7 @@
 /.vscode/
 /.idea/
 /.misc/
+/.backup/
 /data/cells-traffic/
 /data/RAN_PM_data/
 /results/**/*/run*/
