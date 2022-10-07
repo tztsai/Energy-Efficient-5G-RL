@@ -183,7 +183,7 @@ class MultiCellNetwork:
     def delay_ratio(self):
         """ Average service delays per UE for each app category in the current step. """
         return div0(self.ue_stats[0, 1], self.ue_stats[0, 0])
-
+    
     def get_bs(self, id):
         return self.bss[id]
 
@@ -313,6 +313,10 @@ class MultiCellNetwork:
                     infos[f'bs_{i}_{k}'] = v
 
         return infos
+
+    def avg_sleep_ratios(self):
+        s = np.array([bs._sleep_time for bs in self.bss.values()]).mean(axis=0)
+        return s / s.sum()
 
     def calc_total_stats(self):
         for bs in self.bss.values():

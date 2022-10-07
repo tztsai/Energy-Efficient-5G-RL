@@ -112,7 +112,7 @@ class MappoPolicy:
         model_dir = Path(model_dir)
         actor_file = next(model_dir.glob(f'actor*{version}.pt'))
         critic_file = next(model_dir.glob(f'critic*{version}.pt'))
-        notice("Restoring models from {}".format(model_dir))
+        notice("Restoring actor network from {}".format(actor_file))
         self.actor.load_state_dict(torch.load(str(actor_file)))
         self.critic.load_state_dict(torch.load(str(critic_file)))
 

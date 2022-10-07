@@ -3,7 +3,7 @@ import wandb
 import imageio
 import numpy as np
 from .runner import Runner, _t2n
-from utils import sys, time, trange, notice, pd
+from utils import sys, time, trange, notice, pd, kwds_str
 
 
 class MultiCellNetRunner(Runner):
@@ -50,9 +50,12 @@ class MultiCellNetRunner(Runner):
                 rew_df = pd.concat([pd.DataFrame(d['step_rewards']) for d in infos])
                 rew_info = rew_df.describe().loc[['mean', 'std', 'min', 'max']].unstack()
                 rew_info.index = ['_'.join(idx) for idx in rew_info.index]
-                train_infos.update(rew_info)
+                train_infos.update(
+                    sm3_ratio_mean = np.mean([d['sm3_ratio'] for d in infos]),
+                    **rew_info)
                 avg_step_rew = np.mean(self.buffer.rewards)
                 assert abs(avg_step_rew - train_infos['reward_mean']) < 1e-3
+                notice('Episode %s: %s\n' % (episode, kwds_str(**train_infos)))
                 pbar.set_postfix(reward=avg_step_rew)
                 self.log_train(train_infos, total_num_steps)
 

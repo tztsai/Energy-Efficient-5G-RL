@@ -98,6 +98,7 @@ class BaseStation:
         self._wake_delay = 0
         self._arrival_rate = 0
         self._energy_consumed = 0
+        self._sleep_time = np.zeros(self.num_sleep_modes)
         # self._energy_consumed = defaultdict(float)
         self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
         # self._buffer = np.full(self.buffer_shape, np.nan, dtype=np.float32)
@@ -108,7 +109,7 @@ class BaseStation:
             self._total_stats = defaultdict(float)
             self._total_stats.update(
                 id=self.id,
-                sleep_time=np.zeros(self.num_sleep_modes),
+                # sleep_time=np.zeros(self.num_sleep_modes),
                 sleep_switches=np.zeros(self.num_sleep_modes))
             self.net.add_stat('bs_stats', self._total_stats)
             self.update_stats()
@@ -137,6 +138,7 @@ class BaseStation:
             ts['signal'] += ue_stats[0]
             ts['interf'] += ue_stats[1]
             ts['sinr'] += ue_stats[2]
+            ts['sleep_time'] = self._sleep_time
             for k, v in s.items():
                 self._total_stats[k] += v
 
@@ -392,8 +394,9 @@ class BaseStation:
 
     @timeit
     def update_sleep(self, dt):
-        if EVAL:
-            self._total_stats['sleep_time'][self.sleep] += dt
+        self._sleep_time[self.sleep] += dt
+        # if EVAL:
+        #     self._total_stats['sleep_time'][self.sleep] += dt
         if self._next_sleep == self.sleep:
             if self.queue and self.sleep in (1, 2):
                 if DEBUG:
