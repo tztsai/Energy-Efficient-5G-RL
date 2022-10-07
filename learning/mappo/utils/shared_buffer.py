@@ -180,10 +180,9 @@ class SharedReplayBuffer(object):
                 for step in reversed(range(self.rewards.shape[0])):
                     if self._use_popart or self._use_valuenorm:
                         # step + 1
-                        delta = (self.rewards[step] +  # TD error
-                                 self.gamma * value_normalizer.denormalize(
-                                     self.value_preds[step + 1]) * self.masks[step + 1] -
-                                 value_normalizer.denormalize(self.value_preds[step]))
+                        delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(
+                            self.value_preds[step + 1]) * self.masks[step + 1] \
+                                - value_normalizer.denormalize(self.value_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * gae * self.masks[step + 1]
                         gae = gae * self.bad_masks[step + 1]
                         self.returns[step] = gae + value_normalizer.denormalize(self.value_preds[step])
