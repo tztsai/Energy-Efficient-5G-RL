@@ -104,7 +104,7 @@ class MultiCellNetwork:
             self._eval_stats['arrived'] += self._arrival_buf[self._buf_idx]
             self._eval_stats['energy'] += self._energy_consumed
             for k, v in self._eval_stats.items():
-                self._total_stats[k] += v.values
+                self._total_stats[k] += v.values.sum()
             self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
             self._stats_updated = True
 
@@ -341,23 +341,23 @@ class MultiCellNetwork:
         _junk = set([*vars(), '_junk'])
         
         total_time = self._time
-        total_counts = self._total_stats['num']
-        total_dropped_counts = self._total_stats['num_dropped']
+        total_count = self._total_stats['num']
+        total_dropped_count = self._total_stats['num_dropped']
         total_arrived = self._total_stats['arrived'] / 1e6  # Mb
         total_done = self._total_stats['done'] / 1e6
         total_dropped = self._total_stats['dropped'] / 1e6
         total_quitted = total_done + total_dropped
-        total_energy = self._total_stats['energy'][0]  # J
+        total_energy = self._total_stats['energy']  # J
         avg_pc = div0(total_energy, total_time)  # W
-        avg_drop_sizes = div0(total_dropped, total_dropped_counts)
-        avg_drop_ratios = div0(total_dropped, total_quitted)
-        avg_delays = div0(self._total_stats['time'] * 1e3, total_counts)
-        avg_arrival_rates = div0(total_arrived, total_time)
-        avg_demand_sizes = div0(total_quitted, total_counts)
-        avg_sum_rates = div0(total_done, total_time)
-        avg_ue_rates = div0(total_done, self._total_stats['time'])
+        avg_drop_size = div0(total_dropped, total_dropped_count)
+        avg_drop_ratio = div0(total_dropped, total_quitted)
+        avg_delay = div0(self._total_stats['time'] * 1e3, total_count)
+        avg_arrival_rate = div0(total_arrived, total_time)
+        avg_demand_size = div0(total_quitted, total_count)
+        avg_sum_rate = div0(total_done, total_time)
+        avg_ue_rate = div0(total_done, self._total_stats['time'])
         avg_energy_efficiency = div0(total_done, total_energy)  # Mb/J
-        avg_service_time_ratios = div0(self._total_stats['service_time'],
+        avg_service_time_ratio = div0(self._total_stats['service_time'],
                                        self._total_stats['time'])
         
         self._total_stats.update(it for it in vars().items() if it[0] not in _junk)
