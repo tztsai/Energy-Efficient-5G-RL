@@ -80,7 +80,7 @@ class MultiCellNetwork:
         self._energy_consumed = 0
         self._buf_idx = 0
         # self._stats = np.zeros((numApps, 3))
-        self.quitted_stats = np.zeros((2, 2))
+        self.ue_stats = np.zeros((2, 2))
         notice('Reset %s', repr(self))
 
     def reset_stats(self):
@@ -88,7 +88,7 @@ class MultiCellNetwork:
             bs.reset_stats()
         self._timer = 0
         self._energy_consumed = 0
-        self.quitted_stats[:] = 0
+        self.ue_stats[:] = 0
         if EVAL:
             self._arrival_buf[self._buf_idx] = 0
             self._stats_updated = False
@@ -177,12 +177,12 @@ class MultiCellNetwork:
     @property
     def drop_ratio(self):
         """ Ratios of dropped traffic for each app category in the current step. """
-        return div0(self.quitted_stats[1, 1], self.quitted_stats[0, 0])
+        return div0(self.ue_stats[1, 1], self.ue_stats[0, 0])
 
     @property
     def delay_ratio(self):
         """ Average service delays per UE for each app category in the current step. """
-        return div0(self.quitted_stats[0, 1], self.quitted_stats[0, 0])
+        return div0(self.ue_stats[0, 1], self.ue_stats[0, 0])
 
     def get_bs(self, id):
         return self.bss[id]
@@ -223,7 +223,7 @@ class MultiCellNetwork:
             s = dropped / ue.total_demand  # drop ratio
         else:
             s = ue.delay / ue.delay_budget  # delay ratio
-        self.quitted_stats[is_dropped] += [1, s]
+        self.ue_stats[is_dropped] += [1, s]
         if DEBUG:
             if dropped:
                 assert dropped > 0.
@@ -282,7 +282,7 @@ class MultiCellNetwork:
             thrp += ue.data_rate
         return np.concatenate([
             [self.power_consumption],       # power consumption (1)
-            self.quitted_stats.reshape(-1), # stats of quitted UEs last step (4)
+            self.ue_stats.reshape(-1), # stats of quitted UEs last step (4)
             # self.drop_ratios,           # drop rates in different delay cats (3)
             # self.service_delays,        # avg delay in different delay cats (3)
             # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)

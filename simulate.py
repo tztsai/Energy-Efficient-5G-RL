@@ -92,11 +92,11 @@ if args.agent == 'mappo':
                         model_dir=model_dir, model_version=args.model_version)
     if args.model_version:
         env.stats_dir += '-%s' % args.model_version
-elif args.agent == 'always_on':
+elif args.agent == 'fixed':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
 elif args.agent == 'random':
     agent = RandomPolicy(action_space, env.num_agents)
-elif args.agent == 'adaptive':
+elif args.agent == 'simple':
     agent = AdaptivePolicy(action_space, env.num_agents)
 elif args.agent == 'sleepy':
     agent = SleepyPolicy(action_space, env.num_agents)

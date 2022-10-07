@@ -127,7 +127,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         n = n_done + n_drop + 1e-6
         if DEBUG:
             assert abs(pc - self.net.power_consumption) < 1e-3
-            assert np.abs(state[1:5] - self.net.quitted_stats.flatten()).sum() < 1e-4
+            assert np.abs(state[1:5] - self.net.ue_stats.flatten()).sum() < 1e-4
         r_qos = (-q_drop + self.w_xqos * (n_done - q_del)) / n
         reward = self.w_qos * r_qos - self.w_pc * pc
         # dropped = dr @ self.w_drop_cats
