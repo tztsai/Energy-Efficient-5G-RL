@@ -20,7 +20,7 @@ class MultiCellNetwork:
     default_bs_poses = config.bsPositions
     default_scenario = 'RANDOM'
 
-    global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 2))
+    global_obs_space = make_box_env([[0, np.inf]] * (1 + 4 + numApps + 4))
     bs_obs_space = BaseStation.total_obs_space
     net_obs_space = concat_box_envs(
         global_obs_space,
@@ -75,7 +75,7 @@ class MultiCellNetwork:
         self._energy_consumed = 0
         self._buf_idx = 0
         self._arrival_buf = np.zeros((self.buffer_ws, numApps))
-        self._stats = np.zeros((numApps, 3))
+        self._ue_stats = np.zeros((2, 2))
         notice('Reset %s', repr(self))
 
     def reset_stats(self):
@@ -84,7 +84,7 @@ class MultiCellNetwork:
         self._timer = 0
         self._energy_consumed = 0
         self._arrival_buf[self._buf_idx] = 0
-        self._stats[:] = 0
+        self._ue_stats[:] = 0
         if EVAL:
             self._stats_updated = False
 
@@ -166,23 +166,18 @@ class MultiCellNetwork:
         if self._time:
             if DEBUG and EVAL:
                 assert self._stats_updated  # should only be called when _timer = step_time
-            return self._arrival_buf[-3:].mean(axis=0) / self._timer
+            return self._arrival_buf[-5:].mean(axis=0) / self._timer / 1e6
         return np.zeros(numApps)  # only before the first step
-
-    # @property
-    # def drop_ratios(self):
-    #     """ Drop ratios for each app category in the network. """
-    #     return div0(self._stats[:, 1], self._arrival_buf.mean(axis=0))
     
     @property
-    def drop_ratios(self):
-        """ Ratios of dropped traffic for each app category in the current step. """
-        return div0(self._stats[:, 1], self._stats[:, 0] * self.traffic_model.file_size)
+    def drop_ratio(self):
+        """ Average ratio of dropped demand for each app category in the current step. """
+        return div0(self._ue_stats[1, 1], self._ue_stats[1, 0])
 
     @property
-    def service_delays(self):
-        """ Average service delays per UE for each app category in the current step. """
-        return div0(self._stats[:, -1], self._stats[:, 0])
+    def delay_ratio(self):
+        """ Average delay/budget for each app category in the current step. """
+        return div0(self._ue_stats[0, 1], self._ue_stats[0, 0])
 
     def get_bs(self, id):
         return self.bss[id]
@@ -215,11 +210,13 @@ class MultiCellNetwork:
 
     def remove_user(self, ue_id):
         ue = self.ues.pop(ue_id)
-        dropped = max(0., ue.demand)
-        self._stats[ue.service] += [1, dropped, ue.delay]
-        if DEBUG:
-            if dropped:
-                info('UE %s dropped' % ue_id)
+        if ue.demand > 0.:
+            self._ue_stats[1] += [1, ue.demand / ue.total_demand]
+        else:
+            self._ue_stats[0] += [1, ue.delay / ue.delay_budget]
+        if DEBUG and ue.demand:
+            assert ue.demand > 0.
+            info('UE %s dropped' % ue_id)
 
     @timeit
     def scan_connections(self):
@@ -267,14 +264,18 @@ class MultiCellNetwork:
         #     for j in range(i):
         #         bs_obs.append(self.bss[i].observe_other(self.bss[j])[0])
         bs_obs = np.concatenate(bs_obs, dtype=np.float32)
-        thrp = sum(ue.data_rate for ue in self.ues.values()) / 1e6
-        thrp_req = sum(ue.required_rate for ue in self.ues.values()) / 1e6
+        thrps = np.zeros(3 + 1)
+        for ue in self.ues.values():
+            thrps[ue.status] += ue.required_rate
+            thrps[-1] += ue.data_rate
         return np.concatenate([
             [self.power_consumption],   # power consumption (1)
-            self.drop_ratios,           # dropped rates in different delay cats (3)
-            self.service_delays,        # avg delay in different delay cats (3)
-            # self.arrival_rates,         # rates demanded by new UEs in different delay cats (3)
-            [thrp, thrp_req],           # throughput (2)
+            [self._ue_stats[0,0],
+             self.delay_ratio,
+             self._ue_stats[1,0],
+             self.drop_ratio],          # delay and drop ratio (4)
+            self.arrival_rates,         # arrival rates of new UEs in different delay cats (3)
+            thrps / 1e6,                # required (idle, queued, active) and actual sum rates (4)
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
@@ -285,8 +286,6 @@ class MultiCellNetwork:
         infos = dict(
             time=self.world_time_repr,
             pc=self.power_consumption,  # W
-            drop_ratios=self.drop_ratios,
-            delays=self.service_delays * 1e3,  # ms
             actual_rate=sum(ue.data_rate for ue in self.ues.values()) / 1e6,  # Mb/s
             required_rate=sum(ue.required_rate for ue in self.ues.values()) / 1e6,
             arrival_rate=self.arrival_rates.sum() / 1e6,
@@ -318,10 +317,10 @@ class MultiCellNetwork:
     @classmethod
     def annotate_obs(cls, obs):
         keys = ['power_consumption',
-                *[f'drop_rate_cat{i}' for i in range(3)],
-                *[f'delay_cat{i}' for i in range(3)],
-                *[f'arrival_rate_cat{i}' for i in range(3)],
-                'sum_rate', 'sum_rate_req', 'rate_log_ratio',
+                'num_done', 'delay_ratio',
+                'num_drop', 'drop_ratio',
+                *[f'arrival_rate_service_{i}' for i in range(numApps)],
+                'req_rate_idle', 'req_rate_queue', 'req_rate_active', 'actual_rate',
                 *[f'bs{i}_obs{j}' for i in range(config.numBS) 
                   for j in range(cls.bs_obs_dim)]]
         assert len(keys) == len(obs)
