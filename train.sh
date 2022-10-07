@@ -18,7 +18,7 @@ ppo_epoch=10
 num_mini_batch=1
 
 w_pc=0.001
-w_qos=10
+w_qos=5
 w_xqos=0.002
 # w_drop=0.5
 # w_delay=0.1
