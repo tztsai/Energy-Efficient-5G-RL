@@ -16,7 +16,7 @@ df = df.rename(index={'fixed': 'always_on'}, level=0)
 df
 
 # %%
-key_pat = re.compile('(reward|pc_penalty|qos_reward|interference)$')
+key_pat = re.compile('(reward|pc|qos|interference|.*antenna|.*_drop)')
 vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={'pc_penalty': 'Power Consumption (kW)', 'qos_reward': 'QoS Reward', 'reward': 'Reward', 'interference': 'Interference'})
 vars_df
 
@@ -27,12 +27,12 @@ for key, ser in vars_df.items():
     # s = np.nanstd(a) * 2
     # m = np.nanmedian(a)
     # ymin, ymax = max(np.nanmin(a) , m - s), min(np.nanmax(a) , m + s)
-    fig = px.line(_df, title=key, labels={'value': '', 'time': ''})
-    # fig.update_yaxes(range=[ymin, ymax])
-    fig.update_layout()
-    fig.show()
-    # _df.plot(title=key)
-    # plt.legend(title='')
+    # fig = px.line(_df, title=key, labels={'value': '', 'time': ''})
+    # # fig.update_yaxes(range=[ymin, ymax])
+    # fig.update_layout()
+    # fig.show()
+    _df.plot(title=key)
+    plt.legend(title='')
 
 # %%
 key_pat = re.compile('(arrival_rate|actual_rate|required_rate)$')

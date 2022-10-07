@@ -146,8 +146,8 @@ class MappoTrainer:
         imp_weights = torch.exp(action_log_probs - old_action_log_probs_batch)
 
         surr1 = imp_weights * adv_targ
-        # surr2 = torch.clamp(imp_weights, 1.0 - self.clip_param, 1.0 + self.clip_param) * adv_targ
-        surr2 = adv_targ + self.clip_param * torch.abs(adv_targ)
+        surr2 = torch.clamp(imp_weights, 1.0 - self.clip_param, 1.0 + self.clip_param) * adv_targ
+        # surr2 = adv_targ + self.clip_param * torch.abs(adv_targ)
         # simplified (https://spinningup.openai.com/en/latest/algorithms/ppo.html#key-equations)
 
         if self._use_policy_active_masks:

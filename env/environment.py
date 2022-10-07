@@ -26,7 +26,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     # w_delay_cats = np.array(config.delayAppWeights)
     # w_drop = config.dropRatioWeight
     # w_delay = config.delayWeight
-    w_pc = config.pcWeight
+    # w_pc = config.pcWeight
     w_qos = config.qosWeight
     w_xqos = config.extraQosWeight
     episode_time_len = config.episodeTimeLen
@@ -44,7 +44,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         accelerate=config.accelRate,
         action_interval=action_interval,
         dpi_sample_rate=None,
-        w_pc=w_pc,
+        # w_pc=w_pc,
         w_qos=w_qos,
         w_xqos=w_xqos,
         # w_drop=w_drop,
@@ -76,7 +76,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.action_space = [MultiDiscrete(BaseStation.action_dims)
                              for _ in range(self.num_agents)]
 
-        self.w_pc = w_pc
+        # self.w_pc = w_pc
         self.w_qos = w_qos
         self.w_xqos = w_xqos
         # self.w_drop = w_drop
@@ -103,7 +103,7 @@ class MultiCellNetEnv(MultiAgentEnv):
                        self.action_interval * self._dt * self.net.accelerate / 60))
         notice('Episode length: {}'.format(self.episode_len))
         notice('Episode time length: {} h'.format(self.episode_time_len / 3600))
-        notice('Power consumption weight: {}'.format(self.w_pc))
+        # notice('Power consumption weight: {}'.format(self.w_pc))
         notice('QoS weight: {}'.format(self.w_qos))
         notice('Extra QoS weight: {}'.format(self.w_xqos))
         # notice('Drop ratio weight: {}'.format(self.w_drop))
@@ -122,23 +122,20 @@ class MultiCellNetEnv(MultiAgentEnv):
         TrafficModel.seed(seed)
     
     def get_reward(self, state):
-        pc = state[0]
-        n_done, q_del, n_drop, q_drop = state[1:5]
+        pc, n_done, q_del, n_drop, q_drop = state[:5]
+        pc_kw = pc * 1e-3
         n = n_done + n_drop + 1e-6
-        if DEBUG:
-            assert abs(pc - self.net.power_consumption) < 1e-3
-            assert np.abs(state[1:5] - self.net.ue_stats.flatten()).sum() < 1e-4
-        r_qos = (-q_drop + self.w_xqos * (n_done - q_del)) / n
-        reward = self.w_qos * r_qos - self.w_pc * pc
+        r_qos = (-n_drop * q_drop + self.w_xqos * n_done * (1 - q_del)) / n
+        reward = self.w_qos * r_qos - pc_kw
         # dropped = dr @ self.w_drop_cats
         # delay = dl @ self.w_delay_cats
         # reward = -(self.w_drop * dropped + self.w_pc * pc + self.w_delay * delay)
         r_info = dict(
-            drop_ratio=q_drop / (n_drop + 1e-6),
+            drop_ratio=q_drop,
             ue_drop_ratio=n_drop / n,
-            delay_ratio=q_del / (n_done + 1e-6),
+            delay_ratio=q_del,
             qos_reward=r_qos,
-            pc=pc,
+            pc_kw=pc_kw,
             reward=reward)
         # if EVAL:
         #     r_info['drop_counts'] = self.net._eval_stats['num_dropped'].values.copy()
@@ -225,7 +222,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         info = self.net.info_dict(include_bs=self.include_bs_info)
         info.update(
             reward = self._sim_steps and self._reward_stats[-1]['reward'],
-            pc_penalty = self._sim_steps and self._reward_stats[-1]['pc'] * self.w_pc,
+            pc_kw = self._sim_steps and self._reward_stats[-1]['pc_kw'],
             qos_reward = self._sim_steps and self._reward_stats[-1]['qos_reward'] * self.w_qos,
         )
         return info

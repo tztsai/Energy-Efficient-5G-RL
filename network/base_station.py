@@ -34,7 +34,7 @@ class BaseStation:
     buffer_shape = config.bufferShape
     buffer_chunk_size = config.bufferChunkSize
     buffer_num_chunks = config.bufferNumChunks
-    action_interval = 0.02
+    urgent_time_lim = 0.02
     ue_stats_dim = 5
     all_ue_stats_dim = 3 * ue_stats_dim
     hist_stats_dim = buffer_num_chunks * buffer_shape[1]
@@ -102,7 +102,6 @@ class BaseStation:
         # self._energy_consumed = defaultdict(float)
         self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
         # self._buffer = np.full(self.buffer_shape, np.nan, dtype=np.float32)
-        self._buffer_has_nan = True
         self._buf_idx = 0
         if EVAL:
             self._stats = defaultdict(float)
@@ -558,13 +557,13 @@ class BaseStation:
         chunks = np.array([self._buffer[i:j] if i < j else
                            np.vstack([self._buffer[i:], self._buffer[:j]])
                            for i, j in zip(idx[:-1], idx[1:])], dtype=np.float32)
-        if self._buffer_has_nan:
-            if not np.isnan(self._buffer).any():
-                self._buffer_has_nan = False
-            out = np.nanmean(chunks, axis=1).reshape(-1)
-            return np.nan_to_num(out, nan=0.)
-        else:
-            return chunks.mean(axis=1).reshape(-1)
+        # if self._buffer_has_nan:
+        #     if not np.isnan(self._buffer).any():
+        #         self._buffer_has_nan = False
+        #     out = np.nanmean(chunks, axis=1).reshape(-1)
+        #     return np.nan_to_num(out, nan=0.)
+        # else:
+        return chunks.mean(axis=1).reshape(-1)
 
     def get_all_ue_stats(self):
         serving_ues = []
@@ -588,8 +587,8 @@ class BaseStation:
         stats = np.array([
             [ue.data_rate, ue.required_rate, ue.tx_power, ue.time_limit]
             for ue in ues]).T
-        return [len(ues), stats[0].sum() / 1e9, stats[1].sum() / 1e9,
-                stats[2].sum(), (stats[3] <= self.action_interval).sum()]
+        return [len(ues), stats[0].sum() / 1e6, stats[1].sum() / 1e6,
+                stats[2].sum(), (stats[3] <= self.urgent_time_lim).sum()]
 
     def update_timer(self, dt):
         self._steps += 1
@@ -647,7 +646,7 @@ class BaseStation:
             assert len(keys) == len(obs)
         else:
             keys = keys[:trunc]
-        return pd.Series(obs, index=keys)
+        return pd.DataFrame(obs, index=keys).squeeze()
 
     def __repr__(self):
         return 'BS(%d)' % self.id
