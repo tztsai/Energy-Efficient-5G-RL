@@ -169,7 +169,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     def step(self, actions=None, substeps=action_interval, 
              render_mode=None, render_interval=1):
         if EVAL:
-            notice(f'\nStep {self._sim_steps}:\n')
+            info(f'\nStep {self._sim_steps}:\n')
             info('traffic distribution: %s',
                  self.net.traffic_model.get_arrival_rates(self.net.world_time, self._dt))
             
@@ -203,11 +203,11 @@ class MultiCellNetEnv(MultiAgentEnv):
         infos = {}
 
         if EVAL:
-            notice('')
+            info('')
             infos = self.info_dict()
             for k, v in infos.items():
                 if k.startswith('bs_'): continue
-                notice('%s: %s', k, v)
+                info('%s: %s', k, v)
             if self.save_trajectory:
                 self._trajectory.append(infos)
 

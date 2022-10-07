@@ -9,7 +9,7 @@ import sys
 sys.path.append('..')
 from network.config import bsPositions
 
-folder = Path('sim_stats/mappo') / 'A'
+folder = Path('sim_stats/mappo') / 'C'
 
 bs_stats = pd.read_csv(folder/'bs_stats.csv', index_col=0)
 net_stats = pd.read_csv(folder/'net_stats.csv', index_col=0, header=None).squeeze()
