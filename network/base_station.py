@@ -20,7 +20,7 @@ class BaseStation:
     bandwidth = config.bandWidth
     frequency = config.bsFrequency
     bs_height = config.bsHeight
-    cell_radius = config.cellRadius
+    # cell_radius = config.cellRadius
     num_conn_modes = len(ConnectMode)
     num_sleep_modes = len(config.sleepModeDeltas)
     num_ant_switch_opts = len(config.antennaSwitchOpts)
@@ -67,7 +67,7 @@ class BaseStation:
 
     def __init__(
         self, id, pos, net, 
-        ant_power=None, total_antennas=None,
+        ant_power=None, max_antennas=None,
         frequency=None, bandwidth=None,
     ):
         pos = np.asarray(pos)
@@ -104,10 +104,11 @@ class BaseStation:
         self._buf_idx = 0
         if EVAL:
             self._stats = defaultdict(float)
-            self._stats.update(
-                sleep_switches=np.zeros(self.num_sleep_modes))
             self._total_stats = defaultdict(float)
-            self._total_stats.update(id=self.id)
+            self._total_stats.update(
+                id=self.id,
+                # sleep_time=np.zeros(self.num_sleep_modes),
+                sleep_switches=np.zeros(self.num_sleep_modes))
             self.net.add_stat('bs_stats', self._total_stats)
             self.update_stats()
 
@@ -116,28 +117,26 @@ class BaseStation:
         self.insert_buffer(record)
         if EVAL:
             s = self._stats
+            ts = self._total_stats
+            
             s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
-            s['n_ants'] = self.num_ant
-            ue_stats = np.zeros((numApps, 6))
+            s['num_ants'] = self.num_ant
+            ue_stats = np.zeros(5)
             for ue in self.ues.values():
-                ue_stats[ue.app_type] += [1, ue.signal_power, ue.interference,
-                                          ue.sinr, ue.data_rate, ue.required_rate]
-            s['signal'] = div0(ue_stats[:, 1], ue_stats[:, 0])
-            # s['interf'] = div0(ue_stats[:, 2].sum(), ue_stats[:, 0].sum())
-            s['sinr'] = div0(ue_stats[:, 3], ue_stats[:, 0])
-            s['sum_rates'] = div0(ue_stats[:, 4] / 1e6, ue_stats[:, 0])
-            s['req_rates'] = div0(ue_stats[:, 5] / 1e6, ue_stats[:, 0])
-            s['sum_rate'] = s['sum_rates'].sum()
-            s['req_rate'] = s['req_rates'].sum()
-            s['active_ues'] = len(self.ues)
+                ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
+            s['sum_rate'] = ue_stats[3] / 1e6
+            s['req_sum_rate'] = ue_stats[4] / 1e6
+            s['serving_ues'] = len(self.ues)
             s['queued_ues'] = len(self.queue)
-            s['idle_ues'] = len(self.covered_idle_ues)
             s['covered_ues'] = len(self.covered_ues)
             
-            self._total_stats['steps'] += 1
-            self._total_stats['time'] += self._timer
-            self._total_stats['sleep_time'] += self._sleep_time
+            ts['steps'] += 1
+            ts['time'] += self._timer
+            ts['signal'] += ue_stats[0]
+            ts['interf'] += ue_stats[1]
+            ts['sinr'] += ue_stats[2]
+            ts['sleep_time'] = self._sleep_time
             for k, v in s.items():
                 self._total_stats[k] += v
 
@@ -153,7 +152,14 @@ class BaseStation:
     
     @property
     def num_ue(self):
+        if EVAL:
+            return getattr(self, '_num_ue', len(self.ues))
         return len(self.ues)
+    
+    @num_ue.setter
+    def num_ue(self, value):
+        assert EVAL
+        self._num_ue = max(0, value)
     
     @property
     def ues_full(self):
@@ -196,10 +202,6 @@ class BaseStation:
             return self._wake_delay - self._wake_timer
         
     @property
-    def sum_rate(self):
-        return self.calc_sum_rate(self.ues.values(), kind='actual')
-
-    @property
     def cell_traffic_rate(self):
         return self._steps and self._arrival_rate / self._steps / 1e6
     
@@ -209,7 +211,7 @@ class BaseStation:
     def take_action(self, action):
         if not TRAIN:
             assert len(action) == len(self.action_dims)
-            notice(f'BS {self.id} takes action:\n{action}')
+            info(f'BS {self.id} takes action:\n{action}')
         self.switch_antennas(int(action[0]))
         self.switch_sleep_mode(int(action[1]))
         self.switch_connection_mode(int(action[2]) - 1)
@@ -228,7 +230,7 @@ class BaseStation:
             num_ant_new <= self.num_ue):
                 return  # invalid action
         if EVAL:
-            self._stats['ant_switches'] += abs(num_switch)
+            self._total_stats['ant_switches'] += abs(num_switch)
         self.num_ant = num_ant_new
         for ue in self.net.ues.values():
             ue.update_data_rate()
@@ -251,7 +253,7 @@ class BaseStation:
             if DEBUG:
                 info('BS {}: goes to sleep {} -> {}'.format(self.id, self.sleep, mode))
             if EVAL:
-                self._stats['sleep_switches'][mode] += 1
+                self._total_stats['sleep_switches'][mode] += 1
             self._prev_sleep = self.sleep
             self.sleep = mode
         elif mode < self.sleep:
@@ -327,7 +329,7 @@ class BaseStation:
     def remove_from_cell(self, ue):
         self.covered_ues.remove(ue)
         if EVAL:
-            self._total_stats['cell_traffic'] += ue.file_size
+            self._total_stats['cell_traffic'] += ue.total_demand
             self._total_stats['cell_dropped_traffic'] += max(0, ue.demand)
 
     # def takeover_all(self):
@@ -377,7 +379,7 @@ class BaseStation:
             r = np.array([ue.required_rate for ue in self.ues.values()]) / 1e7
             w = self.power_alloc_base ** np.minimum(r, 50.)
             # w *= np.sqrt(np.minimum(r / 1e7, 3.)) * 10
-            # w = np.array([self.power_alloc_weights[ue.app_type]
+            # w = np.array([self.power_alloc_weights[ue.service]
             #               for ue in self.ues.values()])
             ps = self.transmit_power * w / w.sum()
         else:
@@ -390,8 +392,9 @@ class BaseStation:
 
     @timeit
     def update_sleep(self, dt):
-        if EVAL:
-            self._sleep_time[self.sleep] += dt
+        self._sleep_time[self.sleep] += dt
+        # if EVAL:
+        #     self._total_stats['sleep_time'][self.sleep] += dt
         if self._next_sleep == self.sleep:
             if self.queue and self.sleep in (1, 2):
                 if DEBUG:
@@ -408,7 +411,7 @@ class BaseStation:
                 info('BS {}: switched sleep mode {} -> {}'
                      .format(self.id, self.sleep, self._next_sleep))
             if EVAL:
-                self._stats['sleep_switches'][self._next_sleep] += 1
+                self._total_stats['sleep_switches'][self._next_sleep] += 1
             self._prev_sleep = self.sleep
             self.sleep = self._next_sleep
             self._wake_timer = 0.
@@ -425,7 +428,7 @@ class BaseStation:
                 if TRAIN:  # reduce disconnections in the middle of service
                     self.consume_energy(self.disconnect_energy, 'disconnect')
                 else:
-                    self._stats['disconnects'] += 1
+                    self._total_stats['disconnects'] += 1
                 if self.conn_mode >= 0:
                     self.add_to_queue(ue)
         else:
@@ -442,14 +445,14 @@ class BaseStation:
             if TRAIN:
                 self.consume_energy(self.disconnect_energy, 'disconnect')
             else:
-                self._stats['disconnects'] += 1
+                self._total_stats['disconnects'] += 1
         while self.queue:
             self.pop_from_queue()
 
     @timeit
     def compute_power_consumption(
         self, eta=0.25, eps=8.2e-3, Ppa_max=config.maxPAPower,
-        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=18, C={},
+        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=config.fixedPC, C={},
         sleep_deltas=config.sleepModeDeltas
     ):
         """
@@ -480,11 +483,9 @@ class BaseStation:
         Pld = 0  # load-dependent part of PC
         if S:
             Pnl *= sleep_deltas[S]
-        else:
-            Pld = M * C['PA-ld']
-            if K > 0:
-                R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-                Pld += Pcd*R + C['K3']*K**3 + M * (C['MK1']*K + C['MK2']*K**2)
+        elif K > 0:
+            R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
+            Pld = Pcd*R + C['K3']*K**3 + M * (C['PA-ld'] + C['MK1']*K + C['MK2']*K**2)
         P = Pld + Pnl
         if EVAL:
             rec = dict(bs=self.id, M=M, K=K, R=R, S=S, Pnl=Pnl, Pld=Pld, P=P)
@@ -525,12 +526,10 @@ class BaseStation:
         # day, hour = divmod(self.net.world_time, 24)
         return np.concatenate([
             ### public information ###
-            # self.pos
             # [self.band_width, self.transmit_power],
             [self.operation_pc, self.num_ant, self.responding],
             onehot_vec(self.num_sleep_modes, self.sleep),
             ### private information ###
-            # [day % 7 + 1, hour, sec],
             onehot_vec(self.num_sleep_modes, self._next_sleep),
             [self.wakeup_time],
             self.get_history_stats(),
@@ -547,16 +546,6 @@ class BaseStation:
             self.get_ue_stats(others_ues)
         ], dtype=np.float32)
         return obs
-    
-    # @staticmethod
-    # def calc_sum_rate(ues, kind=None):
-    #     if kind is None or kind == 'actual':
-    #         real_thrp = sum(ue.data_rate for ue in ues) / 1e6
-    #         if kind: return real_thrp
-    #     if kind is None or kind == 'required':
-    #         required_thrp = sum(ue.required_rate for ue in ues) / 1e6
-    #         if kind: return required_thrp
-    #     return real_thrp, required_thrp
 
     # @anim_rolling
     @cache_obs
@@ -572,7 +561,7 @@ class BaseStation:
         serving_ues = []
         queued_ues = []
         idle_ues = []
-        for ue in self.ues.values():
+        for ue in self.covered_ues:
             if ue.bs is None:
                 idle_ues.append(ue)
             elif ue.bs is self:
@@ -592,19 +581,25 @@ class BaseStation:
             for ue in ues]).T
         return [len(ues), stats[0].sum(), stats[1].sum(), stats[1].max(), 
                 stats[2].sum(), stats[3].min()]
+        # stats = np.array([
+        #     [ue.data_rate, ue.required_rate, ue.tx_power, ue.time_limit]
+        #     for ue in ues]).T
+        # return [len(ues), stats[0].sum() / 1e9, stats[1].sum() / 1e9,
+        #         stats[2].sum(), (stats[3] <= self.action_interval).sum()]
 
     def update_timer(self, dt):
         self._steps += 1
         self._time += dt
         self._timer += dt
 
-    @cache_obs
     def info_dict(self):
         infos = dict(
+            n_ants=self.num_ant,
             conn_mode=self.conn_mode,
+            responding=self.responding,
             sleep_mode=self.sleep,
             next_sleep=self._next_sleep,
-            wakeup_time=self.wakeup_time,
+            wakeup_time=int(self.wakeup_time * 1000),
             **self._stats
         )
         return infos
@@ -612,7 +607,13 @@ class BaseStation:
     def calc_total_stats(self):
         d = self._total_stats
         for k in self._stats:
-            d['avg_'+k] = div0(d[k], d['steps'])
+            d['avg_'+k] = div0(d.pop(k), d['steps'])
+        d['avg_signal'] = div0(
+            d.pop('signal'), d['serving_ues'])
+        d['avg_interf'] = div0(
+            d.pop('interf'), d['serving_ues'])
+        d['avg_sinr'] = div0(
+            d.pop('sinr'), d['serving_ues'])
         d['avg_sleep_ratios'] = div0(
             d['sleep_time'], d['sleep_time'].sum())
         d['avg_reject_rate'] = div0(
@@ -641,7 +642,7 @@ class BaseStation:
             assert len(keys) == len(obs)
         else:
             keys = keys[:trunc]
-        return dict(zip(keys, obs))
+        return pd.Series(obs, index=keys)
 
     def __repr__(self):
         return 'BS(%d)' % self.id

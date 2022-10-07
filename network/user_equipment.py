@@ -1,6 +1,7 @@
 from utils import *
 from config import *
 from . import config
+from .channel import compute_channel_gain
 
 
 class UEStatus(enum.IntEnum):
@@ -13,17 +14,18 @@ class UEStatus(enum.IntEnum):
 
 class UserEquipment:
     height: float = config.ueHeight
-    state_dim: int = 10
+    signal_thresh = config.signalThreshold
+    record_sinr = False
     _cache = defaultdict(dict)
 
-    def __init__(self, pos, app_type, demand, delay_budget):
+    def __init__(self, pos, service, demand, delay_budget):
         self.id = id(self)
         self.pos = np.asarray(pos)
         self.bs = None
         self.net = None
-        self.app_type = app_type
+        self.service = service
         self.status = UEStatus.IDLE
-        self.demand = self.file_size = demand
+        self.demand = self.total_demand = demand
         self.delay_budget = delay_budget
         self.delay = 0.
         self.t_served = 0.
@@ -51,21 +53,14 @@ class UserEquipment:
             cache[None] = ret
             return ret
         return wrapped
-        
+
     @property
     def distances(self):
-        assert self._dists is not None, 'distances to BSs not computed yet'
         return self._dists
     
     @distances.setter
     def distances(self, dists):
-        assert self._dists is None
         self._dists = dists
-        self._cover_cells = []
-        for i, bs in self.net.bss.items():
-            if dists[i] <= bs.cell_radius:
-                self._cover_cells.append(bs.id)
-                bs.add_to_cell(self)
         return dists
 
     @property
@@ -75,7 +70,14 @@ class UserEquipment:
     @channel_gains.setter
     def channel_gains(self, gains):
         self._gains = gains
-        self._cover_cells.sort(key=gains.__getitem__, reverse=True)
+        q = []
+        for i, bs in self.net.bss.items():
+            M, K, p = bs.num_ant, bs.num_ue, bs.tx_power
+            p = gains[i] * M * (M - K) * p
+            if p > self.signal_thresh:
+                bs.add_to_cell(self)
+                q.append((p / (K + 1), i))
+        self._cover_cells = [it[1] for it in sorted(q, reverse=True)]
         return gains
 
     @property
@@ -134,10 +136,10 @@ class UserEquipment:
 
     def compute_sinr(self, N=config.noisePower):
         if self.bs is None: return 0
-        S = self.signal_power
-        I = self.interference
-        SINR = S / (I + N)
-        if EVAL:
+        self._S = self.signal_power
+        self._I = self.interference
+        self._SINR = self._S / (self._I + N)
+        if self.record_sinr:
             rec = dict(
                 x = self.pos[0],
                 y = self.pos[1],
@@ -147,12 +149,14 @@ class UserEquipment:
                 K = self.bs.num_ue,
                 d = self._dists[self.bs.id],
                 g = self.channel_gain,
-                S = S, I = I, SINR = SINR,
+                S = self._S,
+                I = self._I,
+                SINR = self._SINR
             )
             for i, bs in self.net.bss.items():
                 rec[f'P_{i}'] = bs.transmit_power
             self.net.add_stat('sinr', rec)
-        return SINR
+        return self._SINR
     
     @timeit
     def compute_data_rate(self):
@@ -160,9 +164,9 @@ class UserEquipment:
         Returns:
         The data_rate of the UE in bits/s.
         """
-        self.sinr = self.compute_sinr()
-        if self.sinr == 0: return 0
-        return self.bs.bandwidth * np.log2(1 + self.sinr)
+        sinr = self.compute_sinr()
+        if sinr == 0: return 0
+        return self.bs.bandwidth * np.log2(1 + sinr)
 
     def update_data_rate(self):
         self._thruput = None
@@ -205,11 +209,25 @@ class UserEquipment:
         self.disconnect()
         for i in self._cover_cells:
             self.net.get_bs(i).remove_from_cell(self)
-        if self.demand <= 0:
+        if self.demand <= 0.:
+            self.demand = 0.
             self.status = UEStatus.DONE
         else:
             self.status = UEStatus.DROPPED
         # self.served = self.total_demand - self.demand
+        if EVAL:
+            dropped = self.demand
+            done = self.total_demand - dropped
+            delay = self.delay
+            service_time = self.t_served
+            self.net.add_stat('ue_stats', dict(
+                demand = self.total_demand,
+                done = done,
+                dropped = dropped,
+                delay = delay,
+                delay_budget = self.delay_budget,
+                service_time = service_time
+            ))
         self.net.remove_user(self.id)
         del self.__class__._cache[self.id]
     
@@ -227,8 +245,8 @@ class UserEquipment:
     @timeit
     def info_dict(self):
         return dict(
-            bs_id=self.bs.id if self.bs is not None else -1,
-            status=self.status,
+            bs_id=self.bs.id if self.bs else '-',
+            status=self.status.name,
             demand=self.demand / 1e3,   # in kb
             rate=self.compute_data_rate() / 1e6,  # in mb/s
             ddl=self.time_limit * 1e3,  # in ms
@@ -243,3 +261,56 @@ class UserEquipment:
             **self.info_dict()
         ))
 
+
+class TestProbe(UserEquipment):
+    record_stats = False
+    
+    def __init__(self, net, grid_size=20):
+        super().__init__(None, None, 0, 999)
+        self.net = net
+        self.x = np.linspace(0, net.area[0], round(net.area[0] / grid_size) + 1)
+        self.y = np.linspace(0, net.area[1], round(net.area[1] / grid_size) + 1)
+        
+    @property
+    def tx_power(self):
+        return self._tx_power
+
+    def test_sinr(self):
+        """ Measure SINR over the grid. """
+        print('Probing SINR...')
+        self.status = UEStatus.ACTIVE
+        # bss = np.arange(self.net.num_bs)
+        poses = np.array(list(itertools.product(self.x, self.y, [self.height])))
+        csi_keys = ['S', 'I', 'SINR'] # + [f'C_{i}' for i in range(self.net.num_bs)]
+        # csi_index = pd.MultiIndex.from_product([self.x, self.y, bss], names=['x', 'y', 'bs'])
+        csi_index = pd.MultiIndex.from_product([self.x, self.y], names=['x', 'y'])
+        csi = np.zeros((len(csi_index), len(csi_keys)))
+        distances = np.sqrt(np.sum((poses[:,None] - self.net.bs_positions)**2, axis=-1))
+        channel_gains = compute_channel_gain(distances)
+        N = config.noisePower
+        i = 0
+        for dists, gains in zip(distances, channel_gains):
+            self.distances = dists
+            self.channel_gains = gains
+            for c in self._cover_cells:
+                bs = self.net.get_bs(c)
+                if not self.bs and bs.responding:
+                    self.bs = bs
+                    # G = self.channel_gain
+                    if bs.sleep or bs.ues_full:
+                        S = I = 0
+                    else:
+                        self._tx_power = bs.transmit_power / (bs.num_ue + 1)
+                        S = self.signal_power
+                        I = self.interference
+                    SINR = S / (I + N)
+                bs.remove_from_cell(self)
+            if not self.bs:
+                S = I = SINR = 0
+            self.bs = None
+            cover_cells = [0] * self.net.num_bs
+            for c in self._cover_cells:
+                cover_cells[c] = 1
+            csi[i] = list(map(lin2dB, [S, I, SINR]))
+            i += 1
+        return pd.DataFrame(csi, index=csi_index, columns=csi_keys)
