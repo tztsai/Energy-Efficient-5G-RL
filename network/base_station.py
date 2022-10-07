@@ -202,12 +202,8 @@ class BaseStation:
             return self._wake_delay - self._wake_timer
         
     @property
-    def sum_rate(self):
-        return sum(ue.data_rate for ue in self.ues.values()) / 1e6
-
-    @property
     def cell_traffic_rate(self):
-        return self._steps and self._arrival_rate / self._steps / 1e6
+        return self._steps and self._arrival_rate / self._steps / 1e9
     
     ### actions ###
     
@@ -455,7 +451,7 @@ class BaseStation:
     @timeit
     def compute_power_consumption(
         self, eta=0.25, eps=8.2e-3, Ppa_max=config.maxPAPower,
-        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=24, C={},
+        Psyn=1, Pbs=1, Pcd=1, Lbs=12.8, Tc=5000, Pfixed=config.fixedPC, C={},
         sleep_deltas=config.sleepModeDeltas
     ):
         """
@@ -550,16 +546,6 @@ class BaseStation:
             self.get_ue_stats(others_ues)
         ], dtype=np.float32)
         return obs
-    
-    # @staticmethod
-    # def calc_sum_rate(ues, kind=None):
-    #     if kind is None or kind == 'actual':
-    #         real_thrp = sum(ue.data_rate for ue in ues) / 1e6
-    #         if kind: return real_thrp
-    #     if kind is None or kind == 'required':
-    #         required_thrp = sum(ue.required_rate for ue in ues) / 1e6
-    #         if kind: return required_thrp
-    #     return real_thrp, required_thrp
 
     # @anim_rolling
     @cache_obs
@@ -597,10 +583,10 @@ class BaseStation:
         if not ues:
             return np.zeros(self.ue_stats_dim, dtype=np.float32)
         stats = np.array([
-            [ue.data_rate / 1e6, ue.required_rate / 1e6, ue.tx_power, ue.time_limit]
+            [ue.data_rate, ue.required_rate, ue.tx_power, ue.time_limit]
             for ue in ues]).T
-        return [len(ues), stats[0].sum(), stats[1].sum(), stats[2].sum(),
-                (stats[3] <= self.action_interval).sum()]
+        return [len(ues), stats[0].sum() / 1e9, stats[1].sum() / 1e9,
+                stats[2].sum(), (stats[3] <= self.action_interval).sum()]
 
     def update_timer(self, dt):
         self._steps += 1
@@ -622,11 +608,13 @@ class BaseStation:
     def calc_total_stats(self):
         d = self._total_stats
         for k in self._stats:
-            d['avg_'+k] = div0(d[k], d['steps'])
+            d['avg_'+k] = div0(d.pop(k), d['steps'])
         d['avg_signal'] = div0(
-            d['signal'], d['serving_ues'])
+            d.pop('signal'), d['serving_ues'])
         d['avg_interf'] = div0(
-            d['interf'], d['serving_ues'])
+            d.pop('interf'), d['serving_ues'])
+        d['avg_sinr'] = div0(
+            d.pop('sinr'), d['serving_ues'])
         d['avg_sleep_ratios'] = div0(
             d['sleep_time'], d['sleep_time'].sum())
         d['avg_reject_rate'] = div0(

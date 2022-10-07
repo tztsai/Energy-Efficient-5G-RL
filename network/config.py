@@ -9,6 +9,7 @@ interBSDist = 400  # the distance between two adjacent BSs
 # cellRadius = 750  # the radius of a hexagon cell in meters
 txPower = 0.24  # average transmit power per antenna in watts
 maxPAPower = 8  # maximum antenna power in watts
+fixedPC = 24  # load-independent power consumption in watts
 bsFrequency = 5e9  # carrier frequency in Hz
 feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
@@ -25,8 +26,8 @@ wakeupDelays = [0, 1e-3, 1e-2, 1e-1]
 antSwitchEnergy = 0.02  # energy consumption of switch per antenna in Joules
 sleepSwitchEnergy = [0.02, 0.01, 0.01, 0.01]  # energy consumption of switching sleep mode in Joules
 disconnectEnergy = 0.01  # energy consumption of a disconnection (before UE is done) in Joules
-bufferShape = (30, 1)  # shape of the buffer used to record past observations 
-bufferChunkSize = 30  # chunk size to apply average pooling
+bufferShape = (60, 1)  # shape of the buffer used to record past observations
+bufferChunkSize = 60  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
 
 # channel model params

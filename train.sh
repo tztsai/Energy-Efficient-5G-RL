@@ -10,16 +10,17 @@ num_env_steps=$((50400 * 50))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"
-gamma=0.99
+gamma=0.999
 gain=0.01
-lr=7e-4
-critic_lr=7e-4
+lr=5e-4
+critic_lr=5e-4
+value_loss_coef=0.5
 ppo_epoch=10
 num_mini_batch=1
 
 w_pc=0.001
-w_qos=5
-w_xqos=0.002
+w_qos=2.5
+w_xqos=0.004
 # w_drop=0.5
 # w_delay=0.1
 
@@ -32,5 +33,5 @@ echo "algo is ${algo}, traffic scenario is ${scenario}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
 do
     echo "seed is ${seed}:"
-    CUDA_VISIBLE_DEVICES=0 python train.py --algorithm_name ${algo} --experiment_name ${experiment} --scenario ${scenario} --accelerate ${accelerate} --seed ${seed} --n_training_threads ${n_training_threads} --n_rollout_threads ${n_rollout_threads} --num_mini_batch ${num_mini_batch} --num_env_steps ${num_env_steps} --ppo_epoch ${ppo_epoch} --gain ${gain} --gamma ${gamma} --lr ${lr} --critic_lr ${critic_lr} --user_name ${wandb_user} --log_level ${log_level} --log_interval ${log_interval} --w_pc ${w_pc} --w_qos ${w_qos} --w_xqos ${w_xqos} $@ #--use_eval --eval_interval ${eval_interval} --n_eval_rollout_threads ${n_eval_rollout_threads}
+    CUDA_VISIBLE_DEVICES=0 python train.py --algorithm_name ${algo} --experiment_name ${experiment} --scenario ${scenario} --accelerate ${accelerate} --seed ${seed} --n_training_threads ${n_training_threads} --n_rollout_threads ${n_rollout_threads} --num_mini_batch ${num_mini_batch} --num_env_steps ${num_env_steps} --ppo_epoch ${ppo_epoch} --gain ${gain} --gamma ${gamma} --lr ${lr} --critic_lr ${critic_lr} --value_loss_coef ${value_loss_coef} --user_name ${wandb_user} --log_level ${log_level} --log_interval ${log_interval} --w_pc ${w_pc} --w_qos ${w_qos} --w_xqos ${w_xqos} $@ #--use_eval --eval_interval ${eval_interval} --n_eval_rollout_threads ${n_eval_rollout_threads}
 done
