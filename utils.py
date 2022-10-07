@@ -51,6 +51,7 @@ def set_log_level(level):
         level=level)
 
 def set_log_file(log_file):
+    open(log_file, 'w').close()
     if log_file is not None:
         logger.addHandler(logging.FileHandler(log_file))
         logger.propagate = False

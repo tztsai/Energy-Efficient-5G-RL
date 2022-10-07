@@ -130,5 +130,5 @@ def make_anim(frames=frames):
         layout=layout)
     fig.write_html('anim.html', auto_play=True)
     
-atexit.register(make_anim)
+# atexit.register(make_anim)
 app.run()

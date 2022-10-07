@@ -140,8 +140,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             qos_reward=r_qos,
             pc=pc,
             reward=reward)
-        if EVAL:
-            r_info['drop_counts'] = self.net._eval_stats['num_dropped'].values.copy()
+        # if EVAL:
+        #     r_info['drop_counts'] = self.net._eval_stats['num_dropped'].values.copy()
             # r_info['drop_ratios'] = dr
             # r_info['ue_delays'] = dl
         self._reward_stats.append(r_info)

@@ -190,7 +190,7 @@ def render_csi(net, frame, last_frame=None, kpis=['S', 'I', 'SINR']):
         elif last_frame:
             trace = next(t for t in last_frame['data'] if t['name'] == var)
         frame['data'].append(trace)
-    # frame['_layouts'] = layouts
+    frame['_layouts'] = layouts
 
     # frame['layout']['updatemenus'] = [{
     #     'buttons': [{'args': [{'visible': [True] * len(frame['data'])}],
