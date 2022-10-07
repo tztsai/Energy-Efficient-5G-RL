@@ -118,24 +118,25 @@ class BaseStation:
         self.insert_buffer(record)
         if EVAL:
             s = self._stats
+            ts = self._total_stats
+            
             s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
             s['num_ants'] = self.num_ant
             ue_stats = np.zeros(5)
-            K = len(self.ues)
             for ue in self.ues.values():
                 ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
-            s['signal'] = div0(ue_stats[0], K)
-            s['interf'] = div0(ue_stats[1], K)
-            s['sinr'] = div0(ue_stats[2], K)
             s['sum_rate'] = ue_stats[3] / 1e6
             s['req_sum_rate'] = ue_stats[4] / 1e6
             s['serving_ues'] = len(self.ues)
             s['queued_ues'] = len(self.queue)
             s['covered_ues'] = len(self.covered_ues)
             
-            self._total_stats['steps'] += 1
-            self._total_stats['time'] += self._timer
+            ts['steps'] += 1
+            ts['time'] += self._timer
+            ts['signal'] += ue_stats[0]
+            ts['interf'] += ue_stats[1]
+            ts['sinr'] += ue_stats[2]
             for k, v in s.items():
                 self._total_stats[k] += v
 
@@ -430,7 +431,7 @@ class BaseStation:
                 if TRAIN:  # reduce disconnections in the middle of service
                     self.consume_energy(self.disconnect_energy, 'disconnect')
                 else:
-                    self._stats['disconnects'] += 1
+                    self._total_stats['disconnects'] += 1
                 if self.conn_mode >= 0:
                     self.add_to_queue(ue)
         else:
@@ -447,7 +448,7 @@ class BaseStation:
             if TRAIN:
                 self.consume_energy(self.disconnect_energy, 'disconnect')
             else:
-                self._stats['disconnects'] += 1
+                self._total_stats['disconnects'] += 1
         while self.queue:
             self.pop_from_queue()
 
@@ -622,6 +623,10 @@ class BaseStation:
         d = self._total_stats
         for k in self._stats:
             d['avg_'+k] = div0(d[k], d['steps'])
+        d['avg_signal'] = div0(
+            d['signal'], d['serving_ues'])
+        d['avg_interf'] = div0(
+            d['interf'], d['serving_ues'])
         d['avg_sleep_ratios'] = div0(
             d['sleep_time'], d['sleep_time'].sum())
         d['avg_reject_rate'] = div0(

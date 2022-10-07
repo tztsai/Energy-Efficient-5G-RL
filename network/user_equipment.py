@@ -15,7 +15,7 @@ class UEStatus(enum.IntEnum):
 class UserEquipment:
     height: float = config.ueHeight
     signal_thresh = config.signalThreshold
-    record_stats = EVAL
+    record_sinr = False
     _cache = defaultdict(dict)
 
     def __init__(self, pos, service, demand, delay_budget):
@@ -139,7 +139,7 @@ class UserEquipment:
         self._S = self.signal_power
         self._I = self.interference
         SINR = self._S / (self._I + N)
-        if self.record_stats:
+        if self.record_sinr:
             rec = dict(
                 x = self.pos[0],
                 y = self.pos[1],
@@ -215,6 +215,19 @@ class UserEquipment:
         else:
             self.status = UEStatus.DROPPED
         # self.served = self.total_demand - self.demand
+        if EVAL:
+            dropped = self.demand
+            done = self.total_demand - dropped
+            delay = self.delay
+            service_time = self.t_served
+            self.net.add_stat('ue_stats', dict(
+                demand = self.total_demand,
+                done = done,
+                dropped = dropped,
+                delay = delay,
+                delay_budget = self.delay_budget,
+                service_time = service_time
+            ))
         self.net.remove_user(self.id)
         del self.__class__._cache[self.id]
     

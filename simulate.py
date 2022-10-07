@@ -11,7 +11,7 @@ from visualize.render import create_dash_app
 
 sim_days = 7
 warmup_steps = 250
-accelerate = 12000
+accelerate = 18000
 render_interval = 5 # 4
 
 parser = get_config()

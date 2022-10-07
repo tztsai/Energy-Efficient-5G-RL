@@ -12,7 +12,8 @@ from network.config import bsPositions
 folder = Path('sim_stats/mappo') / 'B'
 
 bs_stats = pd.read_csv(folder/'bs_stats.csv', index_col=0)
-ue_stats = pd.read_csv(folder/'net_stats.csv', index_col=0, header=None)[1]
+net_stats = pd.read_csv(folder/'net_stats.csv', index_col=0, header=None, squeeze=True)
+ue_stats = pd.read_csv(folder/'ue_stats.csv')
 sleep_stats = dict()
 
 def parse_np_series(s, **kwds):
@@ -28,14 +29,33 @@ for c in list(bs_stats.columns):
 bs_stats
 
 # %%
-ue_stats
+net_stats
+
+# %%
+ue_stats.describe()
+
+# %%
+T = net_stats['time']
+E = net_stats['energy']
+avg_delay = ue_stats['delay'].mean()
+num_ues = len(ue_stats)
+num_dropped_ues = np.sum(ue_stats['dropped'] > 0)
+drop_ratio = ue_stats['dropped'].sum() / ue_stats['done'].sum()
+ue_drop_ratio = num_dropped_ues / num_ues
+sum_rate = ue_stats['done'].sum() / T
+ue_rate = ue_stats['done'].sum() / ue_stats['delay'].sum()
+energy_efficiency = ue_stats['done'].sum() / E  # Mb/J
+waiting_ratio = 1 - ue_stats['service_time'].sum() / ue_stats['delay'].sum()
+
+# %%
+px.histogram(ue_stats, x='delay_budget')
 
 # %%
 bs_idx = [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 1]
 x, y = bsPositions[bs_idx].T
 kpis = [k for k in bs_stats.columns if k.startswith('avg_')]
 kpis = ['avg_sum_rate', 'avg_serving_ues', 'avg_num_ants',
-        'avg_signal', 'avg_interf', 'avg_sinr', 'avg_pc']
+        'avg_signal', 'avg_', 'avg_sinr', 'avg_pc']
 
 camera = dict(
     up=dict(x=0, y=0, z=1),
@@ -65,3 +85,5 @@ sleep_stats
 # ue_stats
 
 # # %%
+
+# %%

@@ -67,8 +67,6 @@ class MultiCellNetwork:
         if EVAL:
             vs = "energy arrived num done num_dropped dropped time service_time interference".split()
             self._arrival_buf = np.zeros((self.buffer_ws, numApps))
-            self._eval_stats = pd.DataFrame(
-                np.zeros((numApps, len(vs))), columns=vs)
             self._total_stats = defaultdict(float)
             self._other_stats = defaultdict(list)
             self._stats_updated = True
@@ -93,7 +91,6 @@ class MultiCellNetwork:
         self.quitted_stats[:] = 0
         if EVAL:
             self._arrival_buf[self._buf_idx] = 0
-            self._eval_stats[:] = 0
             self._stats_updated = False
 
     # @anim_rolling
@@ -101,10 +98,8 @@ class MultiCellNetwork:
         for bs in self.bss.values():
             bs.update_stats()
         if EVAL:
-            self._eval_stats['arrived'] += self._arrival_buf[self._buf_idx]
-            self._eval_stats['energy'] += self._energy_consumed
-            for k, v in self._eval_stats.items():
-                self._total_stats[k] += v.values.sum()
+            self._total_stats['arrived'] += self._arrival_buf[self._buf_idx]
+            self._total_stats['energy'] += self._energy_consumed
             self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
             self._stats_updated = True
 
@@ -180,19 +175,14 @@ class MultiCellNetwork:
         return np.zeros(numApps)  # only before the first step
     
     @property
-    def drop_ratios(self):
+    def drop_ratio(self):
         """ Ratios of dropped traffic for each app category in the current step. """
-        return div0(self.quitted_stats[:, 1], self.quitted_stats[:, 0] * self.traffic_model.file_size)
+        return div0(self.quitted_stats[1, 1], self.quitted_stats[0, 0])
 
     @property
-    def service_delays(self):
+    def delay_ratio(self):
         """ Average service delays per UE for each app category in the current step. """
-        return div0(self.quitted_stats[:, -1], self.quitted_stats[:, 0])
-    
-    @property
-    def avg_rate_ratios(self):
-        """ r_avg/r_req for finished UEs and dropped UEs. """
-        return (self.quitted_stats[:, 1] + 1e-6) / (self.quitted_stats[:, 0] + 1e-6)
+        return div0(self.quitted_stats[0, 1], self.quitted_stats[0, 0])
 
     def get_bs(self, id):
         return self.bss[id]
@@ -238,15 +228,6 @@ class MultiCellNetwork:
             if dropped:
                 assert dropped > 0.
                 info('UE %s dropped' % ue_id)
-        if EVAL:
-            s, a = self._eval_stats, ue.service
-            if dropped:
-                s.at[a, 'dropped'] += dropped
-                s.at[a, 'num_dropped'] += 1
-            s.at[a, 'num'] += 1
-            s.at[a, 'done'] += ue.total_demand - dropped
-            s.at[a, 'time'] += ue.delay
-            s.at[a, 'service_time'] += ue.t_served
 
     @timeit
     def scan_connections(self):
@@ -316,12 +297,11 @@ class MultiCellNetwork:
         infos = dict(
             time=self.world_time_repr,
             pc=self.power_consumption,  # W
-            drop_ratios=self.drop_ratios,
-            delays=self.service_delays * 1e3,  # ms
+            drop_ratios=self.drop_ratio,
+            delays=self.delay_ratio * 1e3,  # ms
             actual_rate=sum(ue.data_rate for ue in self.ues.values()) / 1e6,  # Mb/s
             required_rate=sum(ue.required_rate for ue in self.ues.values()) / 1e6,
-            arrival_rates=div0(self._eval_stats.arrived.values, self._timer) / 1e6,
-            arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6,
+            arrival_rate=self.arrival_rates.sum() / 1e6,
             idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
             interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
             avg_antennas=sum(bs.num_ant for bs in self.bss.values()) / self.num_bs,
@@ -333,35 +313,16 @@ class MultiCellNetwork:
                     infos[f'bs_{i}_{k}'] = v
 
         return infos
-    
+
     def calc_total_stats(self):
         for bs in self.bss.values():
             bs.calc_total_stats()
+        self._total_stats.update(
+            time=self._time,
+            avg_pc=div0(self._total_stats['energy'], self._time),  # W
+            avg_arrival_rate=div0(self._total_stats['arrived'], self._time)
+        )
 
-        _junk = set([*vars(), '_junk'])
-        
-        total_time = self._time
-        total_count = self._total_stats['num']
-        total_dropped_count = self._total_stats['num_dropped']
-        total_arrived = self._total_stats['arrived'] / 1e6  # Mb
-        total_done = self._total_stats['done'] / 1e6
-        total_dropped = self._total_stats['dropped'] / 1e6
-        total_quitted = total_done + total_dropped
-        total_energy = self._total_stats['energy']  # J
-        avg_pc = div0(total_energy, total_time)  # W
-        avg_drop_size = div0(total_dropped, total_dropped_count)
-        avg_drop_ratio = div0(total_dropped, total_quitted)
-        avg_delay = div0(self._total_stats['time'] * 1e3, total_count)
-        avg_arrival_rate = div0(total_arrived, total_time)
-        avg_demand_size = div0(total_quitted, total_count)
-        avg_sum_rate = div0(total_done, total_time)
-        avg_ue_rate = div0(total_done, self._total_stats['time'])
-        avg_energy_efficiency = div0(total_done, total_energy)  # Mb/J
-        avg_service_time_ratio = div0(self._total_stats['service_time'],
-                                       self._total_stats['time'])
-        
-        self._total_stats.update(it for it in vars().items() if it[0] not in _junk)
-    
     @classmethod
     def annotate_obs(cls, obs):
         keys = ['power_consumption',
