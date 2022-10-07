@@ -138,7 +138,7 @@ class UserEquipment:
         if self.bs is None: return 0
         self._S = self.signal_power
         self._I = self.interference
-        SINR = self._S / (self._I + N)
+        self._SINR = self._S / (self._I + N)
         if self.record_sinr:
             rec = dict(
                 x = self.pos[0],
@@ -151,12 +151,12 @@ class UserEquipment:
                 g = self.channel_gain,
                 S = self._S,
                 I = self._I,
-                SINR = SINR
+                SINR = self._SINR
             )
             for i, bs in self.net.bss.items():
                 rec[f'P_{i}'] = bs.transmit_power
             self.net.add_stat('sinr', rec)
-        return SINR
+        return self._SINR
     
     @timeit
     def compute_data_rate(self):
@@ -164,9 +164,9 @@ class UserEquipment:
         Returns:
         The data_rate of the UE in bits/s.
         """
-        self._SINR = self.compute_sinr()
-        if self._SINR == 0: return 0
-        return self.bs.bandwidth * np.log2(1 + self._SINR)
+        sinr = self.compute_sinr()
+        if sinr == 0: return 0
+        return self.bs.bandwidth * np.log2(1 + sinr)
 
     def update_data_rate(self):
         self._thruput = None
