@@ -99,17 +99,17 @@ class BaseStation:
         self._arrival_rate = 0
         self._energy_consumed = 0
         # self._energy_consumed = defaultdict(float)
-        self._sleep_time = np.zeros(self.num_sleep_modes)
         self._buffer = np.zeros(self.buffer_shape, dtype=np.float32)
         # self._buffer = np.full(self.buffer_shape, np.nan, dtype=np.float32)
         self._buffer_has_nan = True
         self._buf_idx = 0
         if EVAL:
             self._stats = defaultdict(float)
-            self._stats.update(
-                sleep_switches=np.zeros(self.num_sleep_modes))
             self._total_stats = defaultdict(float)
-            self._total_stats.update(id=self.id)
+            self._total_stats.update(
+                id=self.id,
+                sleep_time=np.zeros(self.num_sleep_modes),
+                sleep_switches=np.zeros(self.num_sleep_modes))
             self.net.add_stat('bs_stats', self._total_stats)
             self.update_stats()
 
@@ -136,7 +136,6 @@ class BaseStation:
             
             self._total_stats['steps'] += 1
             self._total_stats['time'] += self._timer
-            self._total_stats['sleep_time'] += self._sleep_time
             for k, v in s.items():
                 self._total_stats[k] += v
 
@@ -234,7 +233,7 @@ class BaseStation:
             num_ant_new <= self.num_ue):
                 return  # invalid action
         if EVAL:
-            self._stats['ant_switches'] += abs(num_switch)
+            self._total_stats['ant_switches'] += abs(num_switch)
         self.num_ant = num_ant_new
         for ue in self.net.ues.values():
             ue.update_data_rate()
@@ -257,7 +256,7 @@ class BaseStation:
             if DEBUG:
                 info('BS {}: goes to sleep {} -> {}'.format(self.id, self.sleep, mode))
             if EVAL:
-                self._stats['sleep_switches'][mode] += 1
+                self._total_stats['sleep_switches'][mode] += 1
             self._prev_sleep = self.sleep
             self.sleep = mode
         elif mode < self.sleep:
@@ -397,7 +396,7 @@ class BaseStation:
     @timeit
     def update_sleep(self, dt):
         if EVAL:
-            self._sleep_time[self.sleep] += dt
+            self._total_stats['sleep_time'][self.sleep] += dt
         if self._next_sleep == self.sleep:
             if self.queue and self.sleep in (1, 2):
                 if DEBUG:
@@ -414,7 +413,7 @@ class BaseStation:
                 info('BS {}: switched sleep mode {} -> {}'
                      .format(self.id, self.sleep, self._next_sleep))
             if EVAL:
-                self._stats['sleep_switches'][self._next_sleep] += 1
+                self._total_stats['sleep_switches'][self._next_sleep] += 1
             self._prev_sleep = self.sleep
             self.sleep = self._next_sleep
             self._wake_timer = 0.

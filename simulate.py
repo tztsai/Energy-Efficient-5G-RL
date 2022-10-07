@@ -42,7 +42,7 @@ except:
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
-env_args.stats_dir = f'analysis/sim-{args.agent}'
+env_args.stats_dir = f'analysis/sim_stats/{args.agent}'
 
 # %%
 set_log_level(args.log_level)

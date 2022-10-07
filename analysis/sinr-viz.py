@@ -114,7 +114,7 @@ def update_plot(opt, bs_id, n_ants, on_bss, time):
     fig = go.Figure(fig)
     ants = ''.join(map(str, [bs.num_ant//8 for bs in net.bss.values()]))
     modes = ''.join(map(str, [bs.conn_mode for bs in net.bss.values()]))
-    figname = f'{ants}_{modes}_{opt}.png'
+    figname = f'sinr_plots/{ants}_{modes}_{opt}.png'
     fig.write_image(figname, scale=2)
     return fig, net.get_bs(bs_id).num_ant
 

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 
 scenario = 'B'
-files = glob.glob(f'sim-*/{scenario}/trajectory.csv')
+files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 frames = [pd.read_csv(f, index_col=0) for f in files]
 agents = [f.split('-')[1].split('\\')[0] for f in files]
 df = pd.concat(frames, keys=agents, names=['policy'])
