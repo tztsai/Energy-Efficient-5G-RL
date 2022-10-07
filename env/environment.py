@@ -215,6 +215,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             self._episode_count += 1
             if TRAIN:  # only for training logging
                 infos['step_rewards'] = self._reward_stats
+                infos['sm3_ratio'] = self.net.avg_sleep_ratios()[3]
+
             notice('Episode %d finished at %s', self._episode_count, self.net.world_time_repr)
         
         return obs, cent_obs, rewards, done, infos, None
