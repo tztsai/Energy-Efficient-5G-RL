@@ -19,7 +19,7 @@
 /results/*.txt
 /results/**/*.png
 /results/**/*.jpg
-/analysis/
+/analysis/*
 !/analysis/*.py
 /wandb/
 /config.py

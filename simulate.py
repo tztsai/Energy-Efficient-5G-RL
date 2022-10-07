@@ -131,13 +131,13 @@ def simulate():
     info.index = ['reward_' + str(i) for i in info.index]
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     info['agent'] = args.agent
-    info['scenario'] = env.net.traffic_scenario
     info['total_steps'] = args.num_env_steps
     info['accelerate'] = env_args.accelerate
+    info['scenario'] = env.net.traffic_scenario
     info['traffic_density'] = env.net.traffic_model.density_mean
     info['w_pc'] = env.w_pc
-    info['w_drop'] = env.w_drop
-    info['w_delay'] = env.w_delay
+    info['w_qos'] = env.w_qos
+    info['w_xqos'] = env.w_xqos
     if args.agent == 'mappo' and getattr(args, 'count_flops', False):
         info['n_flops'] = agent._flops
     print(info)

@@ -27,9 +27,11 @@ def get_default_env_config(args, env_args):
         avg_traffic_density=tmp_env.net.traffic_model.density_mean,
         traffic_density_std=tmp_env.net.traffic_model.density_std,
         accelerate=tmp_env.net.accelerate,
-        w_drop=tmp_env.w_drop,
-        w_delay=tmp_env.w_delay,
-        w_pc=tmp_env.w_pc,
+        # w_pc=tmp_env.w_pc,
+        w_qos=tmp_env.w_qos,
+        w_xqos=tmp_env.w_xqos,
+        # w_drop=tmp_env.w_drop,
+        # w_delay=tmp_env.w_delay,
     )
 
 def make_env(args, env_args, for_eval=False):
