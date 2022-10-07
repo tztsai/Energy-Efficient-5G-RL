@@ -3,23 +3,23 @@ seed_max=1
 log_level="NOTICE"
 
 scenario="RANDOM"
-accelerate=600  # 1 step = 0.02 * 600 = 12 s
+accelerate=1200  # 1 step = 0.02 * 1200 = 24 s
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=$((50400 * 50))  # steps_per_episode * episodes
+num_env_steps=$((25200 * 100))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"
-gamma=0.999
+gamma=0.99
 gain=0.01
 lr=5e-4
 critic_lr=5e-4
-value_loss_coef=0.5
+value_loss_coef=1
 ppo_epoch=10
 num_mini_batch=1
 
 w_pc=0.001
-w_qos=2.5
+w_qos=5
 w_xqos=0.004
 # w_drop=0.5
 # w_delay=0.1
