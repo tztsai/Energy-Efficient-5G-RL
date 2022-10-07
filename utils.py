@@ -5,12 +5,14 @@ import re
 import sys
 import time
 import enum
+import queue
 import random
 import atexit
 import logging
 import argparse
 import calendar
 import threading
+import itertools
 import numpy as np
 import pandas as pd
 from typing import *
@@ -49,6 +51,7 @@ def set_log_level(level):
         level=level)
 
 def set_log_file(log_file):
+    open(log_file, 'w').close()
     if log_file is not None:
         logger.addHandler(logging.FileHandler(log_file))
         logger.propagate = False
@@ -57,7 +60,7 @@ def dB2lin(dB):
     return 10 ** (dB / 10)
 
 def lin2dB(lin):
-    return 10 * np.log10(np.maximum(lin, 1e-30))
+    return 10 * np.log10(lin)
 
 def kwds_str(**kwds):
     return ', '.join(f'{k}={v}' for k, v in kwds.items())

@@ -292,10 +292,11 @@ def get_config():
     parser.add_argument("--ifi", type=float, default=0.1, help="the play interval of each rendered image in saved video.")
 
     # pretrained parameters
-    parser.add_argument("--model_dir", type=str, default=None, help="by default None. set the path to pretrained model.")
+    parser.add_argument("--model_dir", type=str, default=None, 
+                        help="by default None. set the path to pretrained model.")
+    parser.add_argument("-V", "--model_version", type=str, default='',
+                        help="by default None. set the version of pretrained model.")
 
-    if EVAL:
-        parser.set_defaults(group_name="RANDOM")
     return parser
 
 
@@ -305,7 +306,7 @@ def get_env_config():
                         help="the traffic scenario of the simulation")
     parser.add_argument("-T", "--episode_len", type=int,
                         help="number of steps per episode")
-    parser.add_argument("--start_time", type=str,
+    parser.add_argument("-T0", "--start_time", type=str,
                         help="start time of the simulation")
     parser.add_argument("-a", "--accelerate", type=int,
                         help="acceleration rate of the simulation")
@@ -313,12 +314,11 @@ def get_env_config():
                         help="width of the square area in meters")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
-    parser.add_argument("-s", "--save_steps_info", action='store_true',
+    parser.add_argument("-s", "--save_trajectory", action='store_false',
                         help="save detailed steps info of the simulation")
-    parser.add_argument("--steps_info_path",
+    parser.add_argument("--stats_dir",
                         help="path to save steps info of the simulation")
-    parser.add_argument("--w_drop", type=float,
-                        help="weight of dropped rate in reward")
+    parser.add_argument("--include_bs_info", action='store_true')
     parser.add_argument("--w_pc", type=float,
                         help="weight of power consumption in reward")
     parser.add_argument("--w_delay", type=float,

@@ -10,6 +10,7 @@
 /.vscode/
 /.idea/
 /.misc/
+/.backup/
 /data/cells-traffic/
 /data/RAN_PM_data/
 /results/**/*/run*/
@@ -18,6 +19,7 @@
 /results/*.txt
 /results/**/*.png
 /results/**/*.jpg
-/analysis/*.csv
+/analysis/
+!/analysis/*.py
 /wandb/
 /config.py

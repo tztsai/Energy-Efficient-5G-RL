@@ -80,7 +80,7 @@ class TrafficModel:
         info_df = df.describe().T[['mean', 'std', 'min', 'max']].sort_index()
         info_df['peak time'] = df.idxmax(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
         info_df['vale time'] = df.idxmin(axis=0).map(lambda x: f'{x[0]}, {x[1]}')
-        self.info_df = info_df.set_index(pd.MultiIndex.from_tuples(info_df.index))
+        self.info_df = info_df.set_index(pd.MultiIndex.from_tuples(info_df.index)).reindex([*self.app_names, 'Total'], level=1)#.reorder_levels([1, 0]).loc[[*self.app_names, 'Total']]
         self.density_mean, self.density_std = self.info_df.loc[
             ('Mb/s/km^2', 'Total'), ['mean', 'std']]
 
@@ -101,7 +101,7 @@ class TrafficModel:
         Returns:
         A list of length n_apps, each element is either (traffic-demand, delay-budget) or False.
         """
-        return [(self.file_size, delay) if np.random.rand() < p else (None, None)
+        return [(self.file_size, delay) if self._rng.random() < p else (None, None)
                 for p, delay in zip(self.get_arrival_rates(time, dt), self.delay_budgets)]
 
     def _get_time_loc(self, time):
@@ -146,7 +146,7 @@ if __name__ == '__main__':
             df = rates.unstack().reindex(days_idx)
             fig = px.imshow(df, title=f"Scenario {traffic_type.name} - {cat}", #color_continuous_scale='turbo',
                             labels=dict(x='time of day', y='day of week', color='Mb/s/km²'))
-            fig.show()
+            # fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)
             fig.update_layout(height=360, width=800)
             fig.write_image(f"{traffic_type.name}_{cat}.png", scale=2)

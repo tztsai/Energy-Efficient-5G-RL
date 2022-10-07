@@ -80,7 +80,7 @@ class Runner(object):
                              device = self.device)
 
         if self.model_dir is not None:
-            self.restore(suffix=self.all_args.model_suffix)
+            self.restore(version=self.all_args.model_suffix)
 
         # algorithm
         self.trainer = Trainer(self.all_args, self.policy, device = self.device)
@@ -129,13 +129,13 @@ class Runner(object):
         self.buffer.after_update()
         return train_infos
 
-    def save(self, suffix=None):
+    def save(self, version=None):
         """Save policy's actor and critic networks."""
-        self.policy.save(self.save_dir, suffix=suffix or '')
+        self.policy.save(self.save_dir, version=version or '')
 
-    def restore(self, suffix=None):
+    def restore(self, version=None):
         """Restore policy's networks from a saved model."""
-        self.policy.restore(self.model_dir, suffix=suffix or '')
+        self.policy.restore(self.model_dir, version=version or '')
  
     def log_train(self, train_infos, total_num_steps):
         """

@@ -2,7 +2,7 @@
 from utils import *
 from . import config
 from .env_utils import *
-from .user_equipment import UserEquipment
+from .user_equipment import UserEquipment, TestProbe
 from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel, TrafficType
@@ -18,6 +18,7 @@ class MultiCellNetwork:
     inter_bs_dist = config.interBSDist
     default_area = config.areaSize
     default_bs_poses = config.bsPositions
+    default_scenario = 'RANDOM'
 
     global_obs_space = make_box_env([[0, np.inf]] * (1 + 2 * numApps + 2))
     bs_obs_space = BaseStation.total_obs_space
@@ -30,20 +31,29 @@ class MultiCellNetwork:
     net_obs_dim = box_env_ndims(net_obs_space)
 
     buffer_ws = 16  # window size for computing recent arrival rates
-    stats_save_path = 'analysis/'
 
-    def __init__(self, area, bs_poses, traffic_scenario,
-                 start_time=0, accelerate=1, dpi_sample_rate=None):
+    def __init__(self,
+                 traffic_scenario=default_scenario,
+                 area=default_area,
+                 bs_poses=default_bs_poses, 
+                 start_time=0,
+                 accelerate=1,
+                 dpi_sample_rate=None):
         self.area = area
-        self.traffic_model = None
         self.traffic_scenario = traffic_scenario
-        self.start_time = self._parse_start_time(start_time)
         self.accelerate = accelerate
-        self.bss = {}
+        self.bss = OrderedDict()
         self.ues = {}
         self._bs_poses = None
+        self._csi_cache = {}
         self._make_traffic_model = partial(
             TrafficModel.from_scenario, area=area, sample_rate=dpi_sample_rate)
+
+        if traffic_scenario in TrafficType._member_names_:
+            self.traffic_model = self._make_traffic_model(traffic_scenario)
+        else:
+            self.traffic_model = None
+        self.start_time = self._parse_start_time(start_time)
         
         self.reset()
 
@@ -52,9 +62,6 @@ class MultiCellNetwork:
 
     def reset(self):
         if EVAL:
-            vs = "energy arrived num done num_dropped dropped time service_time".split()
-            self._eval_stats = pd.DataFrame(
-                np.zeros((numApps, len(vs))), columns=vs)
             self._total_stats = defaultdict(float)
             self._other_stats = defaultdict(list)
             self._stats_updated = True
@@ -79,7 +86,6 @@ class MultiCellNetwork:
         self._arrival_buf[self._buf_idx] = 0
         self._stats[:] = 0
         if EVAL:
-            self._eval_stats[:] = 0
             self._stats_updated = False
 
     # @anim_rolling
@@ -87,10 +93,8 @@ class MultiCellNetwork:
         for bs in self.bss.values():
             bs.update_stats()
         if EVAL:
-            self._eval_stats['arrived'] += self._arrival_buf[self._buf_idx]
-            self._eval_stats['energy'] += self._energy_consumed
-            for k, v in self._eval_stats.items():
-                self._total_stats[k] += v.values
+            self._total_stats['arrived'] += self._arrival_buf[self._buf_idx]
+            self._total_stats['energy'] += self._energy_consumed
             self._stats_updated = True
         self._buf_idx = (self._buf_idx + 1) % self.buffer_ws
 
@@ -138,11 +142,6 @@ class MultiCellNetwork:
     def time_slot(self):
         return self.traffic_model.get_time_slot(self.world_time)
     
-    # @property
-    # def ue_counts(self):
-    #     return np.bincount(np.array([ue.app_type for ue in self.ues.values()]),
-    #                        minlength=self.traffic_model.num_apps)
-
     @property
     def num_bs(self):
         return len(self.bss)
@@ -162,13 +161,13 @@ class MultiCellNetwork:
         """ Power consumption of all BSs in the network in kW. """
         return self._timer and self._energy_consumed / self._timer
     
-    # @property
-    # def arrival_rates(self):
-    #     if self._time:
-    #         if DEBUG and EVAL:
-    #             assert self._stats_updated  # should only be called when _timer = step_time
-    #         return self._arrival_buf.mean(axis=0) / self._timer
-    #     return np.zeros(numApps)  # only before the first step
+    @property
+    def arrival_rates(self):
+        if self._time:
+            if DEBUG and EVAL:
+                assert self._stats_updated  # should only be called when _timer = step_time
+            return self._arrival_buf[-3:].mean(axis=0) / self._timer
+        return np.zeros(numApps)  # only before the first step
 
     # @property
     # def drop_ratios(self):
@@ -203,45 +202,24 @@ class MultiCellNetwork:
         self.add_base_station(bs)
         return bs
 
-    def add_user(self, ue: UserEquipment):
+    def add_user(self, ue: UserEquipment=None, **kwargs):
+        if ue is None:
+            ue = UserEquipment(**kwargs)
         if DEBUG:
             assert ue.id not in self.ues, "UE %s already in the network" % ue.id
             # debug(f'{ue.id} added to the network')
         ue.net = self
         self.ues[ue.id] = ue
         self.measure_distances_and_gains(ue)
-        self._arrival_buf[self._buf_idx, ue.app_type] += ue.demand
+        self._arrival_buf[self._buf_idx, ue.service] += ue.demand
 
     def remove_user(self, ue_id):
         ue = self.ues.pop(ue_id)
         dropped = max(0., ue.demand)
-        self._stats[ue.app_type] += [1, dropped, ue.delay]
+        self._stats[ue.service] += [1, dropped, ue.delay]
         if DEBUG:
             if dropped:
                 info('UE %s dropped' % ue_id)
-        if EVAL:
-            s, a = self._eval_stats, ue.app_type
-            if dropped:
-                s.at[a, 'dropped'] += dropped
-                s.at[a, 'num_dropped'] += 1
-            s.at[a, 'num'] += 1
-            s.at[a, 'done'] += ue.file_size - dropped
-            s.at[a, 'time'] += ue.delay
-            s.at[a, 'service_time'] += ue.t_served
-        #     record = [1, drop_ratio, ue.delay, ue.t_served]
-        # else:
-        #     record = [1, drop_ratio, ue.delay]
-        # self._served_buf.iloc[ue.app_type] += record
-        # self._buffer2[self._buf_idx, ue.app_type] += record
-        # if ue.dropped:
-        #     self._dropped[ue.app_type] += ue.demand / 1e6
-        # self._delays[ue.app_type] += [ue.delay, 1]
-        # if EVAL:
-        #     if ue.done:
-        #         self._total_done[ue.app_type] += [1, ue.served/1e6, ue.served_time, ue.delay]
-        #     else:
-        #         if ue.demand <= 0: breakpoint()
-        #         self._total_dropped[ue.app_type] += [1, ue.demand/1e6, ue.served_time, ue.delay]
 
     @timeit
     def scan_connections(self):
@@ -257,12 +235,19 @@ class MultiCellNetwork:
     @timeit
     def generate_new_ues(self, dt, **kwargs):
         new_traffic = self.traffic_model.emit_traffic(self.world_time, dt)
-        for app, (demand, delay) in enumerate(new_traffic):
+        for service, (demand, delay) in enumerate(new_traffic):
             if not demand: continue
             if 'pos' not in kwargs:
                 kwargs['pos'] = np.append(np.random.rand(2) * self.area, UserEquipment.height)
-            ue = UserEquipment(app_type=app, demand=demand, delay_budget=delay, **kwargs)
-            self.add_user(ue)
+            self.add_user(service=service, demand=demand, delay_budget=delay, **kwargs)
+
+    def test_network_channel(self):
+        state = tuple((bs.num_ant, bs.num_ue, bs.responding, bs.sleep > 0)
+                      for bs in self.bss.values())
+        cache = self._csi_cache
+        if state not in cache:
+            cache[state] = TestProbe(self).test_sinr()
+        return cache[state]
 
     def consume_energy(self, energy):
         self._energy_consumed += energy
@@ -293,9 +278,9 @@ class MultiCellNetwork:
             bs_obs                      # bs observations
         ], dtype=np.float32)
 
-    @cache_obs
     def info_dict(self, include_bs=False):
         # assert self._stats_updated
+        ue_counts = np.bincount([ue.status for ue in self.ues.values()], minlength=3)
         
         infos = dict(
             time=self.world_time_repr,
@@ -304,8 +289,10 @@ class MultiCellNetwork:
             delays=self.service_delays * 1e3,  # ms
             actual_rate=sum(ue.data_rate for ue in self.ues.values()) / 1e6,  # Mb/s
             required_rate=sum(ue.required_rate for ue in self.ues.values()) / 1e6,
-            arrival_rates=div0(self._eval_stats.arrived.values, self._timer) / 1e6,
-            arrival_rate=div0(self._eval_stats.arrived.values.sum(), self._timer) / 1e6
+            arrival_rate=self.arrival_rates.sum() / 1e6,
+            idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
+            interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
+            avg_antennas=sum(bs.num_ant for bs in self.bss.values()) / self.num_bs,
         )
         
         if include_bs:
@@ -314,35 +301,20 @@ class MultiCellNetwork:
                     infos[f'bs_{i}_{k}'] = v
 
         return infos
-    
+
+    def avg_sleep_ratios(self):
+        s = np.array([bs._sleep_time for bs in self.bss.values()]).mean(axis=0)
+        return s / s.sum()
+
     def calc_total_stats(self):
         for bs in self.bss.values():
             bs.calc_total_stats()
+        self._total_stats.update(
+            time=self._time,
+            avg_pc=div0(self._total_stats['energy'], self._time),  # W
+            avg_arrival_rate=div0(self._total_stats['arrived'], self._time)
+        )
 
-        _vars = set(list(vars()) + ['_vars'])
-        
-        total_time = self._time
-        total_counts = self._total_stats['num']
-        total_dropped_counts = self._total_stats['num_dropped']
-        total_arrived = self._total_stats['arrived'] / 1e6  # Mb
-        total_done = self._total_stats['done'] / 1e6
-        total_dropped = self._total_stats['dropped'] / 1e6
-        total_quitted = total_done + total_dropped
-        total_energy = self._total_stats['energy'][0]  # J
-        avg_pc = div0(total_energy, total_time)  # W
-        avg_drop_sizes = div0(total_dropped, total_dropped_counts)
-        avg_drop_ratios = div0(total_dropped, total_quitted)
-        avg_delays = div0(self._total_stats['time'] * 1e3, total_counts)
-        avg_arrival_rates = div0(total_arrived, total_time)
-        avg_demand_sizes = div0(total_quitted, total_counts)
-        avg_sum_rates = div0(total_done, total_time)
-        avg_ue_rates = div0(total_done, self._total_stats['time'])
-        avg_energy_efficiency = div0(total_done, total_energy)  # Mb/J
-        avg_service_time_ratios = div0(self._total_stats['service_time'],
-                                       self._total_stats['time'])
-        
-        self._total_stats.update(it for it in vars().items() if it[0] not in _vars)
-    
     @classmethod
     def annotate_obs(cls, obs):
         keys = ['power_consumption',
@@ -358,12 +330,12 @@ class MultiCellNetwork:
     def add_stat(self, key, val):
         self._other_stats[key].append(val)
 
-    def save_stats(self):
+    def save_stats(self, save_dir):
         self.calc_total_stats()
         pd.Series(self._total_stats).to_csv(
-            f'{self.stats_save_path}/network_stats.csv', header=False)
+            f'{save_dir}/net_stats.csv', header=False)
         for k, v in self._other_stats.items():
-            pd.DataFrame(v).to_csv(f'{self.stats_save_path}/{k}.csv', index=False)
+            pd.DataFrame(v).to_csv(f'{save_dir}/{k}.csv', index=False)
 
     def __repr__(self) -> str:
         return '{}({})'.format(

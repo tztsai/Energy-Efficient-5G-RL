@@ -1,11 +1,10 @@
-import numpy as np
+from utils import *
+from network import config
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, ctx
 from dash.exceptions import PreventUpdate
 from dash.dependencies import ClientsideFunction
-from utils import deep_update
-from network import config
 
 
 sleep_symbols = np.array(['hexagram', 'hexagram-open', 'hexagon-open', 'x-open'])
@@ -15,8 +14,8 @@ oppo_color_sequence = np.array(['#%02X%02X%02X' % tuple(
     255 - int(s[i:i+2], 16) for i in range(1, 7, 2)) for s in color_sequence])
 
 delay_penalty_color = 'slateblue'
-drop_penalty_color = 'plum'
-pc_penalty_color = 'coral'
+drop_penalty_color = 'coral'
+pc_penalty_color = 'plum'
 
 
 def render(env: 'MultiCellNetEnv', mode='frame'):
@@ -24,8 +23,8 @@ def render(env: 'MultiCellNetEnv', mode='frame'):
     Render modes:
     - show: create, store, and show Plotly figure
     - dash: update Graph in Dash app
-    - any other True value: create and store a dict to be used to render as a Plotly frame
-    - any False value: do nothing
+    - frame: create and store a dict to be used to render as a Plotly frame
+    - any false value: do nothing
     """
     if not mode: return
     
@@ -33,205 +32,26 @@ def render(env: 'MultiCellNetEnv', mode='frame'):
     info = env.info_dict()
     
     if env._figure is None:
-        env._figure = make_figure(net)
+        env._figure = make_figure(net, add_anim_btn=(mode == 'frame'))
     fig = env._figure
-
-    # plot base stations
-    x, y, m, s, c, r, i = np.array(
-        [[bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep, bs.conn_mode,
-          bs.sum_rate, i] for i, bs in net.bss.items()]).T
-    hover_text_template = """
-    id: {id}<br>
-    num antennas: {n_ants}<br>
-    sleep mode: {sleep_mode}<br>
-    wake up: {wakeup_time}<br>
-    conn mode: {conn_mode}<br>
-    power consumption: {pc:.2f}<br>
-    ues in service: {active_ues}<br>
-    ues in queue: {queued_ues}<br>
-    ues in coverage: {covered_ues}<br>
-    sum rate: {sum_rate:.2f}<br>
-    required rate: {req_rate:.2f}<br>
-    """
-    hover_texts = [hover_text_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
-    bs_plt = dict(
-        type='scatter',
-        x=x, y=y, mode='markers', ids=i,
-        marker=dict(
-            size=m/10+14,
-            line_width=1,
-            line_color=color_sequence,
-            symbol=sleep_symbols[s.astype(int)],
-            color=color_sequence,
-            opacity=(s == 0) * 0.5 + 0.5
-        ),
-        hovertext=hover_texts,
-        hoverinfo='text',
-        showlegend=False,
-    )
     
-    # plot cell coverages
-    # cl_plt = dict(
-    #     type='scatter',
-    #     x=x, y=y, mode='markers', ids=i,
-    #     marker=dict(
-    #         size=config.cellRadius,
-    #         line_width=3,
-    #         line_color=['red' if c > 0 else color for c, color in zip(c, color_sequence)],
-    #         color=['grey' if c < 0 else color for c, color in zip(c, color_sequence)],
-    #         symbol='circle',
-    #         opacity=0.015 * np.clip(r/1e8, 0, 30) + (c < 0) * 0.06,
-    #     ),
-    #     hoverinfo='skip',
-    #     showlegend=False)
-    cell_shapes = [dict(
-        type="circle",
-        xref="x", yref="y",
-        x0=x-r, y0=y-r, x1=x+r, y1=y+r,
-        fillcolor='grey' if c < 0 else color,
-        line_color='red' if c > 0 else color,
-        line_width=3,
-        opacity=0.015 * np.clip(v/1e8, 0, 30) + (c < 0) * 0.06,
-        layer="below")
-        for (i, (c, v, color)) in enumerate(zip(c, r, color_sequence)) 
-        for bs in [net.get_bs(i)]
-        for x, y, _ in [bs.pos]
-        for r in [bs.cell_radius]
-    ]
+    last_fr = fig['frames'][-1] if fig['frames'] else []
+    frame = dict(data=[], layout={}, name=info['time'])
+    if last_fr:
+        frame['layout'] = last_fr['layout'].copy()
     
-    # plot users
-    hover_text_template = """
-    status: {status}<br>
-    base station: {bs_id}<br>
-    data rate: {rate:.2f}<br>
-    demand: {demand:.2f}<br>
-    deadline: {ddl:.0f}<br>
-    """
-    try:
-        x, y, b, s, r, u, i = \
-            np.array([[ue.pos[0], ue.pos[1], ue.bs.id if ue.bs else net.num_bs,
-                       ue.demand, ue.data_rate, ue.urgent, i] 
-                      for i, ue in net.ues.items()]).T
-        hover_texts = [hover_text_template.format(**ue.info_dict()) for ue in net.ues.values()]
-        b = np.nan_to_num(b, nan=net.num_bs).astype(int)
-        symbols = ['circle' + ('-x' if u else '') + ('' if r else '-open') for r, u in zip(r, u)]
-        ue_plt = dict(
-            type='scatter',
-            x=x, y=y, mode='markers', ids=i,
-            marker=dict(
-                size=s/3e5+3,
-                line_width=0,
-                # line_color='grey',
-                symbol=symbols,
-                color=color_sequence[b],
-                # opacity=np.clip((r+1)/2, 0, 1)
-            ),
-            hovertext=hover_texts,
-            hoverinfo='text',
-            showlegend=False)
-    except ValueError:
-        ue_plt = dict(type='scatter')
+    render_csi(net, frame, last_fr, kpis=['SINR'])
+    render_bss(net, frame)
+    render_ues(net, frame)
+    render_data_rates(net, info, frame, last_fr)
+    render_penalties(net, info, frame, last_fr)
 
-    fr = fig['frames'][-1] if fig['frames'] else []
-    
-    if net._stats_updated:
-        # plot data rates
-        ws = 60  # window size
-        t = (fr and fr['data'][2]['x']) + [net.world_time/3600] # [net.world_time_repr.split(', ')[1]]
-        t = t[-ws:]
-        rate_plts = []
-        y_max = 0
-        for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
-            new_y = info[key]
-            if fr:
-                y = fr['data'][i+2]['y'] + [new_y]
-            else:
-                y = [new_y]
-            y = y[-ws:]
-            y_max = max(y_max, max(y) * 1.05)
-            rate_plts.append(dict(
-                type='scatter',
-                mode='lines',
-                x=t, y=y,
-                xaxis='x2',
-                yaxis='y2',
-                name=key.replace('_', ' ')+' (Mb/s)',
-            ))
-        y2_range = [0, y_max]
-
-        # plot penalties
-        dl = info['weighted_delay']
-        dr = info['weighted_drop']
-        pc = info['weighted_pc']
-        
-        y31 = (fr and fr['data'][-3]['y']) + [dl + pc + dr]
-        y31 = y31[-ws:]
-        y3_range = [0, max(y31) * 1.05]
-        pc_plt = dict(
-            type='scatter',
-            mode='lines',
-            x=t, y=y31,
-            xaxis='x2',
-            yaxis='y3',
-            name='drop rate',
-            fill='tozeroy',
-            line_color=pc_penalty_color,
-        )
-        
-        y32 = (fr and fr['data'][-2]['y']) + [dl + pc]
-        y32 = y32[-ws:]
-        dr_plt = dict(
-            type='scatter',
-            mode='lines',
-            x=t, y=y32,
-            xaxis='x2',
-            yaxis='y3',
-            name='power (kW)',
-            fill='tozeroy',
-            line_color=drop_penalty_color,
-        )
-
-        y33 = (fr and fr['data'][-1]['y']) + [dl]
-        y33 = y33[-ws:]
-        dl_plt = dict(
-            type='scatter',
-            mode='lines',
-            x=t, y=y33,
-            xaxis='x2',
-            yaxis='y3',
-            name='delay',
-            fill='tozeroy',
-            line_color=delay_penalty_color,
-        )
-        
-        data = [
-            bs_plt, ue_plt, 
-            *rate_plts, pc_plt, dr_plt, dl_plt
-        ]
-        layout = {
-            # 'xaxis2': dict( range=[t[0], t[-1]] ),
-            'yaxis2': dict( range=y2_range ),
-            'yaxis3': dict( range=y3_range ),
-            'shapes': cell_shapes
-        }
-    else:
-        data = [bs_plt, ue_plt]
-        layout = {}
-        if fr is not None:
-            data.extend(fr['data'][2:])
-            layout.update(fr['layout'])
-        layout['shapes'] = cell_shapes
-
-    time = info['time']
-    frame = dict(data=data, name=time, layout=layout)
-    
-    fig['data'] = data
     fig['frames'].append(frame)
-    fig['customdata'].append(info)
+    # fig['customdata'].append(info)
     
     if 'sliders' in fig['layout']:  # append slider step
         fig['layout']['sliders'][0]['steps'].append(dict(
-            args=[[time],
+            args=[[info['time']],
                   {"frame": {"duration": 300, "redraw": False},
                    "mode": "immediate",
                    "transition": {"duration": 300}}],
@@ -263,8 +83,212 @@ def animate(env: 'MultiCellNetwork'):
     #                 setattr(fig_tr, attr, val)
     #     yield
 
+bs_info_template = """<br>
+id: {id}<br>
+pc: {pc:.2f} W<br>
+antennas: {n_ants}<br>
+sleep mode: {sleep_mode}<br>
+wakeup time: {wakeup_time} ms<br>
+accept conn: {responding}<br>
+ues in service: {serving_ues}<br>
+ues in queue: {queued_ues}<br>
+ues in coverage: {covered_ues}<br>
+sum rate: {sum_rate:.1f} Mb/s<br>
+sum rate req: {req_sum_rate:.1f} Mb/s<br>
+""".strip()
+def render_bss(net, frame):
+    i, x, y, m, s, r = np.array([[
+        bs.id, bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep,
+        bs.responding] for bs in net.bss.values()]).T
+    hover_texts = [bs_info_template.format(id=i, **bs.info_dict()) for i, bs in net.bss.items()]
+    frame['data'].append(dict(
+        type='scatter',
+        x=x, y=y, mode='markers+text', ids=i,
+        marker=dict(
+            size=m/8+12,
+            line_width=1,
+            line_color=color_sequence,
+            symbol=sleep_symbols[s.astype(int)],
+            color=color_sequence,
+            opacity=(r > 0) * 0.6 + 0.4
+        ),
+        text=list(range(net.num_bs)),
+        # textposition="middle center",
+        # textfont=dict(color='white'),
+        hovertext=hover_texts,
+        hoverlabel=dict(font_size=10),
+        hoverinfo='text',
+        showlegend=False,
+    ))
 
-def make_figure(net, mode='plotly'):
+
+ue_info_template = """<br>
+status: {status}<br>
+base station: {bs_id}<br>
+data rate: {rate:.2f} Mb/s<br>
+demand: {demand:.2f} kb<br>
+time limit: {ddl:.0f} ms<br>
+""".strip()
+def render_ues(net, frame):
+    if net.num_ue == 0:
+        return frame['data'].append({})
+    i, x, y, b, s, r, u = np.array(
+        [[ue.id, ue.pos[0], ue.pos[1], ue.bs.id if ue.bs else -1, ue.demand,
+          ue.data_rate, ue.urgent] for ue in net.ues.values()]).T
+    hover_texts = [ue_info_template.format(**ue.info_dict()) for ue in net.ues.values()]
+    symbols = ['circle' + ('-x' if u else '') + ('' if r else '-open') for r, u in zip(r, u)]
+    frame['data'].append(dict(
+        type='scatter',
+        x=x, y=y, mode='markers', ids=i,
+        marker=dict(
+            size=s/3e5+3,
+            line_width=0,
+            # line_color='grey',
+            symbol=symbols,
+            color=color_sequence[b.astype(int)],
+            # opacity=np.clip((r+1)/2, 0, 1)
+        ),
+        hovertext=hover_texts,
+        hoverlabel=dict(font_size=10),
+        hoverinfo='text',
+        showlegend=False))
+
+def render_cells(net, frame):
+    c, r = np.array([[bs.conn_mode, bs.sum_rate] for bs in net.bss.values()]).T
+    frame['layout'].setdefault('shapes', []).extend(dict(
+        type="circle",
+        xref="x", yref="y",
+        x0=x-r, y0=y-r, x1=x+r, y1=y+r,
+        fillcolor='grey' if c < 0 else color,
+        line_color='red' if c > 0 else color,
+        line_width=3,
+        opacity=0.015 * np.clip(v/1e8, 0, 30), # + (c < 0) * 0.06,
+        layer="below")
+        for i, (c, v, color) in enumerate(zip(c, r, color_sequence))
+        for bs in [net.get_bs(i)]
+        for x, y, _ in [bs.pos]
+        for r in [bs.cell_radius])
+
+def render_csi(net, frame, last_frame=None, kpis=['S', 'I', 'SINR']):
+    if net._stats_updated:
+        csi_df = net.test_network_channel()
+    layouts = dict()
+    for var in kpis:
+        if net._stats_updated:
+            df = csi_df[var].unstack().T
+            im = px.imshow(df, labels=dict(color='dB', x='', y=''),
+                           width=600, aspect='equal', origin='lower')
+            im.update_xaxes(showgrid=False)
+            im.update_yaxes(showgrid=False)
+            im.update_layout(margin=dict(l=30, r=55, t=65, b=40))
+            trace = im.data[0].to_plotly_json()
+            trace['name'] = var
+            trace['visible'] = var == 'SINR'
+            layouts[var] = im.layout
+            if var == 'SINR':
+                frame['layout']['coloraxis'] = im.layout['coloraxis']
+        elif last_frame:
+            trace = next(t for t in last_frame['data'] if t['name'] == var)
+        frame['data'].append(trace)
+    frame['_layouts'] = layouts
+
+    # frame['layout']['updatemenus'] = [{
+    #     'buttons': [{'args': [{'visible': [True] * len(frame['data'])}],
+    #                  'label': 'All',
+    #                  'method': 'restyle'},
+    #                 {'args': [{'visible': [False] * len(frame['data'])}],
+    #                  'label': 'None',
+    #                  'method': 'restyle'}] + [
+    #                     {'args': [{'visible': [False] * len(frame['data'])}],
+    #                      'label': key,
+    #                      'method': 'restyle'}
+    #                     for key in csi_ds.data_vars.keys()],
+    #     'direction': 'down',
+    #     'showactive': True,
+    #     'type': 'dropdown',
+    #     'x': 0.1,
+    #     'xanchor': 'left',
+    #     'y': 1.2,
+    #     'yanchor': 'top'
+    # }]
+        
+def render_data_rates(net, info, frame, last_frame=[]):
+    i0 = len(frame['data'])
+    
+    if not net._stats_updated:
+        frame['data'].extend(last_frame['data'][i0:i0+3])
+        return
+    
+    ws = 300  # window size
+    t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
+    y_max = 0
+    for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
+        new_y = info[key]
+        y = (last_frame and last_frame['data'][i0+i]['y'])[1-ws:] + [new_y]
+        y_max = max(y_max, max(y) * 1.05)
+        frame['data'].append(dict(
+            type='scatter',
+            mode='lines',
+            x=t, y=y,
+            xaxis='x2',
+            yaxis='y2',
+            name=key.replace('_', ' ')+' (Mb/s)',
+        ))
+    frame['layout']['yaxis2'] = dict(range=[0, y_max])
+
+def render_penalties(net, info, frame, last_frame=[], ws=60):
+    i0 = len(frame['data'])
+    
+    if not net._stats_updated:
+        frame['data'].extend(last_frame['data'][i0:i0+3])
+        return
+    
+    # dl = info['weighted_delay']
+    # dr = info['weighted_drop']
+    qos = info['qos_reward']
+    pc = info['pc_penalty']
+
+    t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
+    y31 = (last_frame and last_frame['data'][i0]['y'])[1-ws:] + [pc] # [dl + pc + dr]
+    y3_range = [0, max(y31) * 1.05]
+    frame['data'].append(dict(
+        type='scatter',
+        mode='lines',
+        x=t, y=y31,
+        xaxis='x2',
+        yaxis='y3',
+        name='power (kW)', #'drop rate',
+        fill='tozeroy',
+        line_color=pc_penalty_color
+    ))
+    frame['layout']['yaxis3'] = dict(range=y3_range)
+
+    y32 = (last_frame and last_frame['data'][i0+1]['y'])[1-ws:] + [pc - qos] #[dl + pc]
+    frame['data'].append(dict(
+        type='scatter',
+        mode='lines',
+        x=t, y=y32,
+        xaxis='x2',
+        yaxis='y3',
+        name='penalty',
+        fill='tozeroy',
+        line_color=drop_penalty_color
+    ))
+
+    # y33 = (last_frame and last_frame['data'][i0+2]['y'])[1-ws:] + [dl]
+    # frame['data'].append(dict(
+    #     type='scatter',
+    #     mode='lines',
+    #     x=t, y=y33,
+    #     xaxis='x2',
+    #     yaxis='y3',
+    #     name='delay',
+    #     fill='tozeroy',
+    #     line_color=delay_penalty_color,
+    # ))
+
+def make_figure(net, size=(1000, 600), 
+                add_anim_btn=False, add_subplots=True):
     xticks = np.linspace(0, net.area[0], 5)
     yticks = np.linspace(0, net.area[1], 5)[1:]
     fig = dict(
@@ -272,19 +296,22 @@ def make_figure(net, mode='plotly'):
         frames=[],
         customdata=[],
         layout=dict(
-            width=1000, height=600,
+            width=size[0], height=size[1],
             xaxis=dict(range=[0, net.area[0]], tickvals=xticks, 
-                       autorange=False, showgrid=False, domain=[0, 0.6]),
+                       autorange=False, showgrid=False),
             yaxis=dict(range=[0, net.area[1]], tickvals=yticks, 
                        autorange=False, showgrid=False),
-            xaxis2=dict(domain=[0.7, 1], #autorange=False,
-                        tickangle=45, nticks=4),
-            yaxis2=dict(domain=[0.55, 1], anchor='x2'),
-            yaxis3=dict(domain=[0, 0.45], anchor='x2'),
             margin=dict(l=25, r=25, b=25, t=25),
             transition={"duration": 300, "easing": "cubic-in-out"},
         ))
-    if mode == 'plotly':  # otherwise dash
+    if add_subplots:
+        fig['layout']['xaxis']['domain'] = [0, 0.6]
+        fig['layout'].update(
+            xaxis2=dict(domain=[0.7, 1],  # autorange=False,
+                        tickangle=45, nticks=4),
+            yaxis2=dict(domain=[0.55, 1], anchor='x2'),
+            yaxis3=dict(domain=[0, 0.45], anchor='x2'))
+    if add_anim_btn:  # otherwise dash
         fig['layout'].update(
             updatemenus=[{
                 "buttons": [
@@ -308,6 +335,16 @@ def make_figure(net, mode='plotly'):
                     #     "label": "Pause",
                     #     "method": "animate"
                     # }
+                    # dict(
+                    #     args=["type", "surface"],
+                    #     label="3D Surface",
+                    #     method="restyle"
+                    # ),
+                    # dict(
+                    #     args=["type", "heatmap"],
+                    #     label="Heatmap",
+                    #     method="restyle"
+                    # )
                 ],
                 "type": "buttons",
                 "direction": "left",
@@ -356,7 +393,6 @@ def create_dash_app(env, args):
             min=slider_ticks[0], max=slider_ticks[-1], step=1, value=0,
             marks={t: f'{t:.2f}' for t in slider_ticks},
         ),
-        # dcc.Store(id='storage', data=env._figure)
     ])
 
     # app.clientside_callback(

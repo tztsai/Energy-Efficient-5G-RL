@@ -39,7 +39,8 @@ class Actor(nn.Module):
 
         self.to(device)
 
-    def forward(self, obs, rnn_states, masks, available_actions=None, deterministic=False):
+    def forward(self, obs, rnn_states=None, masks=None,
+                available_actions=None, deterministic=False):
         """
         Compute actions from the given inputs.
         :param obs: (np.ndarray / torch.Tensor) observation inputs into network.
@@ -54,15 +55,17 @@ class Actor(nn.Module):
         :return rnn_states: (torch.Tensor) updated RNN hidden states.
         """
         obs = check(obs).to(**self.tpdv)
-        rnn_states = check(rnn_states).to(**self.tpdv)
-        masks = check(masks).to(**self.tpdv)
-        if available_actions is not None:
-            available_actions = check(available_actions).to(**self.tpdv)
+        if rnn_states is not None:
+            rnn_states = check(rnn_states).to(**self.tpdv)
+        if masks is not None:
+            masks = check(masks).to(**self.tpdv)
 
         actor_features = self.base(obs)
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
+        if available_actions is not None:
+            available_actions = check(available_actions).to(**self.tpdv)
 
         actions, action_log_probs = self.act(actor_features, available_actions, deterministic)
 
@@ -142,7 +145,7 @@ class Critic(nn.Module):
 
         self.to(device)
 
-    def forward(self, cent_obs, rnn_states, masks):
+    def forward(self, cent_obs, rnn_states=None, masks=None):
         """
         Compute actions from the given inputs.
         :param cent_obs: (np.ndarray / torch.Tensor) observation inputs into network.
@@ -153,8 +156,10 @@ class Critic(nn.Module):
         :return rnn_states: (torch.Tensor) updated RNN hidden states.
         """
         cent_obs = check(cent_obs).to(**self.tpdv)
-        rnn_states = check(rnn_states).to(**self.tpdv)
-        masks = check(masks).to(**self.tpdv)
+        if rnn_states is not None:
+            rnn_states = check(rnn_states).to(**self.tpdv)
+        if masks is not None:
+            masks = check(masks).to(**self.tpdv)
 
         critic_features = self.base(cent_obs)
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
