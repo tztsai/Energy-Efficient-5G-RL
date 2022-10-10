@@ -36,9 +36,9 @@ class BaseStation:
     buffer_num_chunks = config.bufferNumChunks
     urgent_time_lim = 0.02
     ue_stats_dim = 5
-    all_ue_stats_dim = 3 * ue_stats_dim
+    all_ue_stats_dim = 4 * ue_stats_dim
     hist_stats_dim = buffer_num_chunks * buffer_shape[1]
-    mutual_obs_dim = 2 + ue_stats_dim
+    mutual_obs_dim = 1 + ue_stats_dim
     
     public_obs_space = make_box_env(
         [[0, np.inf], [0, max_antennas], [0, 1]] +
@@ -535,17 +535,15 @@ class BaseStation:
             onehot_vec(self.num_sleep_modes, self._next_sleep),
             [self.wakeup_time],
             self.get_history_stats(),
-            self.get_all_ue_stats()
+            self.get_all_ue_stats().reshape(-1)
         ], dtype=np.float32)
 
     @timeit
     @cache_obs
     def observe_mutual(self, bs: 'BaseStation'):
-        others_ues = [ue for ue in self.covered_ues if ue.bs is bs]
         obs = np.concatenate([
             [self.neighbor_dist(bs.id)],
-            [bs.get_history_stats()[-1]],
-            self.get_ue_stats(others_ues)
+            bs.get_all_ue_stats()[0]
         ], dtype=np.float32)
         return obs
 
@@ -565,6 +563,7 @@ class BaseStation:
         # else:
         return chunks.mean(axis=1).reshape(-1)
 
+    @cache_obs
     def get_all_ue_stats(self):
         serving_ues = []
         queued_ues = []
@@ -577,9 +576,9 @@ class BaseStation:
                     serving_ues.append(ue)
                 else:
                     queued_ues.append(ue)
-        return np.concatenate([self.get_ue_stats(ues) for ues in
-                               [serving_ues, queued_ues, idle_ues]],
-                              dtype=np.float32)
+        return np.array([self.get_ue_stats(ues) for ues in
+                         [self.covered_ues, serving_ues, queued_ues, idle_ues]],
+                        dtype=np.float32)
 
     def get_ue_stats(self, ues):
         if not ues:
