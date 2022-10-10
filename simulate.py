@@ -96,7 +96,7 @@ elif args.agent == 'fixed':
 elif args.agent == 'random':
     agent = RandomPolicy(action_space, env.num_agents)
 elif args.agent == 'simple':
-    agent = AdaptivePolicy(action_space, env.num_agents)
+    agent = SimplePolicy(action_space, env.num_agents)
 elif args.agent == 'sleepy':
     agent = SleepyPolicy(action_space, env.num_agents)
 else:

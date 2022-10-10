@@ -314,7 +314,7 @@ def get_env_config():
                         help="width of the square area in meters")
     parser.add_argument("--dpi_sample_rate", type=float,
                         help="DPI sample rate (inversely proportion to traffic density)")
-    parser.add_argument("-s", "--save_trajectory", action='store_true',
+    parser.add_argument("-s", "--save_trajectory", action='store_false',
                         help="save detailed steps info of the simulation")
     parser.add_argument("--stats_dir",
                         help="path to save steps info of the simulation")

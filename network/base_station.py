@@ -587,7 +587,7 @@ class BaseStation:
             [ue.data_rate, ue.required_rate, ue.tx_power, ue.time_limit]
             for ue in ues]).T
         return [len(ues), stats[0].sum() / 1e6, stats[1].sum() / 1e6,
-                stats[2].sum(), (stats[3] <= self.urgent_time_lim).sum()]
+                stats[2].sum(), np.sum(stats[3] <= self.urgent_time_lim)]
 
     def update_timer(self, dt):
         self._steps += 1
