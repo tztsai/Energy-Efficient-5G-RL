@@ -10,6 +10,8 @@ scenario = 'A'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 frames = [pd.read_csv(f, index_col=0) for f in files]
 agents = [f.split('\\')[1] for f in files]
+if 'random' in agents:
+    agents.remove('random')
 df = pd.concat(frames, keys=agents, names=['policy'])
 df = df[~df.index.duplicated(keep='last')]
 df = df.rename(index={'fixed': 'always_on'}, level=0)

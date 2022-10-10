@@ -4,7 +4,7 @@ from gym.spaces import MultiDiscrete
 from network.base_station import BaseStation as BS
 from env.config import timeStep, actionInterval
 
-class AdaptivePolicy:
+class SimplePolicy:
     pre_sm2_steps = 5
     pre_sm3_steps = 25
     wakeup_threshold = 0.9
