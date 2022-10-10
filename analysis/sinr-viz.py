@@ -132,3 +132,5 @@ def make_anim(frames=frames):
     
 # atexit.register(make_anim)
 app.run()
+
+# %%
