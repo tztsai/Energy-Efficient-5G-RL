@@ -23,3 +23,4 @@
 !/analysis/*.py
 /wandb/
 /config.py
+critic*.pt
