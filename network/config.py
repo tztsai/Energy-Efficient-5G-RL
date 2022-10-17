@@ -54,7 +54,7 @@ bsPositions = np.vstack([
 # obs names
 public_obs_keys = ['pc', 'num_antennas', 'responding', 'sleep_mode']
 hist_stats_keys = ['arrival_rate']
-ue_groups = ['serving', 'queued', 'idle']
+ue_groups = ['covered', 'serving', 'queued', 'idle']
 ue_stats_keys = ['num', 'sum_rate', 'sum_rate_req', 'sum_tx_power', 'num_urgent']
 private_obs_keys = ['next_sleep_mode', 'wakeup_time',
                     *[f'{k}{i}' for i in range(-bufferNumChunks, 0) for k in hist_stats_keys],

@@ -288,7 +288,7 @@ class MultiCellNetwork:
             pc=self.power_consumption,  # W
             actual_rate=sum(ue.data_rate for ue in self.ues.values()) / 1e6,  # Mb/s
             required_rate=sum(ue.required_rate for ue in self.ues.values()) / 1e6,
-            arrival_rate=self.arrival_rates.sum() / 1e6,
+            arrival_rate=self.arrival_rates.sum(),
             idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
             interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
             avg_antennas=sum(bs.num_ant for bs in self.bss.values()) / self.num_bs,

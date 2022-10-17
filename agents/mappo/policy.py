@@ -111,10 +111,13 @@ class MappoPolicy:
     def restore(self, model_dir, version=""):
         model_dir = Path(model_dir)
         actor_file = next(model_dir.glob(f'actor*{version}.pt'))
-        critic_file = next(model_dir.glob(f'critic*{version}.pt'))
         notice("Restoring actor network from {}".format(actor_file))
         self.actor.load_state_dict(torch.load(str(actor_file)))
-        self.critic.load_state_dict(torch.load(str(critic_file)))
+        try:
+            critic_file = next(model_dir.glob(f'critic*{version}.pt'))
+            self.critic.load_state_dict(torch.load(str(critic_file)))
+        except:
+            notice("No critic file found, skipping critic restore.")
 
     def prep_training(self):
         self.actor.train()
