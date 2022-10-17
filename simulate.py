@@ -10,7 +10,7 @@ from visualize.render import create_dash_app
 # %autoreload 2
 
 sim_days = 7
-accelerate = 36000
+accelerate = 12000
 render_interval = 4
 
 parser = get_config()
@@ -135,7 +135,7 @@ def simulate():
     info['accelerate'] = env_args.accelerate
     info['scenario'] = env.net.traffic_scenario
     info['traffic_density'] = env.net.traffic_model.density_mean
-    info['w_pc'] = env.w_pc
+    # info['w_pc'] = env.w_pc
     info['w_qos'] = env.w_qos
     info['w_xqos'] = env.w_xqos
     if args.agent == 'mappo' and getattr(args, 'count_flops', False):

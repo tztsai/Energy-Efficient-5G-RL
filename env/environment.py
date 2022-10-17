@@ -224,6 +224,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             reward = self._sim_steps and self._reward_stats[-1]['reward'],
             pc_kw = self._sim_steps and self._reward_stats[-1]['pc_kw'],
             qos_reward = self._sim_steps and self._reward_stats[-1]['qos_reward'] * self.w_qos,
+            drop_ratio = self._sim_steps and self._reward_stats[-1]['drop_ratio'],
         )
         return info
 
