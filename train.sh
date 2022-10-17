@@ -6,7 +6,7 @@ scenario="RANDOM"
 accelerate=1200  # 1 step = 0.02 * 1200 = 24 s
 n_training_threads=4
 n_rollout_threads=42
-num_env_steps=$((25200 * 100))  # steps_per_episode * episodes
+num_env_steps=$((25200 * 50))  # steps_per_episode * episodes
 experiment="check"
 
 algo="mappo"
