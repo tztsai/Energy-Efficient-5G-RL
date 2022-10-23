@@ -6,7 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-files = glob.glob(f'sim_stats/*/A/trajectory.csv')
+scenario = 'B'
+files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 frames = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 agents = [tuple(f.split('\\')[1:3]) for f in files]
 df = pd.concat(frames, keys=agents, names=['policy', 'scenario'])
@@ -18,6 +19,7 @@ df
 # %%
 print(df.index.levels[0])
 policies = 'always_on mappo simple simple1 simple2'.split()
+policies = ['always_on', 'simple1']
 df = df.loc[policies]
 
 # %%
@@ -25,11 +27,12 @@ key_pat = re.compile('(pc_kw|interference|.*antenna|.*drop|actual_rate|arrival_r
 vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 'interference': 'Interference', 'actual_rate': 'Actual Rate', 'arrival_rate': 'Arrival Rate'})
 vars_df['Energy Efficiency'] = vars_df['Actual Rate'] / (
     vars_df['Power Consumption (kW)'] + 1e-6)
-vars_df = vars_df.rolling(15).mean().iloc[14::15]
+win_sz = len(df.loc[(policies[0], scenario)]) // 168
+vars_df = vars_df.rolling(win_sz).mean().iloc[win_sz-1::win_sz]
 vars_df
 
 # %%
-for scenario in 'A': # 'ABC':
+for scenario in vars_df.index.levels[1]:
     _sdf = vars_df.xs(scenario, level=1)
     idx = _sdf.index.get_level_values(1).drop_duplicates()
     for key, ser in _sdf.items():
@@ -46,7 +49,7 @@ for scenario in 'A': # 'ABC':
     arr_rates = rate_df['Arrival Rate'].unstack().values
     # assert all(np.allclose(r1, r2) for r1, r2 in zip(arr_rates, arr_rates[1:]))
     req_rates = rate_df['Actual Rate'].copy().unstack(level=0)
-    req_rates['arrival'] = rate_df.loc['simple']['Arrival Rate']
+    req_rates['arrival'] = rate_df.loc['always_on']['Arrival Rate']
     fig = px.line(req_rates, labels=dict(value='Rate (Mbps)', policy='', time=''))
     # fig.write_image(f'bm_plots/{scenario}-data-rate.png', scale=2)
     fig.show()
