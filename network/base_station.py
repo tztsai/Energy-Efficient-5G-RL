@@ -126,8 +126,8 @@ class BaseStation:
             # ue_stats = np.zeros(5)
             # for ue in self.ues.values():
             #     ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
-            # s['sum_rate'] = ue_stats[3] / 1e6
-            # s['req_sum_rate'] = ue_stats[4] / 1e6
+            s['sum_rate'] = sum(u.data_rate for u in self.ues.values()) / 1e6
+            s['req_sum_rate'] = sum(u.required_rate for u in self.ues.values()) / 1e6
             s['serving_ues'] = len(self.ues)
             s['queued_ues'] = len(self.queue)
             s['covered_ues'] = len(self.covered_ues)
@@ -469,7 +469,8 @@ class BaseStation:
         Returns:
         The power consumption of the BS in Watts.
         """
-        M = self.num_ant
+        M = self.max_antennas
+        m = self.num_ant
         K = self.num_ue
         S = self.sleep
         R = 0
@@ -487,10 +488,10 @@ class BaseStation:
             Pnl *= sleep_deltas[S]
         elif K > 0:
             R = sum(ue.data_rate for ue in self.ues.values()) / 1e9
-            Pld = Pcd*R + C['K3']*K**3 + M * (C['PA-ld'] + C['MK1']*K + C['MK2']*K**2)
+            Pld = Pcd*R + C['K3']*K**3 + m * (C['PA-ld'] + C['MK1']*K + C['MK2']*K**2)
         P = Pld + Pnl
         if EVAL:
-            rec = dict(bs=self.id, M=M, K=K, R=R, S=S, Pnl=Pnl, Pld=Pld, P=P)
+            rec = dict(bs=self.id, M=M, m=m, K=K, R=R, S=S, Pnl=Pnl, Pld=Pld, P=P)
             self.net.add_stat('pc', rec)
             debug(f'BS {self.id}: {kwds_str(**rec)}')
         return P

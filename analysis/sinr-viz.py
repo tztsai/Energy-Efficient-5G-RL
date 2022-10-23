@@ -31,7 +31,7 @@ def save_csi_cache():
         pickle.dump(net._csi_cache, f, pickle.HIGHEST_PROTOCOL)
     print('Done.')
 
-atexit.register(save_csi_cache)
+# atexit.register(save_csi_cache)
 
 try:
     with open('csi_cache.pkl', 'rb') as f:
