@@ -7,7 +7,7 @@ df = pd.read_csv('sim_stats/random/B/pc.csv', index_col=0)
 df
 
 # %%
-fig = px.scatter_3d(df.loc[df.S == 0],
+fig = px.scatter_3d(df.loc[(df.S == 0) & (df.K <= 16)],
               x='M', y='K', z='P', color='P',
               labels=dict(P='P (W)'))
 # fig.update_traces(marker=dict(size=6))
@@ -23,7 +23,7 @@ px.scatter_3d(df.loc[df.S == 0],
 
 # %%
 # px.scatter_3d(df, x='S', y='M', z='Pnl')
-fig = px.scatter_3d(df[df.K <= 20], x='S', y='M', z='P', color='K',
+fig = px.scatter_3d(df[df.K <= 16], x='S', y='M', z='P', color='K',
                     labels=dict(P='P (W)'))
 fig.update_layout(scene=dict(xaxis=dict(dtick=1)),
                   margin=dict(l=5, r=5, b=5, t=5),

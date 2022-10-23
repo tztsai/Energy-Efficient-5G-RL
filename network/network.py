@@ -2,7 +2,7 @@
 from utils import *
 from . import config
 from .env_utils import *
-from .user_equipment import UserEquipment, TestProbe
+from .user_equipment import UserEquipment, TestUE
 from .base_station import BaseStation
 from .channel import compute_channel_gain
 from traffic import TrafficModel, TrafficType
@@ -243,7 +243,7 @@ class MultiCellNetwork:
                       for bs in self.bss.values())
         cache = self._csi_cache
         if state not in cache:
-            cache[state] = TestProbe(self).test_sinr()
+            cache[state] = TestUE(self).test_sinr()
         return cache[state]
 
     def consume_energy(self, energy):

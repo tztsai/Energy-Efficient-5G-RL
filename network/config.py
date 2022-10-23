@@ -7,7 +7,7 @@ renderMode = 'none'
 numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
 # cellRadius = 750  # the radius of a hexagon cell in meters
-txPower = 0.02  # average transmit power per antenna in watts
+txPower = 0.1  # average transmit power per antenna in watts
 maxPAPower = 3  # maximum antenna power in watts
 fixedPC = 20  # load-independent power consumption in watts
 bsFrequency = 5e9  # carrier frequency in Hz
@@ -15,7 +15,7 @@ feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
 antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
 signalThreshold = 1e-12  # signal threshold in watts
 maxAntennas = 64  # max number of antennas
-minAntennas = 16  # min number of antennas
+minAntennas = 32  # min number of antennas
 bandWidth = 20e6  # communication bandwidth in Hz
 bsHeight = 30  # height of a BS in meters
 # powerAllocWeights = [95, 4, 1]  # weights of the power allocation
@@ -29,6 +29,7 @@ disconnectEnergy = 0.01  # energy consumption of a disconnection (before UE is d
 bufferShape = (120, 1)  # shape of the buffer used to record past observations
 bufferChunkSize = 30  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
+hasInterference = True
 
 # channel model params
 noisePower = bandWidth * dB2lin(-174 - 30 + 7)

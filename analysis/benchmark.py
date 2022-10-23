@@ -6,28 +6,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-files = glob.glob(f'sim_stats/*/*/trajectory.csv')
-frames = [pd.read_csv(f, index_col=0) for f in files]
+files = glob.glob(f'sim_stats/*/A/trajectory.csv')
+frames = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 agents = [tuple(f.split('\\')[1:3]) for f in files]
-if 'random' in agents:
-    agents.remove('random')
 df = pd.concat(frames, keys=agents, names=['policy', 'scenario'])
-df = df[~df.index.duplicated(keep='last')]
-df = df.rename(index={'fixed': 'always_on', 'mappo-40': 'mappo'},
-               level=0)
+# df = df.sort_index(level=0, ascending=False)[~df.index.duplicated(keep='last')]
+df = df.rename(index={'fixed': 'always_on'}, level=0)
 # df['interference_db'] = 10 * np.log10(df['interference'] + 1e-1000)
 df
+
+# %%
+print(df.index.levels[0])
+policies = 'always_on simple simple1 simple2 sleepy'.split()
+df = df.loc[policies]
 
 # %%
 key_pat = re.compile('(pc_kw|interference|.*antenna|.*drop|actual_rate|arrival_rate)')
 vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 'interference': 'Interference', 'actual_rate': 'Actual Rate', 'arrival_rate': 'Arrival Rate'})
 vars_df['Energy Efficiency'] = vars_df['Actual Rate'] / (
     vars_df['Power Consumption (kW)'] + 1e-6)
-vars_df = vars_df.rolling(30).mean().iloc[14::15]
+vars_df = vars_df.rolling(15).mean().iloc[14::15]
 vars_df
 
 # %%
-for scenario in 'ABC':
+for scenario in 'A': # 'ABC':
     _sdf = vars_df.xs(scenario, level=1)
     idx = _sdf.index.get_level_values(1).drop_duplicates()
     for key, ser in _sdf.items():
@@ -35,7 +37,7 @@ for scenario in 'ABC':
         fig = px.line(_df, title=key, labels={'value': '', 'time': ''}, log_y=key=='Interference')
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
         fig.update_layout()
-        # fig.show()
+        fig.show()
         # fig.write_image(f'bm_plots/{scenario}-{key}.png', scale=2)
         # _df.plot(title=key)
         # plt.legend(title='')
@@ -63,14 +65,28 @@ stats
 files = glob.glob(f'sim_stats/*/*/bs_stats.csv')
 frames = [pd.read_csv(f, index_col=0).mean() for f in files]
 agents = [f.split('\\')[1:3] for f in files]
-df = pd.concat(frames, keys=list(map(tuple, agents))).unstack()
-df
+bs_stats = pd.concat(frames, keys=list(map(tuple, agents))).unstack()
+bs_stats
 
 # %%
 files = glob.glob(f'sim_stats/*/*/ue_stats.csv')
 frames = [pd.read_csv(f) for f in files]
 agents = [f.split('\\')[1:3] for f in files]
-df = pd.concat(frames, keys=list(map(tuple, agents)))#.unstack()
+df = pd.concat(frames, keys=list(map(tuple, agents)), names=['policy', 'scenario'])#.unstack()
 df
+
+# %%
+df['actual_rate'] = df.done / df.delay
+df['req_rate'] = df.demand / df.delay_budget
+ue_stats = df.groupby(level=[0,1]).agg(['sum', 'mean'])
+ue_stats['drop_ratio'] = ue_stats.dropped['sum'] / ue_stats.demand['sum']
+ue_stats.drop('sum', axis=1, level=1, inplace=True)
+ue_stats.droplevel(1, axis=1, inplace=True)
+ue_stats = ue_stats['']
+ue_stats
+
+# %%
+ue_stats_per_service = df.groupby(['policy', 'scenario', 'delay_budget']).mean()
+ue_stats_per_service
 
 # %%
