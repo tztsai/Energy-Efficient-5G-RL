@@ -305,6 +305,9 @@ class MultiCellNetwork:
         s = np.array([bs._sleep_time for bs in self.bss.values()]).mean(axis=0)
         return s / s.sum()
 
+    def avg_num_antennas(self):
+        return np.mean([bs.num_ant for bs in self.bss.values()])
+
     def calc_total_stats(self):
         for bs in self.bss.values():
             bs.calc_total_stats()
