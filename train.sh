@@ -18,8 +18,8 @@ value_loss_coef=1
 ppo_epoch=10
 num_mini_batch=1
 
-w_qos=1
-w_xqos=0.004
+w_qos=2
+w_xqos=0.005
 # w_drop=0.5
 # w_delay=0.1
 
