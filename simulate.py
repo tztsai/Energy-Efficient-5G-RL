@@ -14,6 +14,7 @@ sim_days = 7
 accelerate = 12000
 render_interval = 4
 stats_suffix = '' #'-nointf'
+tuned_params = ['w_qos']
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -60,17 +61,16 @@ np.random.seed(args.seed)
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_model_dir(args, env_args, run_dir, version=''):
+def get_model_dir(args, env, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
     p = 'wandb/run-*%s/files/' if args.use_wandb else 'run*%s*/models/'
     dirs = run_dir.glob(p % version)
     for d in sorted(dirs, key=os.path.getmtime, reverse=True):
-        print(env_args)
         with open(d/'config.yaml') as f:
             cfg = yaml.safe_load(f)
-            if True or all(v in (None, cfg[k]) for k, v in vars(env_args).items()):
+            if all(getattr(env, k) == cfg[k]['value'] for k in tuned_params):
                 return d
     raise FileNotFoundError("no such model directory")
 
@@ -97,6 +97,8 @@ if args.agent == 'mappo':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
+    for par in tuned_params:
+        env.stats_dir += f'_{par}={getattr(env, par)}'
     if args.model_version:
         env.stats_dir += '_eps=%s' % args.model_version
 elif args.agent == 'fixed':

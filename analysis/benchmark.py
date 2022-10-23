@@ -19,7 +19,7 @@ df
 # %%
 print(df.index.levels[0])
 policies = 'always_on mappo simple simple1 simple2'.split()
-policies = ['always_on', 'simple1']
+policies = ['always_on', 'simple1', 'mappo_w_qos=5.0']
 df = df.loc[policies]
 
 # %%
