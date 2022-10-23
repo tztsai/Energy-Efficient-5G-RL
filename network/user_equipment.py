@@ -15,7 +15,7 @@ class UEStatus(enum.IntEnum):
 class UserEquipment:
     height: float = config.ueHeight
     signal_thresh = config.signalThreshold
-    record_sinr = False
+    record_sinr = True
     _cache = defaultdict(dict)
 
     def __init__(self, pos, service, demand, delay_budget):
@@ -33,6 +33,7 @@ class UserEquipment:
         self._gains = None
         self._thruput = None
         self._cover_cells = []
+        self._sinr_stats = Counter()
 
     # define boolean properties for each UE status
     for status in UEStatus._member_names_:
@@ -134,28 +135,24 @@ class UserEquipment:
     def urgent(self):
         return self.time_limit < 0.03
 
-    def compute_sinr(self, N=config.noisePower):
+    def compute_sinr(self, N=config.noisePower, has_interf=config.hasInterference):
         if self.bs is None: return 0
         self._S = self.signal_power
-        self._I = self.interference
-        self._SINR = self._S / (self._I + N)
+        if has_interf:
+            self._I = self.interference
+            self._SINR = self._S / (self._I + N)
+        else:
+            self._I = 0
+            self._SINR = self._S / N
         if self.record_sinr:
-            rec = dict(
-                x = self.pos[0],
-                y = self.pos[1],
-                bs = self.bs.id,
-                p = self.tx_power,
-                M = self.bs.num_ant,
-                K = self.bs.num_ue,
-                d = self._dists[self.bs.id],
-                g = self.channel_gain,
-                S = self._S,
-                I = self._I,
-                SINR = self._SINR
+            self._sinr_stats.update(
+                T = 1,
+                tx_power = self.tx_power,
+                chan_gain = self.channel_gain,
+                signal = self._S,
+                interference = self._I,
+                sinr = self._SINR
             )
-            for i, bs in self.net.bss.items():
-                rec[f'P_{i}'] = bs.transmit_power
-            self.net.add_stat('sinr', rec)
         return self._SINR
     
     @timeit
@@ -220,13 +217,16 @@ class UserEquipment:
             done = self.total_demand - dropped
             delay = self.delay
             service_time = self.t_served
+            steps = self._sinr_stats.pop('T', 1)
             self.net.add_stat('ue_stats', dict(
                 demand = self.total_demand,
                 done = done,
                 dropped = dropped,
                 delay = delay,
                 delay_budget = self.delay_budget,
-                service_time = service_time
+                service_time = service_time,
+                **{'avg_'+k: self._sinr_stats[k]/steps
+                   for k in list(self._sinr_stats)}
             ))
         self.net.remove_user(self.id)
         del self.__class__._cache[self.id]
@@ -262,8 +262,8 @@ class UserEquipment:
         ))
 
 
-class TestProbe(UserEquipment):
-    record_stats = False
+class TestUE(UserEquipment):
+    record_sinr = False
     
     def __init__(self, net, grid_size=20):
         super().__init__(None, None, 0, 999)

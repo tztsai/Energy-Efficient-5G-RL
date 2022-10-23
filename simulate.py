@@ -12,6 +12,7 @@ from visualize.render import create_dash_app
 sim_days = 7
 accelerate = 12000
 render_interval = 4
+stats_suffix = '' #'-nointf'
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -41,7 +42,7 @@ except:
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
-env_args.stats_dir = f'analysis/sim_stats/{args.agent}'
+env_args.stats_dir = f'analysis/sim_stats/{args.agent}{stats_suffix}'
 
 # %%
 set_log_level(args.log_level)
@@ -90,17 +91,22 @@ if args.agent == 'mappo':
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
     if args.model_version:
-        env.stats_dir += '-%s' % args.model_version
+        env.stats_dir += '_eps=%s' % args.model_version
 elif args.agent == 'fixed':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
 elif args.agent == 'random':
     agent = RandomPolicy(action_space, env.num_agents)
 elif args.agent == 'simple':
     agent = SimplePolicy(action_space, env.num_agents)
+elif args.agent == 'simple1':
+    agent = SimplePolicySM1Only(action_space, env.num_agents)
+elif args.agent == 'simple2':
+    agent = SimplePolicyNoSM3(action_space, env.num_agents)
 elif args.agent == 'sleepy':
     agent = SleepyPolicy(action_space, env.num_agents)
 else:
     raise ValueError('invalid agent type')
+print('Policy:', type(agent).__name__)
 
 set_log_file(args.sim_log_path)
 

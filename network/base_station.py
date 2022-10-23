@@ -119,25 +119,26 @@ class BaseStation:
         if EVAL:
             s = self._stats
             ts = self._total_stats
-            
+
             s['pc'] = self.power_consumption
             s['tx_power'] = self.transmit_power
             s['num_ants'] = self.num_ant
-            ue_stats = np.zeros(5)
-            for ue in self.ues.values():
-                ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
-            s['sum_rate'] = ue_stats[3] / 1e6
-            s['req_sum_rate'] = ue_stats[4] / 1e6
+            # ue_stats = np.zeros(5)
+            # for ue in self.ues.values():
+            #     ue_stats += [ue._S, ue._I, ue._SINR, ue.data_rate, ue.required_rate]
+            # s['sum_rate'] = ue_stats[3] / 1e6
+            # s['req_sum_rate'] = ue_stats[4] / 1e6
             s['serving_ues'] = len(self.ues)
             s['queued_ues'] = len(self.queue)
             s['covered_ues'] = len(self.covered_ues)
-            
+
             ts['steps'] += 1
-            ts['time'] += self._timer
-            ts['signal'] += ue_stats[0]
-            ts['interf'] += ue_stats[1]
-            ts['sinr'] += ue_stats[2]
+            # ts['signal'] += ue_stats[0]
+            # ts['interf'] += ue_stats[1]
+            # ts['sinr'] += ue_stats[2]
+            ts['time'] = self._time
             ts['sleep_time'] = self._sleep_time
+            ts['energy_consumption'] += self._energy_consumed
             for k, v in s.items():
                 self._total_stats[k] += v
 
@@ -610,12 +611,12 @@ class BaseStation:
         d = self._total_stats
         for k in self._stats:
             d['avg_'+k] = div0(d.pop(k), d['steps'])
-        d['avg_signal'] = div0(
-            d.pop('signal'), d['serving_ues'])
-        d['avg_interf'] = div0(
-            d.pop('interf'), d['serving_ues'])
-        d['avg_sinr'] = div0(
-            d.pop('sinr'), d['serving_ues'])
+        # d['avg_signal'] = div0(
+        #     d.pop('signal'), d['serving_ues'])
+        # d['avg_interf'] = div0(
+        #     d.pop('interf'), d['serving_ues'])
+        # d['avg_sinr'] = div0(
+        #     d.pop('sinr'), d['serving_ues'])
         d['avg_sleep_ratios'] = div0(
             d['sleep_time'], d['sleep_time'].sum())
         d['avg_reject_rate'] = div0(
@@ -652,3 +653,14 @@ class BaseStation:
         # return 'BS({})'.format(kwds_str(
         #     id=self.id, pos=self.pos, **obs
         # ))
+
+
+# class BSTest(BaseStation):
+#     def testPC(self, Kmax=20):
+#         M = np.arange(0, 65, 4)
+#         K = np.arange(Kmax)
+#         S = np.arange(4)
+#         R = 64e6 * M
+#         vM, vK, vS = np.meshgrid(M, K, S)
+#         data = np.zeros((vM.size, 4))
+#         for m, k, s, r in 
