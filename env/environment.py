@@ -234,6 +234,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             stats_dir = os.path.join(self.stats_dir, self.net.traffic_model.scenario.name)
             os.makedirs(stats_dir, exist_ok=True)
             self.net.save_stats(stats_dir)
+            print('Stats saved to', stats_dir)
             if self.save_trajectory:
                 path = os.path.join(stats_dir, 'trajectory.csv')
                 pd.DataFrame(self._trajectory).set_index('time').to_csv(path)

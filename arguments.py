@@ -162,7 +162,7 @@ def get_config():
     parser.add_argument("--algorithm_name", type=str,
                         default='mappo', choices=["rmappo", "mappo"])
     parser.add_argument("-G", "--group_name", type=str,
-                        help="the group name of the training (we use training scenario)")
+                        help="the group name of the training (we use traffic scenario)")
     parser.add_argument("-L", '--log_level', type=str, default='DEBUG' if DEBUG else 'NOTICE',
                         help='level of logging')
     parser.add_argument("-E", "--experiment_name", type=str, default="check", 
@@ -294,6 +294,8 @@ def get_config():
     # pretrained parameters
     parser.add_argument("--model_dir", type=str, default=None, 
                         help="by default None. set the path to pretrained model.")
+    parser.add_argument("--run_version", default='',
+                        help="any substring of the version name of the run")
     parser.add_argument("-V", "--model_version", type=str, default='',
                         help="by default None. set the version of pretrained model.")
 

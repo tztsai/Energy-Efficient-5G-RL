@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # %%
+import yaml
 import torch
 from utils import *
 from agents import *
@@ -59,13 +60,19 @@ np.random.seed(args.seed)
 def get_env_kwargs(args):
     return {k: v for k, v in vars(args).items() if v is not None}
 
-def get_model_dir(args, run_dir, version=''):
+def get_model_dir(args, env_args, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
-    p = 'wandb/run-%s*/files/' if args.use_wandb else 'run%s*/models/'
-    p = p % version
-    return max(run_dir.glob(p), key=os.path.getmtime)
+    p = 'wandb/run-*%s/files/' if args.use_wandb else 'run*%s*/models/'
+    dirs = run_dir.glob(p % version)
+    for d in sorted(dirs, key=os.path.getmtime, reverse=True):
+        print(env_args)
+        with open(d/'config.yaml') as f:
+            cfg = yaml.safe_load(f)
+            if True or all(v in (None, cfg[k]) for k, v in vars(env_args).items()):
+                return d
+    raise FileNotFoundError("no such model directory")
 
 env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
 env.print_info()
@@ -87,7 +94,7 @@ if args.sim_log_path is None:
 
 # match args.agent.lower():
 if args.agent == 'mappo':
-    model_dir = args.model_dir or get_model_dir(args, run_dir)
+    model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
     if args.model_version:
