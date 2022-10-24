@@ -11,7 +11,7 @@ episodeTimeLen = 60 * 60 * 24 * 7  # the duration of an episode in simulation (s
 trafficScenario = 'RANDOM'  # 'A', 'B', 'C'
 
 # action parameters
-numAntSwitchOpts = 5
+numAntSwitchOpts = 3
 numSleepModes = 4
 numConnModes = 3
 
@@ -21,5 +21,5 @@ numConnModes = 3
 # dropRatioWeight = 0.5  # penalty for average drop ratio = 1%
 # delayWeight = 0.1  # penalty for average delay = delay budget
 # pcWeight = 1e-3  # PC (unit: W) penalty weight
-qosWeight = 5  # QoS reward weight
-extraQosWeight = 0.004 # QoS reward weight for done UEs
+qosWeight = 4  # QoS reward weight
+extraQosWeight = 0.005 # QoS reward weight for done UEs
