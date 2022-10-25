@@ -19,7 +19,7 @@ df
 # %%
 print(df.index.levels[0])
 policies = 'always_on mappo simple simple1 simple2'.split()
-policies = ['always_on', 'simple1', 'mappo_w_qos=5.0']
+policies = ['always_on', 'mappo_w_qos=3.0', 'mappo_w_qos=9.0']
 df = df.loc[policies]
 
 # %%
@@ -83,9 +83,8 @@ df['actual_rate'] = df.done / df.delay
 df['req_rate'] = df.demand / df.delay_budget
 ue_stats = df.groupby(level=[0,1]).agg(['sum', 'mean'])
 ue_stats['drop_ratio'] = ue_stats.dropped['sum'] / ue_stats.demand['sum']
-ue_stats.drop('sum', axis=1, level=1, inplace=True)
-ue_stats.droplevel(1, axis=1, inplace=True)
-ue_stats = ue_stats['']
+ue_stats = ue_stats.drop('sum', axis=1, level=1).droplevel(1, axis=1)
+# ue_stats = ue_stats['']
 ue_stats
 
 # %%
