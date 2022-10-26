@@ -1,17 +1,18 @@
 from utils import *
 from . import config
 
+alpha = 3.53
+beta = 22.4
+gamma = 2.13
+delta = 7.82
+F = config.bsFrequency / 1e9
+h_UE = config.ueHeight
+const = beta + gamma * 10 * np.log10(F) + delta - 0.3 * (h_UE - 1.5)
+print(const)
+
 @timeit
-def compute_channel_gain(distances, c=10**-3.53, frequencies=None, tx_gain=config.antennaGain):
-    return c / distances ** 3.76
-    # path_loss = compute_path_loss(distances, frequencies)
-    # return dB2lin(tx_gain - path_loss)
-
-
-def compute_path_loss(distances, frequencies=None):
-    return 37.6 * np.log10(distances) + 35.3
-    # return 20 * np.log10(d/1e3) + 20 * np.log10(f/1e6) + 32.44
-
+def compute_channel_gain(distances, C=dB2lin(-const), a=alpha):
+    return C / distances ** a
 
 def compute_channel_gain_costhata(ue_pos, bs_pos, frequencies, env_type='urban'):
     """
