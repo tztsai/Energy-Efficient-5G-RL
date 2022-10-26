@@ -29,7 +29,6 @@ disconnectEnergy = 0.01  # energy consumption of a disconnection (before UE is d
 bufferShape = (50, 1)  # shape of the buffer used to record past observations
 bufferChunkSize = 50  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
-hasInterference = True
 
 # channel model params
 noisePower = bandWidth * dB2lin(-174 - 30 + 7)

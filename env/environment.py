@@ -43,6 +43,8 @@ class MultiCellNetEnv(MultiAgentEnv):
         time_step=config.timeStep,
         accelerate=config.accelRate,
         action_interval=action_interval,
+        no_interf=False,
+        max_sleep=3,
         dpi_sample_rate=None,
         # w_pc=w_pc,
         w_qos=w_qos,
@@ -62,6 +64,8 @@ class MultiCellNetEnv(MultiAgentEnv):
             start_time=start_time,
             traffic_scenario=scenario,
             accelerate=accelerate,
+            has_interference=not no_interf,
+            max_sleep_depth=max_sleep,
             dpi_sample_rate=dpi_sample_rate
         )
         
@@ -114,6 +118,9 @@ class MultiCellNetEnv(MultiAgentEnv):
             self.cent_observation_space.shape))
         notice('Action space: {}'.format(
             (self.num_agents, self.action_space[0].shape)))
+        notice('Seed: {}'.format(self._seed))
+        notice('Max sleep depth: {}'.format(self.net.bss[0].max_sleep_depth))
+        notice('Has interference: {}'.format(self.net.bss[0].has_interference))
 
     def seed(self, seed=None):
         if seed is None:

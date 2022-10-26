@@ -321,6 +321,8 @@ def get_env_config():
     parser.add_argument("--stats_dir",
                         help="path to save steps info of the simulation")
     parser.add_argument("--include_bs_info", action='store_true')
+    parser.add_argument("--no_interf", action='store_true')
+    parser.add_argument("--max_sleep", type=int, default=3)
     # parser.add_argument("--w_pc", type=float,
     #                     help="weight of power consumption in reward")
     parser.add_argument("--w_qos", type=float,
