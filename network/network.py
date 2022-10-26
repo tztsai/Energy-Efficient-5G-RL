@@ -282,6 +282,7 @@ class MultiCellNetwork:
     def info_dict(self, include_bs=False):
         # assert self._stats_updated
         ue_counts = np.bincount([ue.status for ue in self.ues.values()], minlength=3)
+        bs_sleep_counts = np.bincount([bs.sleep for bs in self.bss.values()], minlength=4)
         
         infos = dict(
             time=self.world_time_repr,
@@ -291,7 +292,9 @@ class MultiCellNetwork:
             arrival_rate=self.arrival_rates.sum(),
             idle_ues=ue_counts[0], queued_ues=ue_counts[1], active_ues=ue_counts[2],
             interference=sum(ue.interference for ue in self.ues.values()) / (self.num_ue + 1e-3),
+            sum_tx_power=sum(bs.transmit_power for bs in self.bss.values()),
             avg_antennas=sum(bs.num_ant for bs in self.bss.values()) / self.num_bs,
+            **{f'sm{i}_cnt': n for i, n in enumerate(bs_sleep_counts)},
         )
         
         if include_bs:

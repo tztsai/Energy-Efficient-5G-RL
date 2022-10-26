@@ -40,7 +40,7 @@ def render(env: 'MultiCellNetEnv', mode='frame'):
     if last_fr:
         frame['layout'] = last_fr['layout'].copy()
     
-    render_csi(net, frame, last_fr, kpis=['SINR'])
+    # render_csi(net, frame, last_fr, kpis=['SINR'])
     render_bss(net, frame)
     render_ues(net, frame)
     render_data_rates(net, info, frame, last_fr)
@@ -246,7 +246,7 @@ def render_penalties(net, info, frame, last_frame=[], ws=60):
     # dl = info['weighted_delay']
     # dr = info['weighted_drop']
     qos = info['qos_reward']
-    pc = info['pc_penalty']
+    pc = info['pc_kw']
 
     t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
     y31 = (last_frame and last_frame['data'][i0]['y'])[1-ws:] + [pc] # [dl + pc + dr]
