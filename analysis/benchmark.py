@@ -6,11 +6,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-scenario = 'B'
+scenario = 'A'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
-frames = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
+df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
+for f in df:
+    f.index = f.index.str.replace(',', '')
+    print(len(f))
 agents = [tuple(f.split('\\')[1:3]) for f in files]
-df = pd.concat(frames, keys=agents, names=['policy', 'scenario'])
+df = pd.concat(df, keys=agents, names=['policy', 'scenario'])
 # df = df.sort_index(level=0, ascending=False)[~df.index.duplicated(keep='last')]
 df = df.rename(index={'fixed': 'always_on'}, level=0)
 # df['interference_db'] = 10 * np.log10(df['interference'] + 1e-1000)
@@ -18,12 +21,12 @@ df
 
 # %%
 print(df.index.levels[0])
-policies = 'always_on mappo simple simple1 simple2'.split()
-policies = ['always_on', 'mappo_w_qos=3.0', 'mappo_w_qos=9.0']
-df = df.loc[policies]
+policies = 'always_on mappo simple simple1 simple2 mappo_w_qos=1.0 mappo_w_qos=4.0 mappo_w_qos=7.0 mappo_w_qos=10.0'.split()
+policies = 'always_on mappo_w_qos=4.0 mappo_w_qos=16.0 mappo_w_qos=8.0'.split()
+df = df.loc[sorted(policies)]
 
 # %%
-key_pat = re.compile('(pc_kw|interference|.*antenna|.*drop|actual_rate|arrival_rate)')
+key_pat = re.compile('(pc_kw|interf.*|.*power|.*antenna.*|sm._cnt|.*drop|actual_rate|arrival_rate)')
 vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 'interference': 'Interference', 'actual_rate': 'Actual Rate', 'arrival_rate': 'Arrival Rate'})
 vars_df['Energy Efficiency'] = vars_df['Actual Rate'] / (
     vars_df['Power Consumption (kW)'] + 1e-6)
@@ -57,7 +60,7 @@ for scenario in vars_df.index.levels[1]:
 # %%
 stats = vars_df.drop_duplicates().groupby(level=[0,1]).mean()
 stats['Power Consumption'] = stats.pop('Power Consumption (kW)') * 1e3
-del stats['avg_antennas']
+# del stats['avg_antennas']
 stats['Actual Sum Rate (Mb/s)'] = stats.pop('Actual Rate')
 stats['Arrival Sum Rate (Mb/s)'] = stats.pop('Arrival Rate')
 stats['Interference (dB)'] = 10 * np.log10(stats.pop('Interference'))
