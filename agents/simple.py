@@ -29,9 +29,9 @@ class SimplePolicy:
                 self._sleep_steps[id] += 1
                 if sm != next_sm:
                     pass
-                elif thrp_req_queue + thrp_req_idle:  # wakeup
+                elif thrp_req_idle:  # wakeup
                     new_sm = 0
-                    if wakeup_time < 0.01:
+                    if wakeup_time < 5e-3:
                         conn_mode = 2
                 elif sm == 1:
                     if self._sleep_steps[id] >= self.pre_sm2_steps:
