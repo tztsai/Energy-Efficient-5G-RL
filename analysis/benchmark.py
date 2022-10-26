@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-scenario = 'A'
+scenario = 'C'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 for f in df:
@@ -18,7 +18,7 @@ df = df.rename(index={'fixed': 'always_on'}, level=0)
 df
 
 # %%
-group = 'wqos'
+group = 'baselines'
 if group == 'baselines':
     policies = 'always_on simple1 mappo_w_qos=4.0'.split()
 elif group == 'wqos':
@@ -39,7 +39,7 @@ if group == 'wqos':
 eg_policy = df.index.levels[0][0]
 
 # %%
-key_pat = re.compile('(pc_kw|interf.*|.*power|.*antenna.*|sm._cnt|.*drop|actual_rate|arrival_rate)')
+key_pat = re.compile('(pc_kw|interf.*|.*power|.*antenna.*|sm._cnt|.*drop|actual_rate|arrival_rate|.*reward)')
 vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={
     'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 
     'interference': 'Interference', 'actual_rate': 'Data Rate (Mb/s)', 
@@ -61,8 +61,8 @@ for scenario in vars_df.index.levels[1]:
         fig = px.line(_df, title=key, labels={'value': '', 'time': ''}, log_y=key=='Interference')
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
         # fig.update_layout()
-        fig.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}.png')
-        fig.show()
+        fig.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}.png', scale=2)
+        # fig.show()
         # fig.write_image(f'bm_plots/{scenario}-{key}.png', scale=2)
         # _df.plot(title=key)
         # plt.legend(title='')
