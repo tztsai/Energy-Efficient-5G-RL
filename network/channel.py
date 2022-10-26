@@ -1,6 +1,8 @@
 from utils import *
 from . import config
 
+# 3GPP TR 38.901 V15.0.0 (2018-07)
+# UMi - Street Canyon - NLOS
 alpha = 3.53
 beta = 22.4
 gamma = 2.13
@@ -8,7 +10,6 @@ delta = 7.82
 F = config.bsFrequency / 1e9
 h_UE = config.ueHeight
 const = beta + gamma * 10 * np.log10(F) + delta - 0.3 * (h_UE - 1.5)
-print(const)
 
 @timeit
 def compute_channel_gain(distances, C=dB2lin(-const), a=alpha):
