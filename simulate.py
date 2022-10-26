@@ -13,8 +13,7 @@ from visualize.render import create_dash_app
 sim_days = 7
 accelerate = 3000
 render_interval = 4
-stats_suffix = '' #'-nointf'
-tuned_params = ['w_qos']
+ctrl_params = dict(w_qos=None, no_interf=False, max_sleep=3)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -44,7 +43,7 @@ except:
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
-env_args.stats_dir = f'analysis/sim_stats/{args.agent}{stats_suffix}'
+env_args.stats_dir = f'analysis/sim_stats/{args.agent}'
 
 # %%
 set_log_level(args.log_level)
@@ -58,8 +57,12 @@ np.random.seed(args.seed)
 # ## Simulation Parameters
 
 # %%
-def get_env_kwargs(args):
-    return {k: v for k, v in vars(args).items() if v is not None}
+def make_env(args, seed=None):
+    env = MultiCellNetEnv(seed=seed, **{
+        k: v for k, v in vars(args).items() if v is not None})
+    pars = inspect.signature(MultiCellNetEnv.__init__).parameters
+    [setattr(args, k, pars[k].default) for k, v in vars(args).items() if v is None]
+    return env
 
 def get_model_dir(args, env, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
@@ -70,11 +73,12 @@ def get_model_dir(args, env, run_dir, version=''):
     for d in sorted(dirs, key=os.path.getmtime, reverse=True):
         with open(d/'config.yaml') as f:
             cfg = yaml.safe_load(f)
-            if all(getattr(env, k) == cfg[k]['value'] for k in tuned_params):
+            if all(getattr(env, k) == cfg[k]['value']
+                   for k in ctrl_params if k in cfg):
                 return d
     raise FileNotFoundError("no such model directory")
 
-env = MultiCellNetEnv(**get_env_kwargs(env_args), seed=args.seed)
+env = make_env(env_args, seed=args.seed)
 env.print_info()
 env.net.traffic_model.print_info()
 
@@ -97,8 +101,10 @@ if args.agent == 'mappo':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
-    for par in tuned_params:
-        env.stats_dir += f'_{par}={getattr(env, par)}'
+    for par, defval in ctrl_params.items():
+        val = getattr(env_args, par)
+        if val != defval:
+            env.stats_dir += f'_{par}={val}'
     if args.model_version:
         env.stats_dir += '_eps=%s' % args.model_version
 elif args.agent == 'fixed':

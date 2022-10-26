@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-scenario = 'B'
+scenario = 'A'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 for f in df:
@@ -18,21 +18,33 @@ df = df.rename(index={'fixed': 'always_on'}, level=0)
 df
 
 # %%
-print(df.index.levels[0])
-policies = 'always_on simple1 mappo_w_qos=4.0'.split()
+group = 'wqos'
+if group == 'baselines':
+    policies = 'always_on simple1 mappo_w_qos=4.0'.split()
+elif group == 'wqos':
+    policies = 'mappo_w_qos=1.0 mappo_w_qos=2.0 mappo_w_qos=4.0 mappo_w_qos=8.0'.split()
+elif group == 'interf':
+    policies = 'mappo_w_qos=4.0 mappo_w_qos=4.0_nointerf'
+elif group == 'sm':
+    policies = 'mappo_w_qos=4.0 mappo_w_qos=4.0_sm1 mappo_w_qos=4.0_sm12'
 # policies = 'simple simple1 simple2'.split()
-policies = 'mappo_w_qos=4.0 mappo_w_qos=8.0'.split()
 df = df.loc[policies]
 # df = df.rename({'mappo_w_qos=4.0': 'MAPPO', 'always_on': 'Always On', 'simple1': 'Auto SM1'})
 df = df.rename({'mappo_w_qos=4.0': '4.0',
-                'mappo_w_qos=8.0': '8.0'})
-df.index.set_names({'policy': 'w_qos'}, inplace=True)
+                'mappo_w_qos=8.0': '8.0',
+                'mappo_w_qos=2.0': '2.0',
+                'mappo_w_qos=1.0': '1.0',})
+if group == 'wqos':
+    df.index.set_names({'policy': 'w_qos'}, inplace=True)
 eg_policy = df.index.levels[0][0]
 
 # %%
 key_pat = re.compile('(pc_kw|interf.*|.*power|.*antenna.*|sm._cnt|.*drop|actual_rate|arrival_rate)')
-vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 'interference': 'Interference', 'actual_rate': 'Data Rate (Mb/s)', 'arrival_rate': 'Arrival Rate (Mb/s)',
-                                                                             'sm0_cnt': 'Active BSs', 'sm1_cnt': 'BSs in SM1', 'sm2_cnt': 'BSs in SM2', 'sm3_cnt': 'BSs in SM3'})
+vars_df = df[list(filter(key_pat.match, df.columns))].copy().rename(columns={
+    'pc_kw': 'Power Consumption (kW)', 'drop_ratio': 'Drop Ratio', 'reward': 'Reward', 
+    'interference': 'Interference', 'actual_rate': 'Data Rate (Mb/s)', 
+    'arrival_rate': 'Arrival Rate (Mb/s)', 'sum_tx_power': 'Total Transmit Power',
+    'sm0_cnt': 'Active BSs', 'sm1_cnt': 'BSs in SM1', 'sm2_cnt': 'BSs in SM2', 'sm3_cnt': 'BSs in SM3'})
 vars_df['Energy Efficiency (kb/J)'] = vars_df['Data Rate (Mb/s)'] / (
     vars_df['Power Consumption (kW)'] + 1e-6)
 win_sz = len(df.loc[(eg_policy, scenario)]) // 168
@@ -48,7 +60,8 @@ for scenario in vars_df.index.levels[1]:
         _df = ser.unstack(level=0).reindex(idx)
         fig = px.line(_df, title=key, labels={'value': '', 'time': ''}, log_y=key=='Interference')
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
-        fig.update_layout()
+        # fig.update_layout()
+        fig.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}.png')
         fig.show()
         # fig.write_image(f'bm_plots/{scenario}-{key}.png', scale=2)
         # _df.plot(title=key)
@@ -72,14 +85,14 @@ stats['Arrival Sum Rate (Mb/s)'] = stats.pop('Arrival Rate (Mb/s)')
 stats
 
 # %%
-files = glob.glob(f'sim_stats/*/*/bs_stats.csv')
+files = glob.glob(f'sim_stats/*/{scenario}/bs_stats.csv')
 frames = [pd.read_csv(f, index_col=0).mean() for f in files]
 agents = [f.split('\\')[1:3] for f in files]
 bs_stats = pd.concat(frames, keys=list(map(tuple, agents))).unstack()
 bs_stats
 
 # %%
-files = glob.glob(f'sim_stats/*/*/ue_stats.csv')
+files = glob.glob(f'sim_stats/*/{scenario}/ue_stats.csv')
 frames = [pd.read_csv(f) for f in files]
 agents = [f.split('\\')[1:3] for f in files]
 df = pd.concat(frames, keys=list(map(tuple, agents)), names=['policy', 'scenario'])#.unstack()

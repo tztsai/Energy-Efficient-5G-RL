@@ -69,6 +69,8 @@ class BaseStation:
         self, id, pos, net, 
         ant_power=None, max_antennas=None,
         frequency=None, bandwidth=None,
+        has_interference=True,
+        max_sleep_depth=3
     ):
         pos = np.asarray(pos)
         for k, v in locals().items():
@@ -77,6 +79,8 @@ class BaseStation:
         self.ues: Dict[int, UserEquipment] = dict()
         self.queue = deque()
         self.covered_ues = set()
+        self._has_interf = has_interference
+        self._max_sleep = max_sleep_depth
         self._nb_dists = dict()
         self.reset()
 
@@ -241,6 +245,7 @@ class BaseStation:
         self.update_power_allocation()
 
     def switch_sleep_mode(self, mode):
+        mode = min(mode, self._max_sleep)
         if DEBUG:
             assert mode in range(self.num_sleep_modes)
         if mode == self.sleep:
@@ -664,4 +669,4 @@ class BaseStation:
 #         R = 64e6 * M
 #         vM, vK, vS = np.meshgrid(M, K, S)
 #         data = np.zeros((vM.size, 4))
-#         for m, k, s, r in 
+#         for m, k, s, r in

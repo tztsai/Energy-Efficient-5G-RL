@@ -135,10 +135,10 @@ class UserEquipment:
     def urgent(self):
         return self.time_limit < 0.03
 
-    def compute_sinr(self, N=config.noisePower, has_interf=config.hasInterference):
+    def compute_sinr(self, N=config.noisePower):
         if self.bs is None: return 0
         self._S = self.signal_power
-        if has_interf:
+        if self.bs._has_interf:
             self._I = self.interference
             self._SINR = self._S / (self._I + N)
         else:

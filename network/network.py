@@ -38,6 +38,8 @@ class MultiCellNetwork:
                  bs_poses=default_bs_poses, 
                  start_time=0,
                  accelerate=1,
+                 max_sleep_depth=3,
+                 has_interference=True,
                  dpi_sample_rate=None):
         self.area = area
         self.traffic_scenario = traffic_scenario
@@ -58,7 +60,8 @@ class MultiCellNetwork:
         self.reset()
 
         for i, pos in enumerate(bs_poses):
-            self.create_new_bs(i, pos)
+            self.create_new_bs(i, pos, has_interference=has_interference,
+                               max_sleep_depth=max_sleep_depth)
 
     def reset(self):
         if EVAL:
