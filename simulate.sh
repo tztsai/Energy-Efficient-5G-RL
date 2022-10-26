@@ -1,5 +1,5 @@
 #!/bin/sh
-seed=1
+seed=99
 acc=3000
 
 for S in A B C; do
