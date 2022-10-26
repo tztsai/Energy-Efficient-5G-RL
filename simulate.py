@@ -11,7 +11,7 @@ from visualize.render import create_dash_app
 # %autoreload 2
 
 sim_days = 7
-accelerate = 6000  # 3000
+accelerate = 3000
 render_interval = 4
 stats_suffix = '' #'-nointf'
 tuned_params = ['w_qos']
