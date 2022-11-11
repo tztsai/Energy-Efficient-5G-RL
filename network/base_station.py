@@ -70,6 +70,7 @@ class BaseStation:
         ant_power=None, max_antennas=None,
         frequency=None, bandwidth=None,
         has_interference=True,
+        allow_offload=True,
         max_sleep_depth=3
     ):
         pos = np.asarray(pos)
@@ -80,6 +81,7 @@ class BaseStation:
         self.queue = deque()
         self.covered_ues = set()
         self._has_interf = has_interference
+        self._offload = allow_offload
         self._max_sleep = max_sleep_depth
         self._nb_dists = dict()
         self.reset()
@@ -319,7 +321,7 @@ class BaseStation:
     def respond_connection_request(self, ue):
         if EVAL:
             self._total_stats['num_requests'] += 1
-        if self.responding:
+        if self.responding or not self._offload:
             if DEBUG: assert ue.idle
             if self.sleep or self.ues_full:
                 self.add_to_queue(ue)
@@ -332,7 +334,7 @@ class BaseStation:
     def add_to_cell(self, ue):
         self.covered_ues.add(ue)
         self._arrival_rate += ue.required_rate
-    
+
     def remove_from_cell(self, ue):
         self.covered_ues.remove(ue)
         if EVAL:

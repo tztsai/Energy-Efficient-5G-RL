@@ -299,6 +299,9 @@ def get_config():
     parser.add_argument("-V", "--model_version", type=str, default='',
                         help="by default None. set the version of pretrained model.")
 
+    parser.add_argument("--count_flops", action='store_true',
+                        help="count the number of flops in one forward pass")
+    
     return parser
 
 
@@ -322,6 +325,7 @@ def get_env_config():
                         help="path to save steps info of the simulation")
     parser.add_argument("--include_bs_info", action='store_true')
     parser.add_argument("--no_interf", action='store_true')
+    parser.add_argument("--no_offload", action='store_true')
     parser.add_argument("--max_sleep", type=int, default=3)
     # parser.add_argument("--w_pc", type=float,
     #                     help="weight of power consumption in reward")

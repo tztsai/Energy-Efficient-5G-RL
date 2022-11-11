@@ -13,7 +13,7 @@ from visualize.render import create_dash_app
 sim_days = 7
 accelerate = 3000
 render_interval = 4
-ctrl_params = dict(w_qos=None, no_interf=False, max_sleep=3)
+ctrl_params = dict(w_qos=None, no_interf=False, max_sleep=3, no_offload=False)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
