@@ -44,6 +44,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         accelerate=config.accelRate,
         action_interval=action_interval,
         no_interf=False,
+        no_offload=False,
         max_sleep=3,
         dpi_sample_rate=None,
         # w_pc=w_pc,
@@ -65,6 +66,7 @@ class MultiCellNetEnv(MultiAgentEnv):
             traffic_scenario=scenario,
             accelerate=accelerate,
             has_interference=not no_interf,
+            allow_offload=not no_offload,
             max_sleep_depth=max_sleep,
             dpi_sample_rate=dpi_sample_rate
         )
