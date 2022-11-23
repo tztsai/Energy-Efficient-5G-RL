@@ -96,7 +96,7 @@ ues in coverage: {covered_ues}<br>
 sum rate: {sum_rate:.1f} Mb/s<br>
 sum rate req: {req_sum_rate:.1f} Mb/s<br>
 """.strip()
-def render_bss(net, frame):
+def render_bss(net, frame, show_id=False):
     i, x, y, m, s, r = np.array([[
         bs.id, bs.pos[0], bs.pos[1], bs.num_ant, bs.sleep,
         bs.responding] for bs in net.bss.values()]).T
@@ -112,7 +112,7 @@ def render_bss(net, frame):
             color=color_sequence,
             opacity=(r > 0) * 0.6 + 0.4
         ),
-        text=list(range(net.num_bs)),
+        text=list(range(net.num_bs)) if show_id else None,
         # textposition="middle center",
         # textfont=dict(color='white'),
         hovertext=hover_texts,
@@ -132,16 +132,17 @@ time limit: {ddl:.0f} ms<br>
 def render_ues(net, frame):
     if net.num_ue == 0:
         return frame['data'].append({})
-    i, x, y, b, s, r, u = np.array(
+    i, x, y, b, s, r, l = np.array(
         [[ue.id, ue.pos[0], ue.pos[1], ue.bs.id if ue.bs else -1, ue.demand,
-          ue.data_rate, ue.urgent] for ue in net.ues.values()]).T
+          ue.data_rate, ue.time_limit] for ue in net.ues.values()]).T
     hover_texts = [ue_info_template.format(**ue.info_dict()) for ue in net.ues.values()]
-    symbols = ['circle' + ('-x' if u else '') + ('' if r else '-open') for r, u in zip(r, u)]
+    symbols = ['x-thin' if l <= 3e-3 else ('circle' if r else 'circle-open') for r, l in zip(r, l)]
+    # 'x' if UE is going to be dropped, 'circle' if UE is being served, 'circle-open' otherwise
     frame['data'].append(dict(
         type='scatter',
         x=x, y=y, mode='markers', ids=i,
         marker=dict(
-            size=s/3e5+3,
+            size=s/3e5 + 4 + 10*(l<=3e-3),
             line_width=0,
             # line_color='grey',
             symbol=symbols,
@@ -190,7 +191,8 @@ def render_csi(net, frame, last_frame=None, kpis=['S', 'I', 'SINR']):
         elif last_frame:
             trace = next(t for t in last_frame['data'] if t['name'] == var)
         frame['data'].append(trace)
-    frame['_layouts'] = layouts
+    return frame, layouts
+    # frame['_layouts'] = layouts
 
     # frame['layout']['updatemenus'] = [{
     #     'buttons': [{'args': [{'visible': [True] * len(frame['data'])}],
@@ -212,14 +214,13 @@ def render_csi(net, frame, last_frame=None, kpis=['S', 'I', 'SINR']):
     #     'yanchor': 'top'
     # }]
         
-def render_data_rates(net, info, frame, last_frame=[]):
+def render_data_rates(net, info, frame, last_frame=[], ws=300):
     i0 = len(frame['data'])
     
     if not net._stats_updated:
         frame['data'].extend(last_frame['data'][i0:i0+3])
         return
     
-    ws = 300  # window size
     t = (last_frame and last_frame['data'][i0]['x'])[1-ws:] + [net.world_time/3600]
     y_max = 0
     for i, key in enumerate(['arrival_rate', 'actual_rate', 'required_rate']):
@@ -232,11 +233,12 @@ def render_data_rates(net, info, frame, last_frame=[]):
             x=t, y=y,
             xaxis='x2',
             yaxis='y2',
-            name=key.replace('_', ' ')+' (Mb/s)',
+            name=key.replace('_', ' ')#+' (Mb/s)',
         ))
+    frame['layout']['xaxis2'] = dict(range=[t[0], t[-1]])
     frame['layout']['yaxis2'] = dict(range=[0, y_max])
 
-def render_penalties(net, info, frame, last_frame=[], ws=60):
+def render_penalties(net, info, frame, last_frame=[], ws=300):
     i0 = len(frame['data'])
     
     if not net._stats_updated:
@@ -307,9 +309,11 @@ def make_figure(net, size=(1000, 600),
     if add_subplots:
         fig['layout']['xaxis']['domain'] = [0, 0.6]
         fig['layout'].update(
-            xaxis2=dict(domain=[0.7, 1],  # autorange=False,
+            xaxis2=dict(domain=[0.7, 1],
+                        # range=[0, 24],
                         tickangle=45, nticks=4),
-            yaxis2=dict(domain=[0.55, 1], anchor='x2'),
+            yaxis2=dict(domain=[0.55, 1], anchor='x2',
+                        title_text='Mb/s', title_standoff=5),
             yaxis3=dict(domain=[0, 0.45], anchor='x2'))
     if add_anim_btn:  # otherwise dash
         fig['layout'].update(
@@ -317,7 +321,7 @@ def make_figure(net, size=(1000, 600),
                 "buttons": [
                     {
                         "args": [None, {
-                            "frame": {"duration": 300, "redraw": False},
+                            "frame": {"duration": 150, "redraw": False},
                             "fromcurrent": True,
                             "transition": {"duration": 300, "easing": "cubic-in-out"},
                             # "layout": {"xaxis2": {"range": [0, net._time]}}
@@ -365,7 +369,7 @@ def make_figure(net, size=(1000, 600),
                     "visible": True,
                     "xanchor": "right"
                 },
-                "transition": {"duration": 300, "easing": "cubic-in-out"},
+                "transition": {"duration": 200, "easing": "cubic-in-out"},
                 "pad": {"b": 10, "t": 50},
                 "len": 0.96,
                 "x": 0.024,

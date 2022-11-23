@@ -7,12 +7,12 @@ renderMode = 'none'
 numBS = 7
 interBSDist = 400  # the distance between two adjacent BSs
 # cellRadius = 750  # the radius of a hexagon cell in meters
-txPower = 0.15  # average transmit power per antenna in watts
+txPower = 0.1  # average transmit power per antenna in watts
 maxPAPower = 3  # maximum antenna power in watts
 fixedPC = 18  # load-independent power consumption in watts
 bsFrequency = 5e9  # carrier frequency in Hz
-feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
-antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
+# feederLoss = 1  # feeder loss in dB (XXX: include in antennaGain)
+# antennaGain = 19 - feederLoss  # power gain in dB of each antenna of a BS
 signalThreshold = 2e-12  # signal threshold in watts
 maxAntennas = 64  # max number of antennas
 minAntennas = 16  # min number of antennas
@@ -50,6 +50,7 @@ bsPositions = np.vstack([
     #       AREA[1]/2 + R * 3 * np.sin(a)]
     #      for a in np.linspace(0, 2*np.pi, 13)[:-1]]),
 ])
+probeGridSize = 20
 
 # obs names
 public_obs_keys = ['pc', 'num_antennas', 'responding', 'sleep_mode']

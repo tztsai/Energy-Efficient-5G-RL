@@ -6,8 +6,8 @@ from env.config import timeStep, actionInterval
 
 
 class SimplePolicy:
-    pre_sm2_steps = 5
-    pre_sm3_steps = 25
+    pre_sm2_steps = 10
+    pre_sm3_steps = 50
 
     def __init__(self, action_space, num_agents):
         self.act_space = action_space
@@ -20,16 +20,18 @@ class SimplePolicy:
             sm = info['sleep_mode']
             next_sm = info['next_sleep_mode']
             wakeup_time = info['wakeup_time']
-            thrp_req_queue = info['queued_sum_rate_req']
+            # thrp_req_queue = info['queued_sum_rate_req']
             thrp_req_idle = info['idle_sum_rate_req']
             thrp_req = info['serving_sum_rate_req']
+            thrp = info['serving_sum_rate']
             new_sm = sm
+            ant_switch = 0
             if sm:
-                conn_mode = 1
+                conn_mode = 0
                 self._sleep_steps[id] += 1
-                if sm != next_sm:
-                    pass
-                elif thrp_req_idle:  # wakeup
+                # if sm != next_sm:
+                #     pass
+                if thrp_req_idle:  # wakeup
                     new_sm = 0
                     if wakeup_time < 5e-3:
                         conn_mode = 2
@@ -43,7 +45,11 @@ class SimplePolicy:
                 self._sleep_steps[id] = 0
                 if thrp_req == 0:
                     new_sm = 1
-            return [1, new_sm, conn_mode]
+                elif thrp / thrp_req > 2:
+                    ant_switch = -1
+                elif thrp / thrp_req < 1:
+                    ant_switch = 1
+            return [ant_switch + 1, new_sm, conn_mode]
         return list(map(single_act, range(self.num_agents), obs))
 
 
