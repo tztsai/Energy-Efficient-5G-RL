@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-scenario = 'B'
+scenario = 'C'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 for f in df:
@@ -112,11 +112,7 @@ for scenario in vars_df.index.levels[1]:
     _sdf = vars_df.xs(scenario, level=1)
     idx = _sdf.index.get_level_values(1).drop_duplicates()
     for key, ser in _sdf.items():
-        _df = ser.unstack(level=0).reindex(idx).rename({
-            'mappo_w_qos=4.0': '4.0',
-            'mappo_w_qos=8.0': '8.0',
-            'mappo_w_qos=2.0': '2.0',
-            'mappo_w_qos=1.0': '1.0',})
+        _df = ser.unstack(level=0).reindex(idx)
         fig = px.line(_df, title=key, labels={'value': '', 'time': ''}, log_y=key=='Interference')
         _df.index = pd.MultiIndex.from_tuples(
             [tuple(s.split()) for s in _df.index],
@@ -124,11 +120,23 @@ for scenario in vars_df.index.levels[1]:
         _df1 = _df.reset_index(level=1).groupby('time').mean()
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
         fig.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}.png', scale=2)
+        # fig.show()
         fig1 = px.line(_df1, title=key, labels={'value': '', 'time': ''})
         fig1.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}_daily.png', scale=2)
-        # fig.show()
-        # _df.plot(title=key)
-        # plt.legend(title='')
+        if 'MAPPO' in policies and key == 'Avg Antennas':
+            f = px.line(_df1['MAPPO'], title=key,
+                        labels={'value': '', 'time': ''})
+            f.write_image(f'sim_plots/MAPPO_{scenario}_{key}_daily.png', scale=2)
+    if 'MAPPO' in policies:
+        _df2 = _sdf.loc['MAPPO'].copy()
+        _df2.index = pd.MultiIndex.from_tuples(
+            [tuple(s.split()) for s in _df2.index],
+            names=['day', 'time'])
+        _df2 = (_df2[sorted([k for k in _sdf.keys() if 'BSs' in k.split()], reverse=True)]
+                .reset_index().groupby('time').mean())
+        f = px.area(_df2, labels={'value': '', 'variable': '', 'time': ''},
+                    color_discrete_sequence=np.array(px.colors.qualitative.Plotly)[[0, 2, 4, 1]])
+        f.write_image(f'sim_plots/MAPPO_{scenario}_SM_daily.png', scale=2)
 
     # rate_df = _sdf[['Data Rate (Mb/s)', 'Arrival Rate (Mb/s)']]
     # arr_rates = rate_df['Arrival Rate (Mb/s)'].unstack().values
