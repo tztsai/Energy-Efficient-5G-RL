@@ -16,7 +16,7 @@ for S in A B C; do
     for max_s in 1 2 3; do
         ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --max_sleep $max_s $@
     done
-    ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --no_interf $@
+    # ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --no_interf $@
     ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --no_offload $@
 done
 done
