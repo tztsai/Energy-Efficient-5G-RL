@@ -173,8 +173,7 @@ simulate()
 env.close()
 
 # %%
-if not args.use_dash: exit()
-
-# threading.Thread(target=simulate).start()
-app = create_dash_app(env, args)
-app.run_server(debug=True)
+if args.use_dash:
+    # threading.Thread(target=simulate).start()
+    app = create_dash_app(env, args)
+    app.run_server(debug=True)
