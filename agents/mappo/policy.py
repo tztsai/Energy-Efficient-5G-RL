@@ -110,7 +110,7 @@ class MappoPolicy:
 
     def restore(self, model_dir, version=""):
         model_dir = Path(model_dir)
-        actor_file = next(model_dir.glob(f'actor*{version}.pt'))
+        actor_file = sorted(model_dir.glob(f'actor*{version}.pt'))[0]
         notice("Restoring actor network from {}".format(actor_file))
         self.actor.load_state_dict(torch.load(str(actor_file)))
         try:
