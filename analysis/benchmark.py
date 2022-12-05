@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 
-scenario = 'C'
+scenario = 'B'
 files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
 df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 for f in df:
@@ -16,7 +16,7 @@ df = df0 = pd.concat(df, keys=agents, names=['policy', 'scenario'])
 # df = df.sort_index(level=0, ascending=False)[~df.index.duplicated(keep='last')]
 
 # %%
-group = 'baselines'
+group = 'offload'
 columns = ['actual_rate',
            'arrival_rate',
            'interference',
