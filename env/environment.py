@@ -241,7 +241,7 @@ class MultiCellNetEnv(MultiAgentEnv):
     def close(self):
         if EVAL:
             stats_dir = os.path.join(
-                self.stats_dir, self.net.traffic_model.scenario.name, f'SEED{self.seed}')
+                self.stats_dir, self.net.traffic_model.scenario.name, f'SEED{self._seed}')
             os.makedirs(stats_dir, exist_ok=True)
             self.net.save_stats(stats_dir)
             print('Stats saved to', stats_dir)
