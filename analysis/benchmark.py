@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 
 scenario = 'B'
-files = glob.glob(f'sim_stats/*/{scenario}/trajectory.csv')
+files = glob.glob(f'sim_stats/*/{scenario}/*/trajectory.csv')
 df = [pd.read_csv(f, index_col=0).iloc[1:] for f in files]
 for f in df:
     f.index = f.index.str.replace(',', '')
-agents = [tuple(f.split('\\')[1:3]) for f in files]
-df = df0 = pd.concat(df, keys=agents, names=['policy', 'scenario'])
+agents = [tuple(f.split('\\')[1:4]) for f in files]
+df = pd.concat(df, keys=agents, names=['policy', 'scenario', 'seed'])
 # df = df.sort_index(level=0, ascending=False)[~df.index.duplicated(keep='last')]
+df0 = df = df.reset_index(level=-1).groupby('seed').mean()
 
 # %%
 group = 'offload'
@@ -119,10 +120,11 @@ for scenario in vars_df.index.levels[1]:
             names=['day', 'time'])
         _df1 = _df.reset_index(level=1).groupby('time').mean()
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
-        fig.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}.png', scale=2)
+        key = key.replace('/', 'p').replace('%', 'percent')
+        fig.write_image(f'sim_plots/{group}_{scenario}_{key}.png', scale=2)
         # fig.show()
         fig1 = px.line(_df1, title=key, labels={'value': '', 'time': ''})
-        fig1.write_image(f'sim_plots/{group}_{scenario}_{key.replace("/", "p")}_daily.png', scale=2)
+        fig1.write_image(f'sim_plots/{group}_{scenario}_{key}_daily.png', scale=2)
         if 'MAPPO' in policies and key == 'Avg Antennas':
             f = px.line(_df1['MAPPO'], title=key,
                         labels={'value': '', 'time': ''})
