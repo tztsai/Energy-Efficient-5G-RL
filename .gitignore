@@ -22,5 +22,5 @@
 /analysis/
 !/analysis/*.py
 /wandb/
-/config.py
+# /config.py
 critic*.pt
