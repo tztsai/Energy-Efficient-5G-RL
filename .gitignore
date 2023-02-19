@@ -15,10 +15,7 @@
 /data/RAN_PM_data/
 /results/**/*/run*/
 !/results/**/*/wandb/*
-/results/*.csv
-/results/*.txt
-/results/**/*.png
-/results/**/*.jpg
+/results/
 /analysis/
 !/analysis/*.py
 /wandb/
