@@ -87,6 +87,7 @@ class MultiCellNetEnv(MultiAgentEnv):
         self.w_xqos = w_xqos
         # self.w_drop = w_drop
         # self.w_delay = w_delay
+            
         self.stats_dir = stats_dir
         self.save_trajectory = save_trajectory
         self.include_bs_info = include_bs_info
@@ -237,11 +238,15 @@ class MultiCellNetEnv(MultiAgentEnv):
             drop_ratio = self._sim_steps and self._reward_stats[-1]['drop_ratio'],
         )
         return info
-
+    
+    @property
+    def full_stats_dir(self):
+        return os.path.join(
+            self.stats_dir, self.net.traffic_model.scenario.name, f'SEED{self._seed}')
+        
     def close(self):
         if EVAL:
-            stats_dir = os.path.join(
-                self.stats_dir, self.net.traffic_model.scenario.name, f'SEED{self._seed}')
+            stats_dir = self.full_stats_dir
             os.makedirs(stats_dir, exist_ok=True)
             self.net.save_stats(stats_dir)
             print('Stats saved to', stats_dir)

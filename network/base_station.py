@@ -607,11 +607,10 @@ class BaseStation:
         infos = dict(
             n_ants=self.num_ant,
             conn_mode=self.conn_mode,
-            responding=self.responding,
             sleep_mode=self.sleep,
-            next_sleep=self._next_sleep,
-            wakeup_time=int(self.wakeup_time * 1000),
-            **self._stats
+            # next_sleep=self._next_sleep,
+            # wakeup_time=int(self.wakeup_time * 1000),
+            # **self._stats
         )
         return infos
     
@@ -644,7 +643,7 @@ class BaseStation:
             if i >= len(obs): return obs
             return np.concatenate([
                 obs[:i],
-                np.argmax(obs[i:j], axis=0, keepdims=True), 
+                [np.argmax(obs[i:j], axis=0)], 
                 obs[j:]])
         for i, key in enumerate(keys):
             if key.endswith('sleep_mode'):

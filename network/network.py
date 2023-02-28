@@ -302,10 +302,9 @@ class MultiCellNetwork:
             **{f'sm{i}_cnt': n for i, n in enumerate(bs_sleep_counts)},
         )
         
-        if include_bs:
-            for i, bs in self.bss.items():
-                for k, v in bs.info_dict().items():
-                    infos[f'bs_{i}_{k}'] = v
+        for i, bs in self.bss.items():
+            for k, v in bs.info_dict().items():
+                infos[f'bs_{i}_{k}'] = v
 
         return infos
 
