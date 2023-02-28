@@ -13,7 +13,7 @@ from visualize.render import create_dash_app
 sim_days = 7
 accelerate = 3000
 render_interval = 4
-ctrl_params = dict(w_qos=None, no_interf=False, max_sleep=3, no_offload=False)
+model_params = dict(w_qos=None, no_interf=False, max_sleep=3, no_offload=False)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -58,29 +58,32 @@ np.random.seed(args.seed)
 
 # %%
 def make_env(args, seed=None):
+    kwds = vars(args).copy()
+    kwds['no_interf'] = False  # always has interference at test time
     env = MultiCellNetEnv(seed=seed, **{
-        k: v for k, v in vars(args).items() if v is not None})
+        k: v for k, v in kwds.items() if v is not None})
     pars = inspect.signature(MultiCellNetEnv.__init__).parameters
-    [setattr(args, k, pars[k].default) for k, v in vars(args).items() if v is None]
+    [setattr(args, k, pars[k].default) for k, v in kwds.items() if v is None]
     return env
 
-def get_model_dir(args, env, run_dir, version=''):
+def get_model_dir(args, env_args, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
     p = 'wandb/run-*%s/files/' if args.use_wandb else 'run*%s*/models/'
     dirs = run_dir.glob(p % version)
     for d in sorted(dirs, key=os.path.getmtime, reverse=True):
+        if env_args.no_interf ^ ('no_interf' in str(d)):
+            continue
         with open(d/'config.yaml') as f:
             cfg = yaml.safe_load(f)
-            if all(getattr(env, k) == cfg[k]['value']
-                   for k in ctrl_params if k in cfg):
+            if all(getattr(env_args, k) == cfg[k]['value']
+                   for k in model_params if k in cfg):
                 return d
     raise FileNotFoundError("no such model directory")
 
 env = make_env(env_args, seed=args.seed)
-env.print_info()
-env.net.traffic_model.print_info()
+print(env.full_stats_dir)
 
 obs_space = env.observation_space[0]
 cent_obs_space = env.cent_observation_space
@@ -101,7 +104,7 @@ if args.agent == 'mappo':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
-    for par, defval in ctrl_params.items():
+    for par, defval in model_params.items():
         val = getattr(env_args, par)
         if val != defval:
             env.stats_dir += f'_{par}={val}'
@@ -122,6 +125,14 @@ elif args.agent == 'sleepy':
 else:
     raise ValueError('invalid agent type')
 print('Policy:', type(agent).__name__)
+
+print(env.full_stats_dir)
+if os.path.exists(env.full_stats_dir):
+    print('Simulation already done.')
+    exit()
+
+env.print_info()
+env.net.traffic_model.print_info()
 
 set_log_file(args.sim_log_path)
 

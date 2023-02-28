@@ -18,6 +18,7 @@
 /results/
 /analysis/
 !/analysis/*.py
+!/analysis/sim_plots/
 /wandb/
 # /config.py
 critic*.pt

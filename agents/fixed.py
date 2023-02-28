@@ -1,3 +1,4 @@
+import numpy as np
 from gym.spaces import MultiDiscrete
 
 class AlwaysOnPolicy:
@@ -6,4 +7,4 @@ class AlwaysOnPolicy:
         self.num_ants = num_ants
 
     def act(self, obs, **__):
-        return [[0 if m > self.num_ants else 1 for m in obs[:, 1]]]
+        return [[0 if ob[1] > self.num_ants else 1, 0, 2] for ob in obs]
