@@ -65,7 +65,6 @@ class TrafficModel:
         """ Fit the traffic model to the given traffic trace dataset. """
         assert data_rate_df.shape[1] == self.num_apps
         df = data_rate_df[self.app_names] / self.sample_rate
-        smoothen and conv_smoothen(df)
         self.interval, rem = divmod(self.period, len(df))
         assert rem == 0, (self.interval, rem)
         
@@ -122,15 +121,6 @@ class TrafficModel:
         return self.rates.values[i] * dt  # (n_apps)
 
 
-def conv_smoothen(df: pd.DataFrame, weights=(0.25, 0.5, 0.25), inplace=True):
-    pad = (len(weights) - 1) // 2
-    a = np.pad(list(df.values), ((pad, pad), (0, 0)), mode='edge')
-    a = np.apply_along_axis(np.convolve, 0, a, weights, mode='valid')
-    if not inplace: df = df.copy()
-    df[:] = a
-    return df
-
-
 if __name__ == '__main__':
     import plotly.express as px
     from plotly.subplots import make_subplots
@@ -146,10 +136,10 @@ if __name__ == '__main__':
             df = rates.unstack().reindex(days_idx)
             fig = px.imshow(df, title=f"Scenario {traffic_type.name} - {cat}", #color_continuous_scale='turbo',
                             labels=dict(x='time of day', y='day of week', color='Mb/s/km²'))
-            # fig.show()
+            fig.show()
             figs[cat].add_trace(fig.data[0], row=i+1, col=1)
             fig.update_layout(height=360, width=800)
-            fig.write_image(f"{traffic_type.name}_{cat}.png", scale=2)
+            fig.write_image(f"{traffic_type.name}_{cat}.pdf", scale=2)
         print()
     for cat, fig in figs.items():
         fig.update_layout(height=600, width=600, title_text=cat)

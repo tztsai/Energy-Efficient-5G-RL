@@ -7,10 +7,11 @@ from itertools import product as cartesian_product
 
 # %%
 sql_url = 'sqlite:///cell_traffic.sql'
-pred_path = 'prediction1.csv'
+pred_path = 'prediction.csv'
 
 # %%
-preds = pd.read_csv(pred_path, index_col=0).cluster
+preds = pd.read_csv(pred_path, index_col=0).squeeze()
+preds -= 1
 preds
 
 # %%
@@ -148,14 +149,20 @@ for cell_id, bins in tqdm(flows_df.items(), total=len(flows_df.columns)):
 
 print(pd.Series([len(l) for l in cluster_profiles.values()]).describe())
 
+# %% Oversample
+for i in range(len(profiles_index) - 1):
+    k1, k2 = profiles_index[i], profiles_index[i+1]
+    if k1[:3] != k2[:3]: continue
+    cluster_profiles[k1].extend(cluster_profiles[k2])
+
 # %%
 def aggregate(nums):
-    lb, ub = np.percentile(nums, [35, 85], method='weibull')
+    lb, ub = np.percentile(nums, [0, 80])
     return np.mean([x for x in nums if lb <= x <= ub])
     
 for key, vals in list(cluster_profiles.items()):
     if not vals:
-        cluster_profiles.pop(key)
+        cluster_profiles[key] = np.nan
     else:
         cluster_profiles[key] = aggregate(vals)
 
@@ -165,18 +172,34 @@ profiles_df = pd.Series(cluster_profiles,
 profiles_df = (profiles_df.unstack(level=1)
                .reindex(profiles_index.droplevel(1)
                         .drop_duplicates()))
-profiles_df = profiles_df.loc[profiles_df.index.levels[0][
-    ~profiles_df.isna().groupby('cluster').any().any(axis=1)]]
+profiles_df = profiles_df.loc[profiles_df.index.levels[0]]
+profiles_df.fillna(0, inplace=True)
+#[
+    # ~profiles_df.isna().groupby('cluster').any().any(axis=1)]]
+    
+# %%
+for i in clusters:
+    for c in app_delay_cats:
+        df = profiles_df.loc[i, c]
+        s = df.values
+        s = np.append(np.append(s[-1], s), s[0])
+        for j in range(2, len(s)-2):
+            a = s[j-2:j+3]
+            s[j-2:j+3] = np.clip(a, 0, np.median(a) * 3)
+        s = np.convolve(s, (0.2, 0.6, 0.2), mode='valid')
+        df[:] = s
 
 # %%
-profiles_df.to_csv('cluster_traffic_profiles_2.csv')
+profiles_df.to_csv('cluster_traffic_profiles.csv')
 
 # %%
-# import plotly.express as px
+import plotly.express as px
 
-# for i in clusters:
-#     print('\nCluster {}'.format(i))
-#     for c in app_delay_cats:
-#         print(c)
-#         df = profiles_df.loc[i][c].unstack().reindex(week_idx)
-#         px.imshow(df, aspect='auto', title=f'Cluster {i} {c}').show()
+for i in [2]:
+    print('\nCluster {}'.format(i))
+    for c in app_delay_cats:
+        print(c)
+        df = profiles_df.loc[i][c].unstack().reindex(week_idx)
+        px.imshow(df, aspect='auto', title=f'Cluster {i} {c}').show()
+
+# %%

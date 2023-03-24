@@ -23,11 +23,14 @@ from copy import deepcopy
 from functools import wraps, partial
 from tqdm import tqdm, trange
 from collections import deque
+from icecream import ic
 # import matplotlib.pyplot as plt
 from collections import OrderedDict, defaultdict
 
-try: from my_utils.debug import loadDebugger
-except: pass
+try:
+    from my_utils.debug import loadDebugger
+except:
+    pass
 
 np.set_printoptions(precision=3)
 

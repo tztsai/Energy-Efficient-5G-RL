@@ -1,8 +1,8 @@
 import os
 
-DEBUG = os.environ.get('DEBUG', True)
-TRAIN = os.environ.get('TRAIN', False)
-EVAL = os.environ.get('EVAL', True)
+DEBUG = bool(int(os.environ.get('DEBUG', 1)))
+TRAIN = bool(int(os.environ.get('TRAIN', 0)))
+EVAL = bool(int(os.environ.get('EVAL', 1)))
 
 print("DEBUG:", DEBUG)
 print("TRAIN:", TRAIN)

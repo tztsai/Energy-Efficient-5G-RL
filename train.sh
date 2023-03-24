@@ -2,6 +2,10 @@
 seed_max=1
 log_level="NOTICE"
 
+export DEBUG=0
+export TRAIN=1
+export EVAL=0
+
 scenario="RANDOM"
 accelerate=1200  # 1 step = 0.02 * 1200 = 24 s
 n_training_threads=4

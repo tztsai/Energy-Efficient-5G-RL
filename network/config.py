@@ -4,8 +4,8 @@ from utils import dB2lin, lin2dB
 renderMode = 'none'
 
 # base station params
-numBS = 7
-interBSDist = 400  # the distance between two adjacent BSs
+numBS = 17
+interBSDist = 200  # the distance between two adjacent BSs
 # cellRadius = 750  # the radius of a hexagon cell in meters
 txPower = 0.2  # average transmit power per antenna in watts
 maxPAPower = 3  # maximum antenna power in watts
