@@ -5,6 +5,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.io as pio
+
+plotly_template = pio.templates['plotly']
+plotly_template['layout'].update(
+    margin=dict(l=90, r=40, t=40, b=70),
+    font_size=15, 
+    titlefont_size=20, 
+    legend_font_size=17,
+    xaxis=dict(titlefont_size=20),
+    yaxis=dict(titlefont_size=20),
+    width=640, height=480
+)
+pio.templates['custom'] = plotly_template
+pio.templates.default = 'custom'
 
 scenario = '*'
 files = glob.glob(f'sim_stats/*/{scenario}/*/trajectory.csv')
@@ -18,7 +32,7 @@ df0 = df = df.reset_index(level=-1).groupby(['policy', 'scenario', 'time']).mean
 df.head()
 
 # %%
-group = 'baselines'
+group = 'wqos'
 columns = ['actual_rate',
            'arrival_rate',
            'interference',
@@ -40,10 +54,10 @@ def refactor(df):
         df = df.rename_axis([
             'w_qos', *df.index.names[1:]
         ]).rename({
-            'mappo_w_qos=8.0': '7.0', # '8.0',
-            'mappo_w_qos=4.0': '4.0',
-            'mappo_w_qos=2.0': '2.0',
-            'mappo_w_qos=1.0': '1.0',
+            'mappo_w_qos=8.0': '7', # '8.0',
+            'mappo_w_qos=4.0': '4',
+            'mappo_w_qos=2.0': '2',
+            'mappo_w_qos=1.0': '1',
         })
     elif group == 'interf':
         df = df.rename_axis([
@@ -73,7 +87,7 @@ def refactor(df):
 if group == 'baselines':
     policies = 'Always-on Auto-SM1 MAPPO'.split()
 elif group == 'wqos':
-    policies = '1.0 4.0 7.0'.split()
+    policies = '1 4 7'.split()
 elif group == 'interf':
     policies = 'considered ignored'.split()
 elif group == 'offload':
@@ -134,6 +148,7 @@ for scenario in vars_df.index.levels[1]:
     for g in _df.index.levels[0]:
         f = px.area(_df.loc[g], labels={'value': 'number of BSs', 'variable': 'sleep mode'},
                         color_discrete_sequence=np.array(px.colors.qualitative.Plotly)[[1, 4, 2, 0]])
+        f.update_xaxes(dtick=2)
         f.write_image(f'sim_plots/{group}_{g}_{scenario}_SM_daily.pdf', scale=2)
 
     re_pat = re.compile(r'antennas \((BS \d)\)')
@@ -151,6 +166,7 @@ for scenario in vars_df.index.levels[1]:
     
     for g in _df.index.levels[0]:
         f = px.line(_df.loc[g], labels={'value': 'number of active antennas', 'variable': ''})
+        f.update_xaxes(dtick=2)
         f.write_image(f'sim_plots/{group}_{g}_{scenario}_ants_daily.pdf', scale=2)
 
     for key, ser in _sdf.items():
@@ -162,9 +178,11 @@ for scenario in vars_df.index.levels[1]:
             names=['day', 'time'])
         _df1 = _df.reset_index(level=1).groupby('time').mean()
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
-        key = key.replace('/', 'p').replace('%', 'percent')
+        key = key.replace('/', 'p')
+        fig.update_xaxes(dtick=2)
         fig.write_image(f'sim_plots/{group}_{scenario}_{key}.pdf', scale=2)
         fig1 = px.line(_df1, labels={'value': key})
+        fig1.update_xaxes(dtick=2)
         fig1.write_image(f'sim_plots/{group}_{scenario}_{key}_daily.pdf', scale=2)
         
     # rate_df = _sdf[['Data Rate (Mb/s)', 'Arrival Rate (Mb/s)']]
@@ -277,11 +295,11 @@ renamed_cols = {'avg_pc': 'total PC (W)',
                 'actual_rate': 'UE data rate (Mb/s)',
                 'req_rate': 'UE required data rate (Mb/s)',
                 'rate_ratio': 'actual rate / required rate',
-                'drop_ratio': 'drop ratio (%)',
+                'drop_ratio': 'drop ratio (perc)',
                 'energy_efficiency': 'energy efficiency (Mb/J)'}
 stats_df = pd.concat([net_stats, ue_stats], axis=1)[selected_cols].astype('float')
 stats_df.drop(columns=['rate_ratio'], inplace=True)
-stats_df['energy saving (%)'] = (
+stats_df['energy saving (perc)'] = (
     stats_df.loc['fixed', 'avg_pc'] - stats_df['avg_pc']
 ) / stats_df.loc['fixed', 'avg_pc'] * 100
 stats_df1 = (stats_df
