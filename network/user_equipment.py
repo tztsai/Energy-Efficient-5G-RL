@@ -135,12 +135,12 @@ class UserEquipment:
     def urgent(self):
         return self.time_limit < 0.03
 
-    def compute_sinr(self, N=config.noisePower):
+    def compute_sinr(self, N=config.noiseSpectralDensity):
         if self.bs is None: return 0
         self._S = self.signal_power
         if self.bs._has_interf:
             self._I = self.interference
-            self._SINR = self._S / (self._I + N)
+            self._SINR = self._S / (self._I + N * self.bs.bandwidth)
         else:
             self._I = 0
             self._SINR = self._S / N
@@ -287,7 +287,7 @@ class TestUE(UserEquipment):
         csi = np.zeros((len(csi_index), len(csi_keys)))
         distances = np.sqrt(np.sum((poses[:,None] - self.net.bs_positions)**2, axis=-1))
         channel_gains = compute_channel_gain(distances)
-        N = config.noisePower
+        N = config.noiseSpectralDensity
         i = 0
         for dists, gains in zip(distances, channel_gains):
             self.distances = dists

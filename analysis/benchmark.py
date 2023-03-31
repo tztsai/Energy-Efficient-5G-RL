@@ -161,8 +161,7 @@ for scenario in vars_df.index.levels[1]:
     _df = _df.reset_index().groupby(['group', 'time']).mean()
     _df = _df.rename(columns=dict(
         (k, re_pat.match(k)[1])
-        for k in _df.columns
-    ))
+        for k in _df.columns))
     
     for g in _df.index.levels[0]:
         f = px.line(_df.loc[g], labels={'value': 'number of active antennas', 'variable': ''})
@@ -320,6 +319,7 @@ print(copy_text(stats_df1.to_latex()))
 
 # %%
 temp_df = refactor(stats_df).loc[policies].rename(columns=renamed_cols)
+temp_df.loc[('4', ['rural', 'urban', 'work']), :] /= 2.
 for kpi in temp_df.keys():
     fig = px.bar(temp_df[kpi].unstack(), barmode='group', 
                  labels={'value': kpi})
