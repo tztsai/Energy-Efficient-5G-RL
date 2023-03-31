@@ -4,7 +4,7 @@ from utils import dB2lin, lin2dB
 renderMode = 'none'
 
 # base station params
-numBS = 17
+numBS = 19
 interBSDist = 200  # the distance between two adjacent BSs
 # cellRadius = 750  # the radius of a hexagon cell in meters
 txPower = 0.2  # average transmit power per antenna in watts
@@ -31,24 +31,24 @@ bufferChunkSize = 50  # chunk size to apply average pooling
 bufferNumChunks = bufferShape[0] // bufferChunkSize
 
 # channel model params
-noisePower = bandWidth * dB2lin(-174 - 30 + 7)
+noiseSpectralDensity = dB2lin(-174 - 30 + 7)
 # thermal noise variance
 
 # user equipment params
 ueHeight = 1.5  # height of a UE in meters
 
 # default network configuration
-areaSize = np.array([2.5, 2.5]) * interBSDist
+areaSize = np.array([4.5, 4.5]) * interBSDist
 bsPositions = np.vstack([
     [areaSize / 2],
     np.array(
         [[areaSize[0]/2 + interBSDist * np.cos(a + np.pi/6),
           areaSize[1]/2 + interBSDist * np.sin(a + np.pi/6)]
          for a in np.linspace(0, 2*np.pi, 7)[:-1]]),
-    # np.array(
-    #     [[AREA[0]/2 + R * 3 * np.cos(a),
-    #       AREA[1]/2 + R * 3 * np.sin(a)]
-    #      for a in np.linspace(0, 2*np.pi, 13)[:-1]]),
+    np.array(
+        [[areaSize[0]/2 + (2 if i%2 else np.sqrt(3)) * interBSDist * np.cos(i*np.pi/6),
+          areaSize[1]/2 + (2 if i%2 else np.sqrt(3)) * interBSDist * np.sin(i*np.pi/6)]
+         for i in range(12)]),
 ])
 probeGridSize = 20
 
