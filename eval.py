@@ -85,7 +85,7 @@ def main(args):
     if not run_dir.exists():
         os.makedirs(str(run_dir))
         
-    args.model_dir = get_latest_model_dir(run_dir, use_wandb=1)
+    args.model_dir = get_latest_model_dir(run_dir, use_wandb=True)
     print('Model path:', args.model_dir)
 
     # seed

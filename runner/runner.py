@@ -2,7 +2,6 @@ import os
 import numpy as np
 import torch
 import wandb
-from tensorboardX import SummaryWriter
 from learning.mappo.utils.shared_buffer import SharedReplayBuffer
 
 
@@ -57,6 +56,7 @@ class Runner(object):
                 self.save_dir = str(wandb.run.dir)
                 self.run_dir = str(wandb.run.dir)
         else:
+            from tensorboardX import SummaryWriter
             self.run_dir = config["run_dir"]
             self.log_dir = str(self.run_dir / 'logs')
             if not os.path.exists(self.log_dir):

@@ -2,10 +2,6 @@ from utils import *
 from network import config
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output, ctx
-from dash.exceptions import PreventUpdate
-from dash.dependencies import ClientsideFunction
-
 
 sleep_symbols = np.array(['hexagram', 'hexagram-open', 'hexagon-open', 'x-open'])
 n_agents = 7
@@ -380,6 +376,10 @@ def make_figure(net, size=(1000, 600),
 
 
 def create_dash_app(env, args):
+    from dash import Dash, dcc, html, Input, Output, ctx
+    from dash.exceptions import PreventUpdate
+    from dash.dependencies import ClientsideFunction
+
     app = Dash(type(env).__name__)
 
     figure = env._figure

@@ -8,6 +8,7 @@ try:
     from . import config
     from utils import timeit, notice
 except ImportError:
+    assert __name__ == '__main__'
     import config
     timeit = lambda func: func
     notice = print
