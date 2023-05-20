@@ -1,6 +1,5 @@
 import torch
 import wandb
-import imageio
 import numpy as np
 from .runner import Runner, _t2n
 from utils import sys, time, trange, notice, pd, kwds_str
@@ -197,5 +196,6 @@ class MultiCellNetRunner(Runner):
                   np.mean(np.sum(np.array(episode_rewards), axis=0)))
 
         if self.all_args.save_gifs:
+            import imageio
             imageio.mimsave(str(self.gif_dir) + '/render.gif', all_frames,
                             duration=self.all_args.ifi)
