@@ -13,7 +13,7 @@ from visualize.render import create_dash_app
 sim_days = 7
 accelerate = 3000
 render_interval = 4
-model_params = dict(w_qos=None, no_interf=False, max_sleep=3, no_offload=False)
+model_params = dict(w_qos=4, no_interf=False, max_sleep=3, no_offload=False)
 
 parser = get_config()
 parser.add_argument("-A", '--agent', type=str, default='mappo',
@@ -83,7 +83,6 @@ def get_model_dir(args, env_args, run_dir, version=''):
     raise FileNotFoundError("no such model directory")
 
 env = make_env(env_args, seed=args.seed)
-print(env.full_stats_dir)
 
 obs_space = env.observation_space[0]
 cent_obs_space = env.cent_observation_space
@@ -104,12 +103,6 @@ if args.agent == 'mappo':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
                         model_dir=model_dir, model_version=args.model_version)
-    for par, defval in model_params.items():
-        val = getattr(env_args, par)
-        if val != defval:
-            env.stats_dir += f'_{par}={val}'
-    if args.model_version:
-        env.stats_dir += '_eps=%s' % args.model_version
 elif args.agent == 'fixed':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
 elif args.agent == 'random':
@@ -125,6 +118,13 @@ elif args.agent == 'sleepy':
 else:
     raise ValueError('invalid agent type')
 print('Policy:', type(agent).__name__)
+
+for par, defval in model_params.items():
+    val = getattr(env_args, par)
+    if val != defval:
+        env.stats_dir += f'_{par}={val}'
+if args.model_version:
+    env.stats_dir += '_eps=%s' % args.model_version
 
 print(env.full_stats_dir)
 if os.path.exists(env.full_stats_dir):
