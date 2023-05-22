@@ -32,7 +32,7 @@ df0 = df = df.reset_index(level=-1).groupby(['policy', 'scenario', 'time']).mean
 df.head()
 
 # %%
-group = 'wqos'
+group = 'baselines'
 columns = ['actual_rate',
            'arrival_rate',
            'interference',
@@ -50,6 +50,8 @@ columns = ['actual_rate',
 def refactor(df):
     if group == 'baselines':
         df = df.rename({'mappo_w_qos=8.0': 'MAPPO', 'fixed': 'Always-on', 'simple1': 'Auto-SM1', 'simple2': 'Auto-SM2', 'simple': 'Simple'})
+    elif group == 'baselines-no-offload':
+        df = df.rename({'mappo_no_offload=True': 'MAPPO', 'fixed': 'Always-on', 'simple1_no_offload=True': 'Auto-SM1', 'simple2': 'Auto-SM2'})
     elif group == 'wqos':
         df = df.rename_axis([
             'w_qos', *df.index.names[1:]
@@ -84,7 +86,7 @@ def refactor(df):
     df = df.rename(index={'A': 'rural', 'B': 'urban', 'C': 'work'}, level=1)
     return df
 
-if group == 'baselines':
+if group in ['baselines', 'baselines-no-offload']:
     policies = 'Always-on Auto-SM1 MAPPO'.split()
 elif group == 'wqos':
     policies = '1 4 7'.split()
@@ -281,6 +283,7 @@ selected_cols = ['avg_pc',
                  'drop_ratio']
 renamed_index = {'fixed': 'Always On',
                  'simple1': 'Auto SM1',
+                 'simple1_no_offload=True': 'Auto SM1 (no offload)',
                  'mappo_w_qos=1.0': 'MAPPO (w_qos=1.0)',
                  'mappo_w_qos=2.0': 'MAPPO (w_qos=2.0)',
                  'mappo_w_qos=4.0': 'MAPPO (w_qos=4.0)',
