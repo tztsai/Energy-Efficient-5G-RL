@@ -2,10 +2,12 @@ import numpy as np
 import math
 import torch
 
+
 def check(input):
-    if type(input) == np.ndarray:
-        return torch.from_numpy(input)
-        
+    if type(input) is torch.Tensor:
+        return input
+    return torch.from_numpy(np.asarray(input, dtype=np.float32))
+
 def get_grad_norm(it):
     sum_grad = 0
     for x in it:

@@ -14,12 +14,9 @@ def get_clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
 
 def check(input):
-    try:
-        input = torch.from_numpy(np.asarray(input))
-    except:
-        if not 'Proxy' in type(input).__name__:
-            raise
-    return input
+    if type(input) is torch.Tensor:
+        return input
+    return torch.from_numpy(np.asarray(input, dtype=np.float32))
 
 class StatsCollector:
     def __init__(self, name=None):
