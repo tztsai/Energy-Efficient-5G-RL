@@ -3,7 +3,10 @@ Modified from OpenAI Baselines code to work with multi-agent envs
 """
 import numpy as np
 from multiprocessing import Process, Pipe
+from gym import Wrapper
 from abc import ABC, abstractmethod
+
+from .multi_agent import MultiAgentEnv
 
 
 class CloudpickleWrapper(object):
@@ -129,6 +132,21 @@ class ShareVecEnv(ABC):
             from gym.envs.classic_control import rendering
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
+
+        
+class CentralizedEnv(Wrapper):
+    def __init__(self, multi_agent_env: MultiAgentEnv):
+        self._env = multi_agent_env
+        self._n_agents = 7
+        
+    def reset(self, render_mode=None):
+        _, cent_obs, _ = self._env.reset()
+        return cent_obs[0]
+    
+    def step(self, actions: np.ndarray, render_mode=None):
+        actions = actions.reshape(self._n_agents, -1)
+        _, cent_obs, rewards, done, infos, _ = self._env.step(actions)
+        return cent_obs[0], rewards[0][0], done, infos
 
 
 def worker(remote, parent_remote, env_fn_wrapper):

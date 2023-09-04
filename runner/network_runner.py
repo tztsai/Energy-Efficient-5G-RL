@@ -9,6 +9,10 @@ class MultiCellNetRunner(Runner):
     """Runner class to perform training, evaluation. and data collection for the MPEs. See parent class for details."""
 
     def run(self):
+        # if type(self.policy).__name__ == 'DQNPolicy':
+        #     self.policy.learn(total_timesteps=self.num_env_steps)
+        #     return
+        
         self.warmup()   
 
         start = time.time()
