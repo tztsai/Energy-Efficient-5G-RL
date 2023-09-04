@@ -11,7 +11,7 @@ from utils import *
 from env.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
 
-if DEBUG:
+if DEBUG and 'loadDebugger' in globals():
     loadDebugger()
     
 def get_env_kwargs(args):

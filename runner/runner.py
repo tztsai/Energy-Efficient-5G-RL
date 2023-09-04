@@ -68,9 +68,14 @@ class Runner(object):
         
         from agents.mappo import MappoPolicy as Policy
         from learning.mappo import MappoTrainer as Trainer
-
+        # from agents.dqn import DQNPolicy as Policy
+        
         cent_observation_space = self.envs.cent_observation_space if \
             self.use_centralized_V  else self.envs.observation_space[0]
+
+        # if Policy.__name__ == "DQNPolicy":
+        #     self.policy = Policy(self.envs)
+        #     return
 
         # policy network
         self.policy = Policy(self.all_args,
@@ -78,7 +83,7 @@ class Runner(object):
                              cent_observation_space,
                              self.envs.action_space[0],
                              device = self.device)
-
+        
         if self.model_dir is not None:
             self.restore(version=self.all_args.model_suffix)
 
