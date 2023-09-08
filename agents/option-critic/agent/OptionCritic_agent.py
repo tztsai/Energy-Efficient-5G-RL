@@ -6,16 +6,9 @@ from .BaseAgent import *
 class OptionCriticAgent(BaseAgent):
     def __init__(self, config):
         BaseAgent.__init__(self, config)
-        self.config = config
-        self.task = config.task_fn()
-        self.network = config.network_fn()
         self.target_network = config.network_fn()
-        self.optimizer = config.optimizer_fn(self.network.parameters())
         self.target_network.load_state_dict(self.network.state_dict())
-
-        self.total_steps = 0
         self.worker_index = tensor(np.arange(config.num_workers)).long()
-
         self.states = self.config.state_normalizer(self.task.reset())
         self.is_initial_states = tensor(np.ones((config.num_workers))).byte()
         self.prev_options = self.is_initial_states.clone().long()

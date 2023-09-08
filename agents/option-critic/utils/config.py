@@ -87,3 +87,4 @@ class Config:
             config_dict = args.__dict__
         for key in config_dict.keys():
             setattr(self, key, config_dict[key])
+        return self

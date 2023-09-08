@@ -9,13 +9,16 @@ import numpy as np
 from ..utils import *
 import torch.multiprocessing as mp
 from collections import deque
-from skimage.io import imsave
 
 
 class BaseAgent:
     def __init__(self, config):
         self.config = config
         self.logger = get_logger(tag=config.tag, log_level=config.log_level)
+        self.task = config.task_fn()
+        self.network = config.network_fn()
+        self.optimizer = config.optimizer_fn(self.network.parameters())
+        self.total_steps = 0
         self.task_ind = 0
 
     def close(self):
@@ -81,28 +84,6 @@ class BaseAgent:
             self.task = config.tasks[self.task_ind]
             self.states = self.task.reset()
             self.states = config.state_normalizer(self.states)
-
-    def record_episode(self, dir, env):
-        mkdir(dir)
-        steps = 0
-        state = env.reset()
-        while True:
-            self.record_obs(env, dir, steps)
-            action = self.record_step(state)
-            state, reward, done, info = env.step(action)
-            ret = info[0]['episodic_return']
-            steps += 1
-            if ret is not None:
-                break
-
-    def record_step(self, state):
-        raise NotImplementedError
-
-    # For DMControl
-    def record_obs(self, env, dir, steps):
-        env = env.env.envs[0]
-        obs = env.render(mode='rgb_array')
-        imsave('%s/%04d.png' % (dir, steps), obs)
 
 
 class BaseActor(mp.Process):
