@@ -13,7 +13,7 @@ class MultiCellNetRunner(Runner):
         #     self.policy.learn(total_timesteps=self.num_env_steps)
         #     return
         
-        self.warmup()   
+        self.warmup()
 
         start = time.time()
         episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads
@@ -124,7 +124,7 @@ class MultiCellNetRunner(Runner):
     def take_actions(self, obs, reset_rnn=False, _rnn_cache={}):
         n_threads = obs.shape[0]
         if reset_rnn or 'states' not in _rnn_cache:
-            n_agents, rnn_layers, rnn_dim = self.buffer.rnn_states.shape[2:]
+            n_agents, rnn_layers, rnn_dim = self.buffer.rnn_states.shape[-3:]
             states_shape = (n_threads * n_agents, rnn_layers, rnn_dim)
             _rnn_cache['states'] = np.zeros(states_shape, dtype=np.float32)
         rnn_states = _rnn_cache['states']
@@ -161,45 +161,3 @@ class MultiCellNetRunner(Runner):
         eval_env_infos = {'episode_rewards': episode_rewards}
         self.log_env(eval_env_infos, total_num_steps)
         print("eval average episode reward:", episode_rewards.mean())
-
-    @torch.no_grad()
-    def render(self):
-        """Visualize the env."""
-        envs = self.envs
-        
-        all_frames = []
-        for _ in range(self.all_args.render_episodes):
-            obs = envs.reset()
-            if self.all_args.save_gifs:
-                image = envs.render('rgb_array')[0][0]
-                all_frames.append(image)
-            else:
-                envs.render('human')
-
-            episode_rewards = []
-            
-            for step in range(self.episode_length):
-                calc_start = time.time()
-                actions = self.take_actions(obs)
-
-                # Obser reward and next obs
-                obs, rewards, dones, infos, _ = envs.step(actions)
-                episode_rewards.append(rewards)
-
-                if self.all_args.save_gifs:
-                    image = envs.render('rgb_array')[0][0]
-                    all_frames.append(image)
-                    calc_end = time.time()
-                    elapsed = calc_end - calc_start
-                    if elapsed < self.all_args.ifi:
-                        time.sleep(self.all_args.ifi - elapsed)
-                else:
-                    envs.render('human')
-
-            print("average episode rewards is:", 
-                  np.mean(np.sum(np.array(episode_rewards), axis=0)))
-
-        if self.all_args.save_gifs:
-            import imageio
-            imageio.mimsave(str(self.gif_dir) + '/render.gif', all_frames,
-                            duration=self.all_args.ifi)

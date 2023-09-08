@@ -120,33 +120,11 @@ class ShareVecEnv(ABC):
         """
         raise NotImplementedError
 
-    # @property
-    # def unwrapped(self):
-    #     if isinstance(self, VecEnvWrapper):
-    #         return self.venv.unwrapped
-    #     else:
-    #         return self
-
     def get_viewer(self):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
-
-        
-class CentralizedEnv(Wrapper):
-    def __init__(self, multi_agent_env: MultiAgentEnv):
-        self._env = multi_agent_env
-        self._n_agents = 7
-        
-    def reset(self, render_mode=None):
-        _, cent_obs, _ = self._env.reset()
-        return cent_obs[0]
-    
-    def step(self, actions: np.ndarray, render_mode=None):
-        actions = actions.reshape(self._n_agents, -1)
-        _, cent_obs, rewards, done, infos, _ = self._env.step(actions)
-        return cent_obs[0], rewards[0][0], done, infos
 
 
 def worker(remote, parent_remote, env_fn_wrapper):

@@ -3,10 +3,11 @@ import numpy as np
 import os.path as osp
 from utils import *
 from .nn.actor_critic import Actor, Critic
+from ..base import Policy
 from config import *
 
 
-class MappoPolicy:
+class MappoPolicy(Policy):
     """
     MAPPO Policy class. Wraps actor and critic networks to compute actions and value function predictions.
 
@@ -29,15 +30,7 @@ class MappoPolicy:
 
         info(str(self.actor))
         info(str(self.critic))
-        
         self._actor_rnn_state = None
-
-        if EVAL and getattr(args, 'count_flops', False):
-            from pthflops import count_ops
-            self._count_flops = count_ops
-            self._flops = 0
-        else:
-            self._count_flops = None
 
         if model_dir is not None:
             self.restore(model_dir, model_version)
@@ -129,7 +122,7 @@ class MappoPolicy:
 
     @timeit
     @torch.no_grad()
-    def act(self, obs, actor_rnn_state=0, masks=None, 
+    def act(self, obs, actor_rnn_state=None, masks=None, 
             available_actions=None, deterministic=True):
         """
         Compute actions using the given inputs.
@@ -153,9 +146,6 @@ class MappoPolicy:
             masks = np.ones((1, 1), dtype=np.float32)
         actions, _, actor_rnn_state = self.actor(
             obs, actor_rnn_state, masks, available_actions, deterministic)
-        if self._count_flops:
-            self._flops += self._count_flops(self.actor, obs)
-            print('FLOPS:', self._flops / 1e3, 'K')
         self._actor_rnn_state = actor_rnn_state
         return actions.cpu().numpy()
 
