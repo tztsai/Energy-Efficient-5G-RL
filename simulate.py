@@ -170,8 +170,6 @@ def simulate():
     # info['w_pc'] = env.w_pc
     info['w_qos'] = env.w_qos
     info['w_xqos'] = env.w_xqos
-    if args.agent == 'mappo' and getattr(args, 'count_flops', False):
-        info['n_flops'] = agent._flops
     print(info)
     
     save_path = args.perf_save_path

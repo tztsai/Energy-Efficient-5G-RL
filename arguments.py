@@ -298,9 +298,6 @@ def get_config():
                         help="any substring of the version name of the run")
     parser.add_argument("-V", "--model_version", type=str, default='',
                         help="by default None. set the version of pretrained model.")
-
-    parser.add_argument("--count_flops", action='store_true',
-                        help="count the number of flops in one forward pass")
     
     return parser
 

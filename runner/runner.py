@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import wandb
-from learning.mappo.utils.shared_buffer import SharedReplayBuffer
+from learning.utils.shared_buffer import SharedReplayBuffer
 
 
 def _t2n(x):
