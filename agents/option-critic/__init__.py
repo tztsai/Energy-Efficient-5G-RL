@@ -1,4 +1,4 @@
-from .agent import *
+from .agent.OptionCritic_agent import OptionCriticAgent
 from .component import *
 from .network import *
 from .utils import *

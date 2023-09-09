@@ -1,12 +1,20 @@
-import numpy as np
 import math
 import torch
+import numpy as np
+
+from .valuenorm import ValueNorm
+from .shared_buffer import SharedReplayBuffer
+from .separated_buffer import SeparatedReplayBuffer
 
 
 def check(input):
     if type(input) is torch.Tensor:
         return input
     return torch.from_numpy(np.asarray(input, dtype=np.float32))
+
+def th2np(x):
+    """Convert torch tensor to a numpy array."""
+    return x.detach().cpu().numpy()
 
 def get_grad_norm(it):
     sum_grad = 0

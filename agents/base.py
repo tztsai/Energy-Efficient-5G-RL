@@ -11,8 +11,8 @@ class Policy(ABC):
 def multi_agent_wrapper(policy_class):
     @wraps(policy_class)
     class MultiAgentPolicy(Policy):
-        def __init__(self, obs_space, act_space, num_agents, **kwargs):
-            policy_class.__init__(self, obs_space=obs_space, act_space=act_space, **kwargs)
+        def __init__(self, num_agents, **kwargs):
+            policy_class.__init__(self, **kwargs)
             self.num_agents = num_agents
 
         def act(self, obs, **kwargs):

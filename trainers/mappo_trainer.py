@@ -2,34 +2,50 @@ import numpy as np
 import torch
 import wandb
 import torch.nn as nn
-from utils import trange, notice
-from .utils.util import *
-from .utils.valuenorm import ValueNorm
+from agents.mappo import MappoPolicy
+from utils import sys, time, trange, notice, pd, kwds_str
+from .utils import *
+from .trainer import BaseTrainer
 
 
-class MappoTrainer:
+class MappoTrainer(BaseTrainer):
     """
     Trainer class for MAPPO to update policies.
     :param args: (argparse.Namespace) arguments containing relevant model, policy, and env information.
     :param policy: (R_MAPPO_Policy) policy to update.
     :param device: (torch.device) specifies the device to run on (cpu/gpu).
     """
-    def __init__(self, args, policy, device=torch.device("cpu")):
+    def __init__(self, config):
+        super().__init__(config)
 
+        cent_observation_space = self.envs.cent_observation_space if \
+            self.use_centralized_V else self.envs.observation_space[0]
+
+        self.policy = MappoPolicy(self.all_args,
+                             self.envs.observation_space[0],
+                             cent_observation_space,
+                             self.envs.action_space[0],
+                             device = self.device)
+        
+        if self.model_dir is not None:
+            self.load(version=self.all_args.model_version)
+        
+        self.buffer = SharedReplayBuffer(self.all_args,
+                                        self.num_agents,
+                                        self.envs.observation_space[0],
+                                        cent_observation_space,
+                                        self.envs.action_space[0])
+        
+        args = self.all_args
+        self.tpdv = dict(dtype=torch.float32, device=self.device)
         self.lr = args.lr
         self.critic_lr = args.critic_lr
         self.opti_eps = args.opti_eps
         self.weight_decay = args.weight_decay
-        
-        self.device = device
-        self.tpdv = dict(dtype=torch.float32, device=device)
-        self.policy = policy
-        
-        self.use_wandb = args.use_wandb
-        if args.use_wandb:
-            wandb.watch(self.policy.actor)
-            wandb.watch(self.policy.critic)
-
+        self.use_centralized_V = self.all_args.use_centralized_V
+        self.use_obs_instead_of_state = self.all_args.use_obs_instead_of_state
+        self.use_linear_lr_decay = self.all_args.use_linear_lr_decay
+        self.hidden_size = self.all_args.hidden_size
         self.clip_param = args.clip_param
         self.ppo_epoch = args.ppo_epoch
         self.num_mini_batch = args.num_mini_batch
@@ -38,6 +54,7 @@ class MappoTrainer:
         self.entropy_coef = args.entropy_coef
         self.max_grad_norm = args.max_grad_norm       
         self.huber_delta = args.huber_delta
+        self.recurrent_N = args.recurrent_N
         
         self.actor_optimizer = torch.optim.Adam(
             self.policy.actor.parameters(), lr=self.lr, 
@@ -45,6 +62,11 @@ class MappoTrainer:
         self.critic_optimizer = torch.optim.Adam(
             self.policy.critic.parameters(), lr=self.critic_lr,
             eps=self.opti_eps, weight_decay=self.weight_decay)
+        
+        self.use_wandb = args.use_wandb
+        if self.use_wandb:
+            wandb.watch(self.policy.actor)
+            wandb.watch(self.policy.critic)
 
         self._use_recurrent_policy = args.use_recurrent_policy
         self._use_naive_recurrent = args.use_naive_recurrent_policy
@@ -191,7 +213,7 @@ class MappoTrainer:
 
         return value_loss, critic_grad_norm, policy_loss, dist_entropy, actor_grad_norm, imp_weights
 
-    def train(self, buffer, update_actor=True):
+    def train_one_episode(self, update_actor=True):
         """
         Perform a training update using minibatch GD.
         :param buffer: (SharedReplayBuffer) buffer containing training data.
@@ -199,6 +221,10 @@ class MappoTrainer:
 
         :return train_info: (dict) contains information regarding training update (e.g. loss, grad norms, etc).
         """
+        self.policy.prep_training()
+
+        buffer = self.buffer
+                
         if self._use_popart or self._use_valuenorm:
             advantages = buffer.returns[:-1] - self.value_normalizer.denormalize(buffer.value_preds[:-1])
         else:
@@ -237,6 +263,8 @@ class MappoTrainer:
                 train_info['actor_grad_norm'] += actor_grad_norm
                 train_info['critic_grad_norm'] += critic_grad_norm
                 train_info['ratio'] += imp_weights.mean()
+            
+        self.buffer.after_update()
 
         num_updates = self.ppo_epoch * self.num_mini_batch
 
@@ -245,8 +273,130 @@ class MappoTrainer:
  
         return train_info
 
-    def prep_training(self):
-        self.policy.prep_training()
+    def train(self):
+        self.warmup()
 
-    def prep_rollout(self):
+        episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads
+        pbar = trange(episodes)
+
+        for episode in pbar:
+            if self.use_linear_lr_decay:
+                self.policy.lr_decay(episode, episodes)
+
+            for step in trange(self.episode_length, file=sys.stdout, postfix='collecting'):
+                # sample actions
+                values, actions, action_log_probs, rnn_states, rnn_states_critic = self.sample(step)
+
+                # get transition data
+                obs, cent_obs, reward, done, infos, avail_acts = self.envs.step(actions)
+
+                # insert data into buffer
+                self.insert(obs, cent_obs, reward, done, values, actions,
+                            action_log_probs, rnn_states, rnn_states_critic)
+
+            # compute return and update network
+            self.compute()
+            train_infos = self.train_one_episode()
+            
+            # post process
+            total_num_steps = (episode + 1) * self.episode_length * self.n_rollout_threads
+            
+            # save model
+            if (episode % self.save_interval == 0 or episode == episodes - 1):
+                self.save()
+                if episode % 10 == 0:
+                    self.save(version='_eps%s' % episode)
+
+            # log information
+            if episode % self.log_interval == 0:
+                rew_df = pd.concat([pd.DataFrame(d['step_rewards']) for d in infos])
+                rew_info = rew_df.describe().loc[['mean', 'std', 'min', 'max']].unstack()
+                rew_info.index = ['_'.join(idx) for idx in rew_info.index]
+                train_infos.update(
+                    sm3_ratio_mean = np.mean([d['sm3_ratio'] for d in infos]),
+                    **rew_info)
+                avg_step_rew = np.mean(self.buffer.rewards)
+                assert abs(avg_step_rew - train_infos['reward_mean']) < 1e-3
+                notice('Episode %s: %s\n' % (episode, kwds_str(**train_infos)))
+                pbar.set_postfix(reward=avg_step_rew)
+                self.log_train(train_infos, total_num_steps)
+
+            # eval
+            if episode % self.eval_interval == 0 and self.use_eval:
+                self.eval(total_num_steps)
+
+    def warmup(self):
+        # reset env
+        obs, cent_obs, avail_actions = self.envs.reset()
+
+        # replay buffer
+        if not self.use_centralized_V:
+            cent_obs = obs
+        self.buffer.cent_obs[0] = cent_obs.copy()
+        self.buffer.obs[0] = obs.copy()
+
+    @torch.no_grad()
+    def sample(self, step):
         self.policy.prep_rollout()
+        
+        value, action, action_log_prob, rnn_states, rnn_states_critic = \
+            self.policy.get_actions(
+                np.concatenate(self.buffer.cent_obs[step]),
+                np.concatenate(self.buffer.obs[step]),
+                np.concatenate(self.buffer.rnn_states[step]),
+                np.concatenate(self.buffer.rnn_states_critic[step]),
+                np.concatenate(self.buffer.masks[step]))
+
+        # [self.envs, agents, dim]
+        values = np.array(np.split(th2np(value), self.n_rollout_threads))
+        actions = np.array(np.split(th2np(action), self.n_rollout_threads))
+        action_log_probs = np.array(np.split(th2np(action_log_prob), self.n_rollout_threads))
+        rnn_states = np.array(np.split(th2np(rnn_states), self.n_rollout_threads))
+        rnn_states_critic = np.array(np.split(th2np(rnn_states_critic), self.n_rollout_threads))
+
+        return values, actions, action_log_probs, rnn_states, rnn_states_critic
+
+    def insert(self, obs, cent_obs, reward, done, values, actions, 
+               action_log_probs, rnn_states, rnn_states_critic):
+        masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32) 
+
+        if np.all(done):
+            rnn_states[:] = 0
+            rnn_states_critic[:] = 0
+            masks[:] = 0
+
+        if not self.use_centralized_V:
+            cent_obs = obs
+
+        self.buffer.insert(cent_obs, obs, rnn_states, rnn_states_critic, actions,
+                           action_log_probs, values, reward, masks)
+    
+    @torch.no_grad()
+    def compute(self):
+        """Calculate returns for the collected data."""
+        self.policy.prep_rollout()
+        next_values = self.policy.get_values(
+            np.concatenate(self.buffer.cent_obs[-1]),
+            np.concatenate(self.buffer.rnn_states_critic[-1]),
+            np.concatenate(self.buffer.masks[-1]))
+        next_values = np.array(np.split(th2np(next_values), self.n_rollout_threads))
+        self.buffer.compute_returns(next_values, self.value_normalizer)
+
+    @torch.no_grad()
+    def take_actions(self, obs, reset_rnn=False):
+        n_threads = obs.shape[0]
+        obs = np.concatenate(obs)
+        if reset_rnn:
+            self.policy.reset_actor_rnn_state(n_threads)
+        actions = self.policy.act(obs, deterministic=True)
+        actions = np.array(np.split(actions, n_threads))
+        return actions
+
+    def save(self, version=''):
+        """Save policy's actor and critic networks."""
+        self.policy.save(self.save_dir, version=version)
+
+    def load(self, version=''):
+        """Load policy's networks from a saved model."""
+        self.policy.load(self.model_dir, version=version)
+ 

@@ -33,7 +33,7 @@ class MappoPolicy(Policy):
         self._actor_rnn_state = None
 
         if model_dir is not None:
-            self.restore(model_dir, model_version)
+            self.load(model_dir, model_version)
 
     def get_actions(self, cent_obs, obs, actor_rnn_states, critic_rnn_states, masks, 
                     available_actions=None, deterministic=False):
@@ -96,12 +96,12 @@ class MappoPolicy(Policy):
         
         return values, action_log_probs, dist_entropy
 
-    def save(self, save_dir, version=""):
+    def save(self, save_dir, version=''):
         notice("Saving models to {}".format(save_dir))
         torch.save(self.actor.state_dict(), osp.join(save_dir, "actor%s.pt" % version))
         torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % version))
 
-    def restore(self, model_dir, version=""):
+    def load(self, model_dir, version=''):
         model_dir = Path(model_dir)
         actor_file = sorted(model_dir.glob(f'actor*{version}.pt'))[0]
         notice("Restoring actor network from {}".format(actor_file))
@@ -110,7 +110,7 @@ class MappoPolicy(Policy):
             critic_file = next(model_dir.glob(f'critic*{version}.pt'))
             self.critic.load_state_dict(torch.load(str(critic_file)))
         except:
-            notice("No critic file found, skipping critic restore.")
+            notice("No critic file found, skipping critic loading.")
 
     def prep_training(self):
         self.actor.train()
@@ -151,3 +151,6 @@ class MappoPolicy(Policy):
 
     def get_actor_rnn_state(self):
         return self._actor_rnn_state
+
+    def reset_actor_rnn_state(self):
+        self._actor_rnn_state = None
