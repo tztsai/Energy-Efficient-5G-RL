@@ -2,13 +2,16 @@ import torch
 import numpy as np
 from collections import defaultdict
 
-from .util import check, get_shape_from_obs_space, get_shape_from_act_space
+from . import check, get_shape_from_obs_space, get_shape_from_act_space
+
 
 def _flatten(T, N, x):
     return x.reshape(T * N, *x.shape[2:])
 
+
 def _cast(x):
-    return x.transpose(1,0,2).reshape(-1, *x.shape[2:])
+    return x.transpose(1, 0, 2).reshape(-1, *x.shape[2:])
+
 
 class SeparatedReplayBuffer(object):
     def __init__(self, args, obs_space, cent_obs_space, act_space):
