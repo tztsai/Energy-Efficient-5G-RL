@@ -2,10 +2,179 @@ import numpy as np
 import torch
 import wandb
 import torch.nn as nn
+from argparse import ArgumentParser
 from agents.mappo import MappoPolicy
 from utils import sys, time, trange, notice, pd, kwds_str
 from .utils import *
 from .trainer import BaseTrainer
+
+
+def get_mappo_config():
+    """
+    Network parameters:
+        --share_policy
+            by default True, all agents will share the same network; set to make training agents use different policies. 
+        --use_centralized_V
+            by default True, use centralized training mode; or else will decentralized training mode.
+        --stacked_frames <int>
+            Number of input frames which should be stack together.
+        --hidden_size <int>
+            Dimension of hidden layers for actor/critic networks
+        --layer_N <int>
+            Number of layers for actor/critic networks
+        --use_ReLU
+            by default True, will use ReLU. or else will use Tanh.
+        --use_popart
+            by default True, use PopArt to normalize rewards. 
+        --use_valuenorm
+            by default True, use running mean and std to normalize rewards. 
+        --use_feature_normalization
+            by default True, apply layernorm to normalize inputs. 
+        --use_orthogonal
+        
+            by default True, use Orthogonal initialization for weights and 0 initialization for biases. or else, will use xavier uniform inilialization.
+        --gain
+            by default 0.01, use the gain # of last action layer
+        --use_naive_recurrent_policy
+            by default False, use the whole trajectory to calculate hidden states.
+        --use_recurrent_policy
+            by default, use Recurrent Policy. If set, do not use.
+        --recurrent_N <int>
+            The number of recurrent layers ( default 1).
+        --data_chunk_length <int>
+            Time length of chunks used to train a recurrent_policy, default 10.
+    
+    Optimizer parameters:
+        --lr <float>
+            learning rate parameter,  (default: 5e-4, fixed).
+        --critic_lr <float>
+            learning rate of critic  (default: 5e-4, fixed)
+        --opti_eps <float>
+            RMSprop optimizer epsilon (default: 1e-5)
+        --weight_decay <float>
+            coefficience of weight decay (default: 0)
+    
+    PPO parameters:
+        --ppo_epoch <int>
+            number of ppo epochs (default: 15)
+        --use_clipped_value_loss 
+            by default, clip loss value. If set, do not clip loss value.
+        --clip_param <float>
+            ppo clip parameter (default: 0.2)
+        --num_mini_batch <int>
+            number of batches for ppo (default: 1)
+        --entropy_coef <float>
+            entropy term coefficient (default: 0.01)
+        --use_max_grad_norm 
+            by default, use max norm of gradients. If set, do not use.
+        --max_grad_norm <float>
+            max norm of gradients (default: 0.5)
+        --use_gae
+            by default, use generalized advantage estimation. If set, do not use gae.
+        --gamma <float>
+            discount factor for rewards (default: 0.99)
+        --gae_lambda <float>
+            gae lambda parameter (default: 0.95)
+        --use_proper_time_limits
+            by default, the return value does consider limits of time. If set, compute returns with considering time limits factor.
+        --use_huber_loss
+            by default, use huber loss. If set, do not use huber loss.
+        --use_value_active_masks
+            by default True, whether to mask useless data in value loss.  
+        --huber_delta <float>
+            coefficient of huber loss.  
+    
+    PPG parameters:
+        --aux_epoch <int>
+            number of auxiliary epochs. (default: 4)
+        --clone_coef <float>
+            clone term coefficient (default: 0.01)
+    
+    Run parameters:
+        --use_linear_lr_decay
+            by default, do not apply linear decay to learning rate. If set, use a linear schedule on the learning rate
+    """
+    parser = ArgumentParser()
+    
+    # network parameters
+    parser.add_argument("--share_policy", action='store_false',
+                        default=True, help='Whether agent share the same policy')
+    parser.add_argument("--use_centralized_V", action='store_false',
+                        default=True, help="Whether to use centralized V function")
+    parser.add_argument("--stacked_frames", type=int, default=1,
+                        help="Dimension of hidden layers for actor/critic networks")
+    parser.add_argument("--use_stacked_frames", action='store_true',
+                        default=False, help="Whether to use stacked_frames")
+    parser.add_argument("--hidden_size", type=int, default=64,
+                        help="Dimension of hidden layers for actor/critic networks") 
+    parser.add_argument("--layer_N", type=int, default=1,
+                        help="Number of layers for actor/critic networks")
+    parser.add_argument("--use_ReLU", action='store_false',
+                        default=True, help="Whether to use ReLU")
+    parser.add_argument("--use_popart", action='store_true', default=False, help="by default False, use PopArt to normalize rewards.")
+    parser.add_argument("--use_valuenorm", action='store_false', default=True, help="by default True, use running mean and std to normalize rewards.")
+    parser.add_argument("--use_feature_normalization", action='store_false',
+                        default=True, help="Whether to apply layernorm to the inputs")
+    parser.add_argument("--use_orthogonal", action='store_false', default=True,
+                        help="Whether to use Orthogonal initialization for weights and 0 initialization for biases")
+    parser.add_argument("--gain", type=float, default=0.01,
+                        help="The gain # of last action layer")
+
+    # recurrent parameters
+    parser.add_argument("--use_naive_recurrent_policy", action='store_true',
+                        default=False, help='Whether to use a naive recurrent policy')
+    parser.add_argument("--use_recurrent_policy", action='store_true',
+                        default=False, help='use a recurrent policy')
+    parser.add_argument("--recurrent_N", type=int, default=1, help="The number of recurrent layers.")
+    parser.add_argument("--data_chunk_length", type=int, default=10,
+                        help="Time length of chunks used to train a recurrent_policy")
+
+    # optimizer parameters
+    parser.add_argument("--lr", type=float, default=5e-4,
+                        help='learning rate (default: 5e-4)')
+    parser.add_argument("--critic_lr", type=float, default=5e-4,
+                        help='critic learning rate (default: 5e-4)')
+    parser.add_argument("--opti_eps", type=float, default=1e-5,
+                        help='RMSprop optimizer epsilon (default: 1e-5)')
+    parser.add_argument("--weight_decay", type=float, default=0)
+
+    # ppo parameters
+    parser.add_argument("--ppo_epoch", type=int, default=15,
+                        help='number of ppo epochs (default: 15)')
+    parser.add_argument("--use_clipped_value_loss",
+                        action='store_false', default=True, help="by default, clip loss value. If set, do not clip loss value.")
+    parser.add_argument("--clip_param", type=float, default=0.2,
+                        help='ppo clip parameter (default: 0.2)')
+    parser.add_argument("--num_mini_batch", type=int, default=1,
+                        help='number of batches for ppo (default: 1)')
+    parser.add_argument("--entropy_coef", type=float, default=0.01,
+                        help='entropy term coefficient (default: 0.01)')
+    parser.add_argument("--value_loss_coef", type=float,
+                        default=1, help='value loss coefficient (default: 0.5)')
+    parser.add_argument("--use_max_grad_norm",
+                        action='store_false', default=True, help="by default, use max norm of gradients. If set, do not use.")
+    parser.add_argument("--max_grad_norm", type=float, default=10.0,
+                        help='max norm of gradients (default: 0.5)')
+    parser.add_argument("--use_gae", action='store_false',
+                        default=True, help='use generalized advantage estimation')
+    parser.add_argument("--gamma", type=float, default=0.99,
+                        help='discount factor for rewards (default: 0.99)')
+    parser.add_argument("--gae_lambda", type=float, default=0.95,
+                        help='gae lambda parameter (default: 0.95)')
+    parser.add_argument("--use_proper_time_limits", action='store_true',
+                        default=False, help='compute returns taking into account time limits')
+    parser.add_argument("--use_huber_loss", action='store_false', default=True, help="by default, use huber loss. If set, do not use huber loss.")
+    parser.add_argument("--use_value_active_masks",
+                        action='store_true', default=False, help="by default False, whether to mask useless data in value loss.")
+    parser.add_argument("--use_policy_active_masks",
+                        action='store_true', default=False, help="by default False, whether to mask useless data in policy loss.")
+    parser.add_argument("--huber_delta", type=float, default=10.0, help=" coefficience of huber loss.")
+
+    # run parameters
+    parser.add_argument("--use_linear_lr_decay", action='store_true',
+                        default=False, help='use a linear schedule on the learning rate')
+    
+    return parser
 
 
 class MappoTrainer(BaseTrainer):

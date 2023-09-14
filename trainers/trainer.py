@@ -5,8 +5,6 @@ import wandb
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
 
-from .utils import SharedReplayBuffer, th2np
-
 
 class BaseTrainer(ABC):
     """
@@ -18,7 +16,7 @@ class BaseTrainer(ABC):
         self.envs = config['envs']
         self.eval_envs = config['eval_envs']
         self.num_agents = config['num_agents']
-        self.device = torch.device(config['device'])
+        self.device = config['device']
         self.env_name = self.all_args.env_name
         self.algorithm_name = self.all_args.algorithm_name
         self.experiment_name = self.all_args.experiment_name
@@ -53,11 +51,11 @@ class BaseTrainer(ABC):
         """Use the policy to take actions in the environment."""
     
     @abstractmethod
-    def save(self, version=None):
+    def save(self, version=''):
         """Save policy's actor and critic networks."""
 
     @abstractmethod
-    def load(self, version=None):
+    def load(self, version=''):
         """Load policy's networks from a saved model."""
  
     def log_train(self, train_infos, total_num_steps):
@@ -71,3 +69,16 @@ class BaseTrainer(ABC):
                 wandb.log({k: v}, step=total_num_steps)
             else:
                 self.writter.add_scalars(k, {k: v}, total_num_steps)
+
+    def close(self):
+        self.envs.close()
+        if self.eval_envs:
+            self.eval_envs.close()
+        
+        if self.use_wandb:
+            wandb.run.finish()
+        else:
+            self.writter.export_scalars_to_json(
+                str(self.log_dir + '/summary.json'))
+            self.writter.close()
+        

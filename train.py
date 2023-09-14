@@ -60,16 +60,26 @@ def main(args):
     parser = get_config()
     env_parser = get_env_config()
     args, env_args = parser.parse_known_args(args)
-    env_args = env_parser.parse_args(env_args)
+    env_args, rl_args = env_parser.parse_known_args(env_args)
     
     if args.algorithm_name == "rmappo":
         assert (args.use_recurrent_policy or args.use_naive_recurrent_policy), (
             "check recurrent policy!")
+        from trainers.mappo_trainer import MappoTrainer as Trainer, get_mappo_config
+        rl_parser = get_mappo_config()
     elif args.algorithm_name == "mappo":
         args.use_recurrent_policy = False
         args.use_naive_recurrent_policy = False
+        from trainers.mappo_trainer import MappoTrainer as Trainer, get_mappo_config
+        rl_parser = get_mappo_config()
+    elif args.algorithm_name == "dqn":
+        from trainers.dqn_trainer import DQNTrainer as Trainer, get_dqn_config
+        rl_parser = get_dqn_config()
     else:
         raise NotImplementedError
+    
+    rl_args = rl_parser.parse_args(rl_args)
+    vars(args).update(vars(rl_args))
 
     # cuda
     if args.cuda and torch.cuda.is_available():
@@ -103,17 +113,17 @@ def main(args):
 
     # logging
     if args.use_wandb:
-        run = wandb.init(config=args,
-                         project=args.env_name,
-                         entity=args.user_name,
-                         notes=socket.gethostname(),
-                         name=str(args.algorithm_name) + "_" +
-                         str(args.experiment_name) +
-                         "_seed" + str(args.seed),
-                         group=env_args.scenario,
-                         dir=str(run_dir),
-                         job_type="training",
-                         reinit=True)
+        wandb.init(
+            config=args,
+            project=args.env_name,
+            entity=args.user_name,
+            notes=socket.gethostname(),
+            name=f"{args.algorithm_name}_{args.experiment_name}_seed{args.seed}",
+            group=env_args.scenario,
+            dir=str(run_dir),
+            job_type="training",
+            reinit=True,
+        )
     else:
         if not run_dir.exists():
             curr_run = 'run1'
@@ -129,6 +139,7 @@ def main(args):
             os.makedirs(str(run_dir))
 
     # seed
+    random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
@@ -146,23 +157,9 @@ def main(args):
         "run_dir": run_dir
     }
 
-    # run experiments
-    from runner import MultiCellNetRunner as Runner
-
-    runner = Runner(config)
-    runner.run()
-
-    # post process
-    envs.close()
-    if args.use_eval and eval_envs is not envs:
-        eval_envs.close()
-
-    if args.use_wandb:
-        run.finish()
-    else:
-        runner.writter.export_scalars_to_json(
-            str(runner.log_dir + '/summary.json'))
-        runner.writter.close()
+    trainer = Trainer(config)
+    trainer.train()
+    trainer.close()
 
 
 if __name__ == "__main__":
