@@ -40,7 +40,7 @@ class BaseTrainer(ABC):
             self.log_dir = str(self.run_dir / 'logs')
             os.makedirs(self.save_dir, exist_ok=True)
             os.makedirs(self.log_dir, exist_ok=True)
-            self.writter = SummaryWriter(self.log_dir)
+            self.writer = SummaryWriter(self.log_dir)
 
     @abstractmethod
     def train(self):
@@ -68,7 +68,7 @@ class BaseTrainer(ABC):
             if self.use_wandb:
                 wandb.log({k: v}, step=total_num_steps)
             else:
-                self.writter.add_scalars(k, {k: v}, total_num_steps)
+                self.writer.add_scalars(k, {k: v}, total_num_steps)
 
     def close(self):
         self.envs.close()
@@ -78,7 +78,7 @@ class BaseTrainer(ABC):
         if self.use_wandb:
             wandb.run.finish()
         else:
-            self.writter.export_scalars_to_json(
+            self.writer.export_scalars_to_json(
                 str(self.log_dir + '/summary.json'))
-            self.writter.close()
+            self.writer.close()
         

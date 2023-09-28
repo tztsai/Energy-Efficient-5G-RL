@@ -187,24 +187,6 @@ class MappoTrainer(BaseTrainer):
     def __init__(self, config):
         super().__init__(config)
 
-        cent_observation_space = self.envs.cent_observation_space if \
-            self.use_centralized_V else self.envs.observation_space[0]
-
-        self.policy = MappoPolicy(self.all_args,
-                             self.envs.observation_space[0],
-                             cent_observation_space,
-                             self.envs.action_space[0],
-                             device = self.device)
-        
-        if self.model_dir is not None:
-            self.load(version=self.all_args.model_version)
-        
-        self.buffer = SharedReplayBuffer(self.all_args,
-                                        self.num_agents,
-                                        self.envs.observation_space[0],
-                                        cent_observation_space,
-                                        self.envs.action_space[0])
-        
         args = self.all_args
         self.tpdv = dict(dtype=torch.float32, device=self.device)
         self.lr = args.lr
@@ -224,6 +206,24 @@ class MappoTrainer(BaseTrainer):
         self.max_grad_norm = args.max_grad_norm       
         self.huber_delta = args.huber_delta
         self.recurrent_N = args.recurrent_N
+        
+        cent_observation_space = self.envs.cent_observation_space if \
+            self.use_centralized_V else self.envs.observation_space[0]
+
+        self.policy = MappoPolicy(self.all_args,
+                             self.envs.observation_space[0],
+                             cent_observation_space,
+                             self.envs.action_space[0],
+                             device = self.device)
+        
+        if self.model_dir is not None:
+            self.load(version=self.all_args.model_version)
+        
+        self.buffer = SharedReplayBuffer(self.all_args,
+                                        self.num_agents,
+                                        self.envs.observation_space[0],
+                                        cent_observation_space,
+                                        self.envs.action_space[0])
         
         self.actor_optimizer = torch.optim.Adam(
             self.policy.actor.parameters(), lr=self.lr, 
@@ -489,10 +489,6 @@ class MappoTrainer(BaseTrainer):
                 notice('Episode %s: %s\n' % (episode, kwds_str(**train_infos)))
                 pbar.set_postfix(reward=avg_step_rew)
                 self.log_train(train_infos, total_num_steps)
-
-            # eval
-            if episode % self.eval_interval == 0 and self.use_eval:
-                self.eval(total_num_steps)
 
     def warmup(self):
         # reset env
