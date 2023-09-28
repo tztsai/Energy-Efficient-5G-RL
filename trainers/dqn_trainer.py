@@ -61,7 +61,6 @@ class DQNTrainer(BaseTrainer):
         
         args = config['all_args']
         self.lr = args.learning_rate
-        self.args = args
 
         self.q_net = QNetwork(self.envs).to(self.device)
         self.targ_net = QNetwork(self.envs).to(self.device)
@@ -80,6 +79,9 @@ class DQNTrainer(BaseTrainer):
         start_time = time.time()
 
         envs = self.envs
+        args = self.all_args
+        writer = self.writer
+        
         obs, _ = envs.reset()
         
         for global_step in range(args.total_timesteps):
@@ -88,7 +90,7 @@ class DQNTrainer(BaseTrainer):
             if random.random() < epsilon:
                 actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
             else:
-                q_values = self.q_net(torch.Tensor(obs).to(device))
+                q_values = self.q_net(torch.Tensor(obs).to(self.device))
                 actions = torch.argmax(q_values, dim=1).cpu().numpy()
 
             # TRY NOT TO MODIFY: execute the game and log data.
@@ -143,7 +145,18 @@ class DQNTrainer(BaseTrainer):
                             args.tau * self.net_param.data + (1.0 - args.tau) * self.targ_net_param.data
                         )
 
+    def take_actions(self, obs):
+        q_values = self.q_net(torch.Tensor(obs).to(self.device))
+        actions = torch.argmax(q_values, dim=1).cpu().numpy()
+        return actions
+
     def save(self, version=''):
         path = os.path.join(self.save_dir, f"dqn{version}.pt")
         notice(f"Saving model to {path}")
         torch.save(self.q_net.state_dict(), path)
+
+    def load(self, version=''):
+        path = os.path.join(self.model_dir, f"dqn{version}.pt")
+        notice(f"Loading model from {path}")
+        self.q_net.load_state_dict(torch.load(path))
+        self.targ_net.load_state_dict(self.q_net.state_dict())

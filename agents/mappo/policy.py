@@ -102,12 +102,12 @@ class MappoPolicy(Policy):
         torch.save(self.critic.state_dict(), osp.join(save_dir, "critic%s.pt" % version))
 
     def load(self, model_dir, version=''):
-        model_dir = Path(model_dir)
-        actor_file = sorted(model_dir.glob(f'actor*{version}.pt'))[0]
-        notice("Restoring actor network from {}".format(actor_file))
+        # actor_file = next(model_dir.glob(f'actor*{version}.pt'))
+        actor_file = osp.join(model_dir, f'actor{version}.pt')
+        notice("Loading actor network from {}".format(actor_file))
         self.actor.load_state_dict(torch.load(str(actor_file)))
         try:
-            critic_file = next(model_dir.glob(f'critic*{version}.pt'))
+            critic_file = osp.join(model_dir, f'critic{version}.pt')
             self.critic.load_state_dict(torch.load(str(critic_file)))
         except:
             notice("No critic file found, skipping critic loading.")
