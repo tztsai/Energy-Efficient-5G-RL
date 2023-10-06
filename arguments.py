@@ -76,7 +76,7 @@ def get_config():
         description='onpolicy', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     # prepare parameters
-    parser.add_argument("--algorithm_name", type=str,
+    parser.add_argument("-A", "--algorithm_name", type=str,
                         default='mappo', choices=["rmappo", "mappo", "dqn"])
     parser.add_argument("-G", "--group_name", type=str,
                         help="the group name of the training (we use traffic scenario)")
