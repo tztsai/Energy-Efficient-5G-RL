@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from tqdm import trange
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -24,8 +25,6 @@ def get_dqn_config():
     
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
-        help="the number of parallel game environments")
     parser.add_argument("--buffer-size", type=int, default=10000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
@@ -59,17 +58,19 @@ class DQNTrainer(BaseTrainer):
     def __init__(self, config):
         super().__init__(config)
         
+        self.observation_space = self.envs.observation_space[0]
+        self.action_space = self.envs.action_space[0]
+
         args = config['all_args']
         self.lr = args.learning_rate
-
-        self.q_net = QNetwork(self.envs).to(self.device)
-        self.targ_net = QNetwork(self.envs).to(self.device)
+        self.q_net = QNetwork(self.observation_space, self.action_space).to(self.device)
+        self.targ_net = QNetwork(self.observation_space, self.action_space).to(self.device)
         self.targ_net.load_state_dict(self.q_net.state_dict())
 
         self.rb = ReplayBuffer(
             args.buffer_size,
-            self.envs.single_observation_space,
-            self.envs.single_action_space,
+            self.observation_space,
+            self.action_space,
             self.device,
             handle_timeout_termination=False,
         )
@@ -84,35 +85,49 @@ class DQNTrainer(BaseTrainer):
         
         obs, _ = envs.reset()
         
-        for global_step in range(args.total_timesteps):
+        for global_step in trange(args.total_timesteps):
             # ALGO LOGIC: put action logic here
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
+            
             if random.random() < epsilon:
-                actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+                actions = np.array([self.action_space.sample() for _ in range(envs.num_envs)])
             else:
-                q_values = self.q_net(torch.Tensor(obs).to(self.device))
-                actions = torch.argmax(q_values, dim=1).cpu().numpy()
+                actions = [
+                    torch.argmax(q_values, dim=1).cpu().numpy()
+                    for ob in obs
+                    for q_values in [self.q_net(torch.Tensor(ob).to(self.device))]
+                ]
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, rewards, terminated, truncated, infos = envs.step(actions)
+            next_obs, cent_obs, reward, dones, infos, _ = envs.step(actions)
 
-            # TRY NOT TO MODIFY: record rewards for plotting purposes
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    # Skip the envs that are not done
-                    if "episode" not in info:
-                        continue
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                    writer.add_scalar("charts/epsilon", epsilon, global_step)
+            # # TRY NOT TO MODIFY: record rewards for plotting purposes
+            # if "final_info" in infos:
+            #     for info in infos["final_info"]:
+            #         # Skip the envs that are not done
+            #         if "episode" not in info: continue
+            #         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+            #         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+            #         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            #         writer.add_scalar("charts/epsilon", epsilon, global_step)
+            
+            # log information
+            # if episode % self.log_interval == 0:
+            #     rew_df = pd.concat([pd.DataFrame(d['step_rewards']) for d in infos])
+            #     rew_info = rew_df.describe().loc[['mean', 'std', 'min', 'max']].unstack()
+            #     rew_info.index = ['_'.join(idx) for idx in rew_info.index]
+            #     train_infos.update(
+            #         sm3_ratio_mean = np.mean([d['sm3_ratio'] for d in infos]),
+            #         **rew_info)
+            #     avg_step_rew = np.mean(self.buffer.rewards)
+            #     assert abs(avg_step_rew - train_infos['reward_mean']) < 1e-3
+            #     notice('Episode %s: %s\n' % (episode, kwds_str(**train_infos)))
+            #     pbar.set_postfix(reward=avg_step_rew)
+            #     self.log_train(train_infos, total_num_steps)
 
-            # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
-            real_next_obs = next_obs.copy()
-            for idx, d in enumerate(truncated):
-                if d:
-                    real_next_obs[idx] = infos["final_observation"][idx]
-            self.rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
+            # TRY NOT TO MODIFY: save data to replay buffer; handle `final_observation`
+            for ob, next_ob, action, done, info in zip(obs, next_obs, actions, dones, infos):
+                self.rb.add(ob, next_ob, action, reward, done, info)
 
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs

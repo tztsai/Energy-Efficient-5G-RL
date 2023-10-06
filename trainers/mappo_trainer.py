@@ -210,20 +210,22 @@ class MappoTrainer(BaseTrainer):
         cent_observation_space = self.envs.cent_observation_space if \
             self.use_centralized_V else self.envs.observation_space[0]
 
-        self.policy = MappoPolicy(self.all_args,
-                             self.envs.observation_space[0],
-                             cent_observation_space,
-                             self.envs.action_space[0],
-                             device = self.device)
+        self.policy = MappoPolicy(
+            self.all_args,
+            self.envs.observation_space[0],
+            cent_observation_space,
+            self.envs.action_space[0],
+            device = self.device)
         
         if self.model_dir is not None:
             self.load(version=self.all_args.model_version)
         
-        self.buffer = SharedReplayBuffer(self.all_args,
-                                        self.num_agents,
-                                        self.envs.observation_space[0],
-                                        cent_observation_space,
-                                        self.envs.action_space[0])
+        self.buffer = SharedReplayBuffer(
+            self.all_args,
+            self.num_agents,
+            self.envs.observation_space[0],
+            cent_observation_space,
+            self.envs.action_space[0])
         
         self.actor_optimizer = torch.optim.Adam(
             self.policy.actor.parameters(), lr=self.lr, 
