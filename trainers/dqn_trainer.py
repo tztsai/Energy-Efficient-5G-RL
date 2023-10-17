@@ -2,7 +2,6 @@ import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
 from argparse import ArgumentParser
 
 import gymnasium as gym
@@ -41,7 +40,7 @@ def get_dqn_config():
         help="the ending epsilon for exploration")
     parser.add_argument("--exploration-fraction", type=float, default=0.5,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument("--learning-starts", type=int, default=10000,
+    parser.add_argument("--learning-starts", type=int, default=1000, # TODO: change to 10000
         help="timestep to start learning")
     parser.add_argument("--train-frequency", type=int, default=10,
         help="the frequency of training")
@@ -83,23 +82,28 @@ class DQNTrainer(BaseTrainer):
         args = self.all_args
         writer = self.writer
         
-        obs, _ = envs.reset()
+        obs, _, _ = envs.reset()
         
-        for global_step in trange(args.total_timesteps):
+        pbar = trange(args.num_env_steps)
+        for step in pbar:
             # ALGO LOGIC: put action logic here
-            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
+            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.num_env_steps, step)
             
             if random.random() < epsilon:
-                actions = np.array([self.action_space.sample() for _ in range(envs.num_envs)])
+                actions = np.array([[s.sample() for s in envs.action_space] for _ in range(envs.num_envs)])
             else:
-                actions = [
-                    torch.argmax(q_values, dim=1).cpu().numpy()
-                    for ob in obs
-                    for q_values in [self.q_net(torch.Tensor(ob).to(self.device))]
-                ]
-
+                actions = self.take_actions(obs)
+                
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, cent_obs, reward, dones, infos, _ = envs.step(actions)
+            next_obs, _ , rewards, dones, infos, _ = envs.step(actions)
+
+            obs = obs.reshape(-1, obs.shape[-1])
+            obs1 = next_obs.reshape(-1, next_obs.shape[-1])
+            actions = actions.reshape(-1, actions.shape[-1])
+            rewards = np.repeat(rewards.reshape(-1, 1), self.num_agents, axis=1).reshape(-1)
+            dones = np.repeat(dones.reshape(-1, 1), self.num_agents, axis=1).reshape(-1)
+            assert len(obs) == len(obs1) == len(actions) == len(rewards) == len(dones) \
+                == envs.num_envs * self.num_agents
 
             # # TRY NOT TO MODIFY: record rewards for plotting purposes
             # if "final_info" in infos:
@@ -126,27 +130,28 @@ class DQNTrainer(BaseTrainer):
             #     self.log_train(train_infos, total_num_steps)
 
             # TRY NOT TO MODIFY: save data to replay buffer; handle `final_observation`
-            for ob, next_ob, action, done, info in zip(obs, next_obs, actions, dones, infos):
-                self.rb.add(ob, next_ob, action, reward, done, info)
+            for ob, ob1, a, r, d in zip(obs, obs1, actions, rewards, dones):
+                self.rb.add(ob, ob1, a, r, d, {})
 
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
 
             # ALGO LOGIC: training.
-            if global_step > args.learning_starts:
-                if global_step % args.train_frequency == 0:
+            if step > args.learning_starts:
+                if step % args.train_frequency == 0:
                     data = self.rb.sample(args.batch_size)
                     with torch.no_grad():
                         target_max, _ = self.targ_net(data.next_observations).max(dim=1)
                         td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
+                    # TODO: debug the following line
                     old_val = self.q_net(data.observations).gather(1, data.actions).squeeze()
                     loss = F.mse_loss(td_target, old_val)
 
-                    if global_step % 100 == 0:
-                        writer.add_scalar("losses/td_loss", loss, global_step)
-                        writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-                        print("SPS:", int(global_step / (time.time() - start_time)))
-                        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                    if step % 100 == 0:
+                        writer.add_scalar("losses/td_loss", loss, step)
+                        writer.add_scalar("losses/q_values", old_val.mean().item(), step)
+                        writer.add_scalar("charts/SPS", int(step / (time.time() - start_time)), step)
+                        pbar.set_postfix(SPS=int(step / (time.time() - start_time)), td_loss=loss)
 
                     # optimize the model
                     optimizer.zero_grad()
@@ -154,16 +159,15 @@ class DQNTrainer(BaseTrainer):
                     optimizer.step()
 
                 # update target network
-                if global_step % args.target_network_frequency == 0:
+                if step % args.target_network_frequency == 0:
                     for self.targ_net_param, self.net_param in zip(self.targ_net.parameters(), self.q_net.parameters()):
                         self.targ_net_param.data.copy_(
                             args.tau * self.net_param.data + (1.0 - args.tau) * self.targ_net_param.data
                         )
 
     def take_actions(self, obs):
-        q_values = self.q_net(torch.Tensor(obs).to(self.device))
-        actions = torch.argmax(q_values, dim=1).cpu().numpy()
-        return actions
+        return np.array([self.q_net(torch.Tensor(ob).to(self.device))
+                         .cpu().numpy() for ob in obs])
 
     def save(self, version=''):
         path = os.path.join(self.save_dir, f"dqn{version}.pt")
