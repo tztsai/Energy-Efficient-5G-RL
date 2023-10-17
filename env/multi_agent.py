@@ -1,4 +1,4 @@
-from gym import Env, spaces
+from gymnasium import Env
 from functools import lru_cache
 
 

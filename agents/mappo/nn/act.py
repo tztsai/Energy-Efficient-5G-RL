@@ -10,7 +10,7 @@ class ACTLayer(nn.Module):
     :param use_orthogonal: (bool) whether to use orthogonal initialization.
     :param gain: (float) gain of the output layer of the network.
     """
-    def __init__(self, action_space, inputs_dim, use_orthogonal, gain):
+    def __init__(self, action_space, inputs_dim, use_orthogonal=True, gain=0.01):
         super(ACTLayer, self).__init__()
         self.mixed_action = False
         self.multi_discrete = False
@@ -26,7 +26,10 @@ class ACTLayer(nn.Module):
             self.action_out = Bernoulli(inputs_dim, action_dim, use_orthogonal, gain)
         elif action_space.__class__.__name__ == "MultiDiscrete":
             self.multi_discrete = True
-            action_dims = action_space.high - action_space.low + 1
+            if hasattr(action_space, "nvec"):
+                action_dims = action_space.nvec
+            else:
+                action_dims = action_space.high - action_space.low + 1
             self.action_outs = []
             for action_dim in action_dims:
                 self.action_outs.append(Categorical(inputs_dim, action_dim, use_orthogonal, gain))
