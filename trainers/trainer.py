@@ -78,7 +78,7 @@ class BaseTrainer(ABC):
         if self.use_wandb:
             wandb.run.finish()
         else:
-            self.writer.export_scalars_to_json(
-                str(self.log_dir + '/summary.json'))
+            # self.writer.export_scalars_to_json(
+            #     str(self.log_dir + '/summary.json'))
             self.writer.close()
         
