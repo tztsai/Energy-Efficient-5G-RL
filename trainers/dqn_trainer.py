@@ -119,7 +119,7 @@ class DQNTrainer(BaseTrainer):
                 if steps % args.train_frequency == 0:
                     data = self.rb.sample(args.batch_size)
                     with torch.no_grad():
-                        target_max, _ = self.targ_net(data.next_observations).max(dim=1)
+                        target_max, _ = self.targ_net.net(data.next_observations).max(dim=1)
                         td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
                     old_val = self.q_net.gather(data.observations, data.actions)
                     loss = F.mse_loss(td_target, old_val)
