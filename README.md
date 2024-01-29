@@ -8,6 +8,12 @@ The strategy involves making decisions on multi-level advanced sleep modes, ante
 
 This solution has been shown to significantly improve network energy efficiency, adaptively switch the BSs into different depths of sleep, reduce inter-cell interference, and maintain a high quality-of-service (QoS). 
 
+## Explanation of the Project Structure
+
+`train.sh` is the bash script for training the MAPPO agent. The hyparameters of the agent can be set in this script. Set the values of `wandb_user` and `wandb_api_key` if you want to log your training using `wandb`. In addition, the config of the cellular network environment can be found at `network/config.py`.
+
+After training, the model will be stored in the `results` folder. Then the `simulate.sh` script can be used to run simulation of the agent interacting with the cellular network. The results of the simulation will be stored in the `analysis/sim_stats` folder. You can also benchmark the performance of several trained models using `analysis/benchmark.py`. It will produce plots in several `*_plots/` folders, similar to those in the published paper.
+
 ## Features
 
 The key features of the project include:
