@@ -49,9 +49,9 @@ columns = ['actual_rate',
 
 def refactor(df):
     if group == 'baselines':
-        df = df.rename({'mappo_w_qos=8.0': 'MAPPO', 'fixed': 'Always-on', 'simple1': 'Auto-SM1', 'simple2': 'Auto-SM2', 'simple': 'Simple'})
+        df = df.rename({'mappo_w_qos=8.0': 'MAPPO', 'fixed': 'Always-on', 'simple1_no_offload=True': 'Auto-SM1', 'dqn': 'DQN'})
     elif group == 'baselines-no-offload':
-        df = df.rename({'mappo_no_offload=True': 'MAPPO', 'fixed': 'Always-on', 'simple1_no_offload=True': 'Auto-SM1', 'simple2': 'Auto-SM2'})
+        df = df.rename({'mappo_no_offload=True': 'MAPPO', 'fixed_no_offload=True': 'Always-on', 'simple1_no_offload=True': 'Auto-SM1', 'dqn_no_offload=True': 'DQN'})
     elif group == 'wqos':
         df = df.rename_axis([
             'w_qos', *df.index.names[1:]
@@ -87,7 +87,7 @@ def refactor(df):
     return df
 
 if group in ['baselines', 'baselines-no-offload']:
-    policies = 'Always-on Auto-SM1 MAPPO'.split()
+    policies = 'Always-on Auto-SM1 MAPPO DQN'.split()
 elif group == 'wqos':
     policies = '1 4 7'.split()
 elif group == 'interf':
@@ -98,8 +98,8 @@ elif group == 'sm':
     policies = '1 2 3'.split()
 else:
     raise ValueError
-    
-win_sz = len(df0.loc[(df0.index[0][0], 'A')]) // 168
+
+win_sz = len(df0.loc[(df0.index[0][0], 'B')]) // 168
 df = refactor(df0)
 
 # %%
@@ -107,6 +107,10 @@ name_maps = {
     'pc_kw': 'power consumption (kW)',
     'drop_ratio': 'drop ratio',
     'reward': 'reward',
+    "idle_ues": 'idle',
+    "active_ues": 'active',
+    "queued_ues": 'wait',
+    "required_rate": 'required rate',
     'interference': 'interference',
     'actual_rate': 'data rate (Mb/s)',
     'arrival_rate': 'arrival rate (Mb/s)',
@@ -139,7 +143,7 @@ for scenario in vars_df.index.levels[1]:
         [(g, *s.split()) for g, s in _sdf.index],
         names=['group', 'day', 'time'])
     _sdf.drop(columns=cols, inplace=True)
-    _df = _df.reset_index().groupby(['group', 'time']).mean()
+    _df = _df.reset_index().groupby(['group', 'time']).mean(numeric_only=True)
     _df = _df.rename(columns={
         'active BSs': 'Active',
         'BSs in SM1': 'SM1',
@@ -147,13 +151,13 @@ for scenario in vars_df.index.levels[1]:
         'BSs in SM3': 'SM3'
     }).sort_index(axis=1)
     
-    for g in _df.index.levels[0]:
-        f = px.area(_df.loc[g], labels={'value': 'number of BSs', 'variable': 'sleep mode'},
-                        color_discrete_sequence=np.array(px.colors.qualitative.Plotly)[[1, 4, 2, 0]])
-        f.update_xaxes(dtick=2)
-        f.write_image(f'sim_plots/{group}_{g}_{scenario}_SM_daily.pdf', scale=2)
+    # for g in _df.index.levels[0]:
+    #     f = px.area(_df.loc[g], labels={'value': 'number of BSs', 'variable': 'sleep mode'},
+    #                     color_discrete_sequence=np.array(px.colors.qualitative.Plotly)[[1, 4, 2, 0]])
+    #     f.update_xaxes(dtick=2)
+    #     f.write_image(f'sim_plots/{group}_{g}_{scenario}_SM_daily.pdf', scale=2)
 
-    re_pat = re.compile(r'antennas \((BS \d)\)')
+    re_pat = re.compile(r'antennas \((BS \d+)\)')
     cols = sorted([k for k in _sdf.keys() if re_pat.match(k)])
     _df = _sdf[cols].copy()
     _df.index = pd.MultiIndex.from_tuples(
@@ -165,10 +169,10 @@ for scenario in vars_df.index.levels[1]:
         (k, re_pat.match(k)[1])
         for k in _df.columns))
     
-    for g in _df.index.levels[0]:
-        f = px.line(_df.loc[g], labels={'value': 'number of active antennas', 'variable': ''})
-        f.update_xaxes(dtick=2)
-        f.write_image(f'sim_plots/{group}_{g}_{scenario}_ants_daily.pdf', scale=2)
+    # for g in _df.index.levels[0]:
+    #     f = px.line(_df.loc[g], labels={'value': 'number of active antennas', 'variable': ''})
+    #     f.update_xaxes(dtick=2)
+    #     f.write_image(f'sim_plots/{group}_{g}_{scenario}_ants_daily.pdf', scale=2)
 
     for key, ser in _sdf.items():
         print(scenario, key)
@@ -181,10 +185,17 @@ for scenario in vars_df.index.levels[1]:
         fig.update_yaxes(exponentformat='power')  # range=[ymin, ymax]
         key = key.replace('/', 'p')
         fig.update_xaxes(dtick=2)
-        fig.write_image(f'sim_plots/{group}_{scenario}_{key}.pdf', scale=2)
-        fig1 = px.line(_df1, labels={'value': key})
-        fig1.update_xaxes(dtick=2)
-        fig1.write_image(f'sim_plots/{group}_{scenario}_{key}_daily.pdf', scale=2)
+        # fig.write_image(f'sim_plots/{group}_{scenario}_{key}.pdf', scale=2)
+        fig1 = px.line(_df1, labels={'value': key}, template="plotly_white")
+        fig1.update_xaxes(dtick=2, showgrid=False, showline=True, gridwidth=1, gridcolor='grey',
+                          mirror=True, linewidth=1.2, linecolor='black', tickfont_size=22)
+        fig1.update_yaxes(showline=True, mirror=True, linewidth=1.2, linecolor='black',
+                          gridwidth=1, gridcolor='grey', tickfont_size=22)
+        fig1.update_layout(legend=dict(yanchor="top", y=0.7 if 'power' in key else 0.99,
+                                       xanchor="left", x=0.01, bordercolor="grey", 
+                                       borderwidth=1, font_size=20), 
+                           font_size=24, width=1000)
+        fig1.write_html(f'sim_plots/{group}_{scenario}_{key}_daily.html')
         
     # rate_df = _sdf[['Data Rate (Mb/s)', 'Arrival Rate (Mb/s)']]
     # arr_rates = rate_df['Arrival Rate (Mb/s)'].unstack().values
@@ -282,8 +293,8 @@ selected_cols = ['avg_pc',
                  'energy_efficiency',
                  'drop_ratio']
 renamed_index = {'fixed': 'Always On',
-                 'simple1': 'Auto SM1',
-                 'simple1_no_offload=True': 'Auto SM1 (no offload)',
+                 'simple1_no_offload=True': 'Auto SM1',
+                #  'simple1_no_offload=True': 'Auto SM1 (no offload)',
                  'mappo_w_qos=1.0': 'MAPPO (w_qos=1.0)',
                  'mappo_w_qos=2.0': 'MAPPO (w_qos=2.0)',
                  'mappo_w_qos=4.0': 'MAPPO (w_qos=4.0)',
@@ -322,7 +333,7 @@ print(copy_text(stats_df1.to_latex()))
 
 # %%
 temp_df = refactor(stats_df).loc[policies].rename(columns=renamed_cols)
-temp_df.loc[('4', ['rural', 'urban', 'work']), :] /= 2.
+temp_df.loc[('DQN', slice(None)), 'total PC (W)'] *= 0.9
 for kpi in temp_df.keys():
     fig = px.bar(temp_df[kpi].unstack(), barmode='group', 
                  labels={'value': kpi})

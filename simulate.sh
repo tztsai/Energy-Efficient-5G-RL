@@ -15,5 +15,7 @@ for S in A B C; do
     done
     ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --no_interf $@
     ./simulate.py -S $S --w_qos $w --seed $seed -a $acc --no_offload $@
+    ./simulate.py -S $S -A dqn --seed $seed -a $acc --use_wandb --run_version run28 $@
+    ./simulate.py -S $S -A dqn --w_qos 4 --seed $seed -a $acc --use_wandb --run_version run23 --no_offload $@
 done
 done

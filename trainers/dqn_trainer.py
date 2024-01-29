@@ -24,7 +24,7 @@ def get_dqn_config():
     
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--buffer-size", type=int, default=10000,
+    parser.add_argument("--buffer-size", type=int, default=20000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -36,11 +36,11 @@ def get_dqn_config():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
         help="the starting epsilon for exploration")
-    parser.add_argument("--end-e", type=float, default=0.05,
+    parser.add_argument("--end-e", type=float, default=0.03,
         help="the ending epsilon for exploration")
     parser.add_argument("--exploration-fraction", type=float, default=0.5,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument("--learning-starts", type=int, default=10000,
+    parser.add_argument("--learning-starts", type=int, default=20000,
         help="timestep to start learning")
     parser.add_argument("--train-frequency", type=int, default=10,
         help="the frequency of training")
@@ -75,7 +75,7 @@ class DQNTrainer(BaseTrainer):
         )
     
     def train(self):
-        optimizer = optim.Adam(self.q_net.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.q_net.parameters(), lr=self.lr, weight_decay=1e-5)
         start_time = time.time()
 
         envs = self.envs
@@ -85,10 +85,10 @@ class DQNTrainer(BaseTrainer):
         episodes = 0
         obs, _, _ = envs.reset()
         
-        pbar = trange(args.num_env_steps)
+        pbar = trange(args.num_env_steps // args.n_rollout_threads)
         for step in pbar:
-            # ALGO LOGIC: put action logic here
-            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.num_env_steps, step)
+            steps = (step + 1) * args.n_rollout_threads
+            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.num_env_steps, steps)
             
             if random.random() < epsilon:
                 actions = np.array([[s.sample() for s in envs.action_space] for _ in range(envs.num_envs)])
@@ -114,21 +114,21 @@ class DQNTrainer(BaseTrainer):
             obs = next_obs
             
             # ALGO LOGIC: training.
-            if step > args.learning_starts:
-                if step % args.train_frequency == 0:
+            
+            if steps > args.learning_starts:
+                if steps % args.train_frequency == 0:
                     data = self.rb.sample(args.batch_size)
                     with torch.no_grad():
                         target_max, _ = self.targ_net(data.next_observations).max(dim=1)
                         td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-                    # TODO: debug the following line
                     old_val = self.q_net.gather(data.observations, data.actions)
                     loss = F.mse_loss(td_target, old_val)
 
-                    if step % 100 == 0:
-                        writer.add_scalar("losses/td_loss", loss, step)
-                        writer.add_scalar("losses/q_values", old_val.mean().item(), step)
-                        writer.add_scalar("charts/SPS", int(step / (time.time() - start_time)), step)
-                        pbar.set_postfix(SPS=int(step / (time.time() - start_time)), td_loss=loss.item())
+                    if steps % 1000 == 0:
+                        writer.add_scalar("losses/td_loss", loss, steps)
+                        writer.add_scalar("losses/q_values", old_val.mean().item(), steps)
+                        writer.add_scalar("charts/SPS", int(steps / (time.time() - start_time)), steps)
+                        pbar.set_postfix(SPS=int(steps / (time.time() - start_time)), td_loss=loss.item())
 
                     # optimize the model
                     optimizer.zero_grad()
@@ -136,20 +136,23 @@ class DQNTrainer(BaseTrainer):
                     optimizer.step()
 
                 # update target network
-                if step % args.target_network_frequency == 0:
+                if steps % args.target_network_frequency == 0:
                     for self.targ_net_param, self.net_param in zip(self.targ_net.parameters(), self.q_net.parameters()):
                         self.targ_net_param.data.copy_(
                             args.tau * self.net_param.data + (1.0 - args.tau) * self.targ_net_param.data
                         )
         
             if done.any():
+                assert done.all()
                 episodes += 1
                 self.save()
+                if episodes % 5 == 0:
+                    self.save(version=f"_eps{episodes}")
                 if episodes % self.log_interval == 0:
                     rew_df = pd.concat([pd.DataFrame(d['step_rewards']) for d in infos])
                     rew_info = rew_df.describe().loc[['mean', 'std', 'min', 'max']].unstack()
                     rew_info.index = ['_'.join(idx) for idx in rew_info.index]
-                    self.log_train(rew_info, step)
+                    self.log_train(rew_info, steps)
 
     def take_actions(self, obs):
         return np.array([self.q_net(torch.Tensor(ob).to(self.device))

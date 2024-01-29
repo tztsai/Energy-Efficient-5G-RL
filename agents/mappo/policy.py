@@ -19,7 +19,7 @@ class MappoPolicy(Policy):
     """
 
     def __init__(self, args, obs_space, cent_obs_space, act_space,
-                 device=torch.device("cpu"), model_dir=None, model_version=""):
+                 device=torch.device("cpu"), model_dir=None):
         self.obs_space = obs_space
         self.cent_obs_space = cent_obs_space
         self.act_space = act_space
@@ -33,7 +33,7 @@ class MappoPolicy(Policy):
         self._actor_rnn_state = None
 
         if model_dir is not None:
-            self.load(model_dir, model_version)
+            self.load(model_dir, args.model_version)
 
     def get_actions(self, cent_obs, obs, actor_rnn_states, critic_rnn_states, masks, 
                     available_actions=None, deterministic=False):
