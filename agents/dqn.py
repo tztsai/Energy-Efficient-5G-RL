@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+from utils import *
 from .mappo.nn.distributions import Categorical
 
 
@@ -60,3 +61,26 @@ class QNetwork(nn.Module):
             return q_values.gather(-1, a.unsqueeze(-1)).squeeze(-1)
         else:
             return q_values.gather(-1, actions)
+        
+        
+class DQNPolicy:
+    def __init__(self, obs_space, act_space, device=torch.device("cpu"), 
+                 model_dir=None, model_version=""):
+        self.obs_space = obs_space
+        self.act_space = act_space
+        self.device = device
+
+        self.q_net = QNetwork(obs_space, act_space).to(device)
+
+        if model_dir is not None:
+            self.load(model_dir, model_version)
+    
+    @torch.no_grad()
+    def act(self, obs, deterministic=True):
+        obs = torch.Tensor(np.array(obs)).to(self.device)
+        return self.q_net(obs).cpu().numpy()
+
+    def load(self, model_dir, version=''):
+        path = os.path.join(model_dir, f"dqn{version}.pt")
+        notice(f"Loading model from {path}")
+        self.q_net.load_state_dict(torch.load(path))

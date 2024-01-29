@@ -16,8 +16,6 @@ render_interval = 4
 model_params = dict(w_qos=4, no_interf=False, max_sleep=3, no_offload=False)
 
 parser = get_config()
-parser.add_argument("-A", '--agent', type=str, default='mappo',
-                    help='type of agent used in simulation')
 parser.add_argument("--perf_save_path", default="results/performance.csv",
                     help="path to save the performance of the simulation")
 parser.add_argument("--render_interval", type=int, default=render_interval,
@@ -40,10 +38,12 @@ try:
 except:
     args = parser.parse_args([])
     env_args = env_parser.parse_args([])
+    
+AGENT = args.algorithm_name
 
 if args.experiment_name == 'test': args.use_wandb = False
 args.num_env_steps = args.days * 24 * 3600 * 50 // env_args.accelerate
-env_args.stats_dir = f'analysis/sim_stats/{args.agent}'
+env_args.stats_dir = f'analysis/sim_stats/{AGENT}'
 
 # %%
 set_log_level(args.log_level)
@@ -70,12 +70,16 @@ def get_model_dir(args, env_args, run_dir, version=''):
     assert run_dir.exists(), "Run directory does not exist: {}".format(run_dir)
     if args.model_dir is not None:
         return run_dir / args.model_dir
-    p = 'wandb/run-*%s/files/' if args.use_wandb else 'run*%s*/models/'
+    p = 'wandb/run-*%s/files/' if args.use_wandb else '%s/models/'
     dirs = run_dir.glob(p % version)
     for d in sorted(dirs, key=os.path.getmtime, reverse=True):
         if env_args.no_interf ^ ('no_interf' in str(d)):
             continue
-        with open(d/'config.yaml') as f:
+        config_path = d/'config.yaml'
+        if not config_path.exists():
+            warn("no config file in %s" % d)
+            return d
+        with open(config_path) as f:
             cfg = yaml.safe_load(f)
             if all(getattr(env_args, k) == cfg[k]['value']
                    for k in model_params if k in cfg):
@@ -92,28 +96,29 @@ run_dir = get_run_dir(args, env_args)
 
 if args.sim_log_path is None:
     # fn = '{}_{}_{}_acc-{}.log'.format(
-    #     args.agent, env_args.scenario,
+    #     AGENT, env_args.scenario,
     #     re.sub('(, |:)', '-', env.net.world_time_repr),
     #     env.net.accelerate)
     fn = 'simulation.log'
     args.sim_log_path = 'logs/' + fn
 
-# match args.agent.lower():
-if args.agent == 'mappo':
+if AGENT == 'mappo':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
-    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space,
-                        model_dir=model_dir, model_version=args.model_version)
-elif args.agent == 'fixed':
+    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, model_dir=model_dir)
+elif AGENT == 'dqn':
+    model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
+    agent = DQNPolicy(obs_space, action_space, model_dir=model_dir, model_version=args.model_version)
+elif AGENT == 'fixed':
     agent = AlwaysOnPolicy(action_space, env.num_agents)
-elif args.agent == 'random':
+elif AGENT == 'random':
     agent = RandomPolicy(action_space, env.num_agents)
-elif args.agent == 'simple':
+elif AGENT == 'simple':
     agent = SimplePolicy(action_space, env.num_agents)
-elif args.agent == 'simple1':
+elif AGENT == 'simple1':
     agent = SimplePolicySM1Only(action_space, env.num_agents)
-elif args.agent == 'simple2':
+elif AGENT == 'simple2':
     agent = SimplePolicyNoSM3(action_space, env.num_agents)
-elif args.agent == 'sleepy':
+elif AGENT == 'sleepy':
     agent = SleepyPolicy(action_space, env.num_agents)
 else:
     raise ValueError('invalid agent type')
@@ -162,7 +167,7 @@ def simulate():
     info = rewards.describe()
     info.index = ['reward_' + str(i) for i in info.index]
     info['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    info['agent'] = args.agent
+    info['agent'] = AGENT
     info['total_steps'] = args.num_env_steps
     info['accelerate'] = env_args.accelerate
     info['scenario'] = env.net.traffic_scenario
