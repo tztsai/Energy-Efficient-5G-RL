@@ -6,7 +6,7 @@ The strategy involves making decisions on multi-level advanced sleep modes, ante
 
 Architecture of MAPPO:
 
-![image](https://github.com/user-attachments/assets/12b8ee47-f049-47d0-89d8-88696a7bf08a)
+![image](https://github.com/user-attachments/assets/ac157d8b-9629-4fa6-919f-01d38ccc6319)
 
 ## Overview
 
