@@ -4,6 +4,9 @@ This repository is associated with the publication "[Multi-agent Reinforcement L
 
 The strategy involves making decisions on multi-level advanced sleep modes, antenna switching, and user association for the base stations. By modelling the problem as a decentralized partially observable Markov decision process (DEC-POMDP), we propose a multi-agent proximal policy optimization (MAPPO) algorithm to obtain a collaborative BS control policy.
 
+Architecture of MAPPO:
+![image](https://github.com/user-attachments/assets/12b8ee47-f049-47d0-89d8-88696a7bf08a)
+
 ## Overview
 
 This solution has been shown to significantly improve network energy efficiency, adaptively switch the BSs into different depths of sleep, reduce inter-cell interference, and maintain a high quality-of-service (QoS). 
