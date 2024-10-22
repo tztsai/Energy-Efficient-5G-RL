@@ -32,13 +32,9 @@ env_parser = get_env_config()
 parser.set_defaults(log_level='NOTICE', group_name='RANDOM')
 env_parser.set_defaults(accelerate=accelerate)
 
-try:
-    args, env_args = parser.parse_known_args()
-    env_args = env_parser.parse_args(env_args)
-except:
-    args = parser.parse_args([])
-    env_args = env_parser.parse_args([])
-    
+args, env_args = parser.parse_known_args()
+env_args, rl_args = env_parser.parse_known_args(env_args)
+
 AGENT = args.algorithm_name
 
 if args.experiment_name == 'test': args.use_wandb = False
@@ -103,8 +99,11 @@ if args.sim_log_path is None:
     args.sim_log_path = 'logs/' + fn
 
 if AGENT == 'mappo':
+    from trainers.mappo_trainer import get_mappo_config
+    parser = get_mappo_config()
+    rl_args = parser.parse_args(rl_args)
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
-    agent = MappoPolicy(args, obs_space, cent_obs_space, action_space, model_dir=model_dir)
+    agent = MappoPolicy(rl_args, obs_space, cent_obs_space, action_space, model_dir=model_dir)
 elif AGENT == 'dqn':
     model_dir = args.model_dir or get_model_dir(args, env_args, run_dir, version=args.run_version)
     agent = DQNPolicy(obs_space, action_space, model_dir=model_dir, model_version=args.model_version)

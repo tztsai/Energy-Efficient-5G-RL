@@ -2,6 +2,8 @@ cloudpickle==2.1.0
 debugpy==1.6.0
 defusedxml==0.7.1
 gym==0.25.2
+gymnasium==0.28.0
+icecream>=2.0.0
 imageio==2.21.2
 matplotlib==3.5.2
 numpy==1.21.6
